@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+             request.auth.token.email == "info@cajunlifecafe.com" && 
+             request.auth.token.email_verified == true;
+    }
+
+    // Admin: Full access to everything
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Public: Read access to menu and settings
+    match /menu/{id} { allow read: if true; }
+    match /categories/{id} { allow read: if true; }
+    match /custom_meals/{id} { allow read: if true; }
+    match /settings/{id} { allow read: if true; }
+    match /test/connection { allow read: if true; }
+
+    // Users: Owner or Admin
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Finance: Authenticated users can read categories and create entries
+    match /finance_categories/{id} {
+      allow read: if isAuthenticated();
+    }
+
+    match /finance_entries/{id} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+    }
+  }
+}

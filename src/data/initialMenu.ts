@@ -1,0 +1,130 @@
+import { MenuItem } from '../types';
+
+export const INITIAL_MENU_DATA: Partial<MenuItem>[] = [
+  {
+    name: "Mixed Berry Smoothie Bowl",
+    name_chinese: "混合浆果冰沙碗",
+    name_russian: "Чаша для смузи из смешанных ягод",
+    name_thai: "มิกซ์เบอร์รี่สมูทตี้โบลว์",
+    description: "Blend of banana, mixed berry, oatmeal, topped with fresh fruits, pumpkin seeds and granola ",
+    description_chinese: "香蕉、混合浆果、燕麦片的混合物，上面撒有新鲜水果、柴籽、杏仁片、格兰诺拉麦片。椰子片",
+    description_russian: "Смесь банана, ягодного микса, овсянки, посыпанная свежими фруктами, семенами чая, кусочками миндаля, мюсли. кокосовая стружка",
+    description_thai: "กล้วย มิกซ์เบอร์รี่ ข้าวโอ๊ต โรยหน้าด้วยผลไม้สด เมล็ดไช อัลมอนด์สไลด์ กราโนล่า เกล็ดมะพร้าว",
+    category: "Smoothie Bowls",
+    image: "/menu/Mixed-Berry-Smoothie-Bowl.jpg",
+    price: "220",
+    published: true,
+    order: 1
+  },
+  {
+    name: "Green Coconut & Dark Choco Smoothie Bowl",
+    name_chinese: "绿椰子和黑巧克力冰沙碗",
+    name_russian: "Чаша для смузи с зеленым кокосом и темным шоколадом",
+    name_thai: "กรีน โคโค่นัท แอนด์ ดาร์ก ช็อกโก สมูทตี้โบลว์",
+    description: "Blend of banana, spinach, spirulina, dark chocolate topped with fresh fruits, sliced almond, granola, coconut flakes and pumpkin seeds",
+    description_chinese: "香蕉、菠菜、螺旋藻、黑巧克力、新鲜水果、柴籽、杏仁片、格兰诺拉麦片、椰子片的混合物",
+    description_russian: "Смесь банана, шпината, спирулины, темного шоколада со свежими фруктами, семенами чая, кусочками миндаля, мюсли и кокосовой стружкой.",
+    description_thai: "กล้วย ผักโขม สไปรูลิน่า ดาร์กช็อกโกแลต ท็อปด้วยผลไม้สด เมล็ดไช อัลมอนด์สไลซ์ กราโนล่า เกล็ดมะพร้าว",
+    category: "Smoothie Bowls",
+    image: "/menu/Green-Coconut-Dark-Choco-Smoothie-Bowl.jpg",
+    price: "245",
+    published: true,
+    order: 2
+  },
+  {
+    name: "Cajun Gumbo with Chicken, Sausage and Shrimp",
+    name_chinese: " 卡津秋葵浓汤配鸡肉、香肠和虾",
+    name_russian: "Каджунский гамбо с курицей, колбасой и креветками",
+    name_thai: " Cajun Gumbo กับไก่ไส้กรอกและกุ้ง",
+    description: "Marinated chicken breast, smoked sausage and shrimp cooked in our own blend of Cajun holy trinity and own special blend of Cajun seasoning. Served with jasmine rice and garlic bread",
+    category: "Cajun Food",
+    image: "/menu/Cajun-gumbo-with-chicken-sauseage-and-shrimp.jpg",
+    price: "380",
+    published: true,
+    order: 3
+  },
+  {
+    name: "Cajun Fried Chicken or Shrimp Po Boy",
+    name_chinese: "卡真炸鸡或虾宝男孩",
+    name_russian: "Каджунские жареные креветки По Бой",
+    name_thai: "ไก่ทอด Cajun หรือกุ้งโปบอย",
+    description: "Our own Cajun fried Chicken or Shrimp served on a fresh French bread with lettuce, tomato, pickle and our own Cajun remoulade sauce and French fries",
+    category: "Cajun Food",
+    image: "/menu/cajun-fried-shrimp-po-boy.jpg",
+    price: "295 / 380",
+    published: true,
+    order: 1
+  },
+  {
+    name: "Cajun Grilled Salmon & Mango Salsa",
+    name_chinese: "卡津烤三文鱼和芒果莎莎酱",
+    name_russian: "Сальса из каджунского лосося и манго",
+    name_thai: "แซลมอนย่างเคจันและซัลซ่ามะม่วง",
+    description: "Fresh salmon grilled in special blend of Cajun seasoning served with mango & mixed vegetables",
+    category: "Main Course",
+    image: "/menu/cajun-grilled-salmon-mango-salsa.jpg",
+    price: "390",
+    published: true,
+    order: 9
+  },
+  {
+    name: "Pad Thai",
+    name_chinese: "泰式炒河粉",
+    name_russian: "Тайская подушка",
+    name_thai: "ผัดไทย",
+    description: "Chicken/Pork/Shrimp/Seafood",
+    category: "Thai Food",
+    image: "/menu/pad-thai.jpg",
+    price: "120/180/200/220",
+    published: true,
+    order: 0
+  },
+  {
+    name: "Cajun Bread Pudding",
+    name_chinese: "卡真面包布丁",
+    name_russian: "Каджунский хлебный пудинг",
+    name_thai: "พุดดิ้งขนมปัง Cajun",
+    description: "With Rum Sauce",
+    category: "Desserts",
+    image: "/menu/Cajun-Bread-Pudding-with-Rum-Sauce.jpg",
+    price: "160",
+    published: true,
+    order: 4
+  },
+  {
+    name: "American Breakfast",
+    name_chinese: "美式早餐",
+    name_russian: "Американский завтрак",
+    name_thai: "อาหารเช้าแบบอเมริกัน",
+    description: "Choice of eggs (fried eggs/scrambled eggs/omelet/poached eggs) Selection of bacon or ham, smoked sausage, hash browns, whole wheat toast",
+    category: "Breakfast",
+    image: "/menu/american-breakfast.jpg",
+    price: "250",
+    published: true,
+    order: 2
+  },
+  {
+    name: "Red Sunset",
+    name_chinese: "红色夕阳",
+    name_russian: "Красный закат",
+    name_thai: "เรด ซันเซท",
+    description: "Carrot, green apple, orange, beet root (NO ADDED SUGAR)",
+    category: "Drinks",
+    image: "/menu/Red-Sunset.jpg",
+    price: "139",
+    published: true,
+    order: 18
+  },
+  {
+    name: "Jalapeno Cheese Poppers",
+    name_chinese: "墨西哥辣椒奶酪爆米花",
+    name_russian: "Сырные перчики халапеньо",
+    name_thai: "ป๊อปเปอร์ชีส Jalapeno",
+    description: "With CLC's Homemade Remoulade Sauce",
+    category: "Appetizers",
+    image: "/menu/jalapeno-cheese-poppers.jpg",
+    price: "180",
+    published: true,
+    order: 10
+  }
+];

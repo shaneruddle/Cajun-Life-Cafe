@@ -1,0 +1,12 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // Allow anyone to read images (public menu)
+      allow read: if true;
+      
+      // TEMPORARY: Allow anyone to write for testing
+      allow write: if true;
+    }
+  }
+}

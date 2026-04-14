@@ -1,0 +1,147 @@
+{
+  "entities": {
+    "MenuItem": {
+      "title": "Menu Item",
+      "description": "A menu item with multi-language support.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "English name" },
+        "name_chinese": { "type": "string", "description": "Chinese name" },
+        "name_russian": { "type": "string", "description": "Russian name" },
+        "name_thai": { "type": "string", "description": "Thai name" },
+        "description": { "type": "string", "description": "English description" },
+        "description_chinese": { "type": "string", "description": "Chinese description" },
+        "description_russian": { "type": "string", "description": "Russian description" },
+        "description_thai": { "type": "string", "description": "Thai description" },
+        "price": { "type": "string", "description": "Price (can be a range or single value)" },
+        "category": { "type": "string", "description": "Food category" },
+        "image": { "type": "string", "description": "Image URL" },
+        "published": { "type": "boolean", "description": "Whether the item is active" },
+        "order": { "type": "integer", "description": "Display order" },
+        "uid": { "type": "string", "description": "Creator UID" }
+      },
+      "required": ["name", "category", "price"]
+    },
+    "CustomMealItem": {
+      "title": "Custom Meal Item",
+      "description": "An ingredient for custom meals with nutritional information.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the ingredient" },
+        "type": { "type": "string", "description": "Category (Protein, Carbohydrates, etc.)" },
+        "description": { "type": "string", "description": "Optional description" },
+        "order": { "type": "integer", "description": "Display order" },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "weight": { "type": "string", "description": "Weight label (e.g., 50 G)" },
+              "price": { "type": "number", "description": "Price in Baht" },
+              "calories": { "type": "number", "description": "Calories" },
+              "protein": { "type": "number", "description": "Protein in grams" },
+              "carbs": { "type": "number", "description": "Carbohydrates in grams" },
+              "fat": { "type": "number", "description": "Fat in grams" }
+            },
+            "required": ["weight", "price"]
+          }
+        },
+        "uid": { "type": "string", "description": "Creator UID" }
+      },
+      "required": ["name", "type", "order"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "Application settings",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "required": ["key", "value"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Menu category with custom display order.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Category name" },
+        "order": { "type": "integer", "description": "Display order" },
+        "uid": { "type": "string", "description": "Creator UID" }
+      },
+      "required": ["name", "order"]
+    },
+    "FinanceCategory": {
+      "title": "Finance Category",
+      "description": "Category for income, expense, or dividend.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Category name" },
+        "type": { "type": "string", "description": "income, expense or dividend", "enum": ["income", "expense", "dividend"] },
+        "uid": { "type": "string", "description": "Creator UID" }
+      },
+      "required": ["name", "type"]
+    },
+    "FinanceEntry": {
+      "title": "Finance Entry",
+      "description": "An income, expense, or dividend record.",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "description": "income, expense or dividend", "enum": ["income", "expense", "dividend"] },
+        "amount": { "type": "number", "description": "Amount in Baht" },
+        "categoryId": { "type": "string", "description": "Reference to FinanceCategory" },
+        "categoryName": { "type": "string", "description": "Category name for display" },
+        "description": { "type": "string", "description": "Optional description" },
+        "date": { "type": "string", "format": "date-time", "description": "Transaction date" },
+        "createdBy": { "type": "string", "description": "User email or name" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "uid": { "type": "string", "description": "Creator UID" }
+      },
+      "required": ["type", "amount", "categoryId", "date"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile and permissions.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "User email" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "role": { "type": "string", "description": "User role (admin, staff, etc.)", "enum": ["admin", "staff", "user"] },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "lastLogin": { "type": "string", "format": "date-time", "description": "Last login timestamp" },
+        "uid": { "type": "string", "description": "Firebase Auth UID" }
+      },
+      "required": ["email", "role", "uid"]
+    }
+  },
+  "firestore": {
+    "/menu/{itemId}": {
+      "schema": "MenuItem",
+      "description": "Collection of menu items."
+    },
+    "/custom_meals/{itemId}": {
+      "schema": "CustomMealItem",
+      "description": "Collection of custom meal ingredients."
+    },
+    "/settings/{settingId}": {
+      "schema": "Setting",
+      "description": "Collection of application settings"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Collection of menu categories."
+    },
+    "/finance_categories/{categoryId}": {
+      "schema": "FinanceCategory",
+      "description": "Collection of finance categories."
+    },
+    "/finance_entries/{entryId}": {
+      "schema": "FinanceEntry",
+      "description": "Collection of income and expense entries."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user profiles."
+    }
+  }
+}
