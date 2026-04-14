@@ -31,9 +31,18 @@ service cloud.firestore {
     }
 
     // Public: Read access to menu and settings
-    match /menu/{id} { allow read: if true; }
-    match /categories/{id} { allow read: if true; }
-    match /custom_meals/{id} { allow read: if true; }
+    match /menu/{id} { 
+      allow read: if true; 
+      allow write: if isMarketing();
+    }
+    match /categories/{id} { 
+      allow read: if true; 
+      allow write: if isMarketing();
+    }
+    match /custom_meals/{id} { 
+      allow read: if true; 
+      allow write: if isMarketing();
+    }
     match /settings/{id} { allow read: if true; }
     match /test/connection { allow read: if true; }
 

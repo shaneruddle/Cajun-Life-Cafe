@@ -33,6 +33,7 @@ import { logActivity } from '../utils/logger';
 interface StoredImage {
   name: string;
   fullPath: string;
+  gsUrl: string;
   url: string;
   size: number;
   contentType: string;
@@ -67,9 +68,11 @@ export default function ImageManagement() {
       const imagePromises = result.items.map(async (item) => {
         const url = await getDownloadURL(item);
         const metadata = await getMetadata(item);
+        const bucket = storage.app.options.storageBucket || 'cajun-life-cafe.firebasestorage.app';
         return {
           name: item.name,
           fullPath: item.fullPath,
+          gsUrl: `gs://${bucket}/${item.fullPath}`,
           url,
           size: metadata.size,
           contentType: metadata.contentType || 'image/jpeg',
@@ -242,6 +245,7 @@ export default function ImageManagement() {
       const updatedImage: StoredImage = {
         name: trimmedName,
         fullPath: newPath,
+        gsUrl: `gs://${storage.app.options.storageBucket || 'cajun-life-cafe.firebasestorage.app'}/${newPath}`,
         url: newUrl,
         size: newMetadata.size,
         contentType: newMetadata.contentType || image.contentType,
@@ -279,7 +283,7 @@ export default function ImageManagement() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedPath(text);
-    toast.success('URL copied to clipboard');
+    toast.success('Storage path copied to clipboard');
     setTimeout(() => setCopiedPath(null), 2000);
   };
 
@@ -377,11 +381,11 @@ export default function ImageManagement() {
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <button
-                      onClick={() => copyToClipboard(image.url)}
+                      onClick={() => copyToClipboard(image.gsUrl)}
                       className="p-3 bg-white rounded-full text-ink hover:bg-terracotta hover:text-white transition-all shadow-lg"
-                      title="Copy URL"
+                      title="Copy Storage Path (gs://)"
                     >
-                      {copiedPath === image.url ? <Check size={20} /> : <Copy size={20} />}
+                      {copiedPath === image.gsUrl ? <Check size={20} /> : <Copy size={20} />}
                     </button>
                     <a
                       href={image.url}

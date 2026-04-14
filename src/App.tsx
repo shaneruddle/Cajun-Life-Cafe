@@ -34,7 +34,8 @@ import {
   Route, 
   Link, 
   useNavigate,
-  useLocation
+  useLocation,
+  Navigate
 } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { collection, query, where, orderBy, onSnapshot, getDocs } from "firebase/firestore";
@@ -69,13 +70,13 @@ import { Toaster, toast } from "sonner";
 
 const PLACE_ID = "ChIJ0SjABVyXAjERlZZWVM_TeKE";
 
-const Navbar = ({ isAdmin, businessInfo, setUser }: { isAdmin: boolean, businessInfo: BusinessInfo | null, setUser: (user: any) => void }) => {
+const Navbar = ({ canAccessDashboard, businessInfo, setUser }: { canAccessDashboard: boolean, businessInfo: BusinessInfo | null, setUser: (user: any) => void }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const isDashboard = location.pathname.startsWith("/dashboard") || location.pathname === "/import" || location.pathname === "/import-custom-meals";
 
-  console.log("Navbar Debug - isAdmin:", isAdmin);
+  console.log("Navbar Debug - canAccessDashboard:", canAccessDashboard);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -108,7 +109,7 @@ const Navbar = ({ isAdmin, businessInfo, setUser }: { isAdmin: boolean, business
                   {item}
                 </a>
               ))}
-              {isAdmin && (
+              {canAccessDashboard && (
                 <Link 
               to="/dashboard" 
               className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all ${scrolled ? "bg-cream text-olive hover:bg-olive hover:text-white" : "bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"}`}
@@ -159,7 +160,7 @@ const Navbar = ({ isAdmin, businessInfo, setUser }: { isAdmin: boolean, business
               </a>
             ))}
             <Auth onUserChange={setUser} />
-            {isAdmin && (
+            {canAccessDashboard && (
               <Link 
                 to="/dashboard" 
                 className="flex items-center gap-2 text-lg font-medium text-olive"
@@ -1028,7 +1029,7 @@ function AppContent({ user, setUser, businessInfo, setBusinessInfo, error, setEr
           </button>
         </div>
       )}
-      {!isDigitalMenu && !isDashboard && !isStaffApp && !isEmployee && <Navbar isAdmin={isAdmin} businessInfo={businessInfo} setUser={setUser} />}
+      {!isDigitalMenu && !isDashboard && !isStaffApp && !isEmployee && <Navbar canAccessDashboard={isMarketing} businessInfo={businessInfo} setUser={setUser} />}
       {isAdmin && error && !isDigitalMenu && (
         <div className="pt-24 px-6">
           <div className="max-w-7xl mx-auto bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3 text-sm">
@@ -1045,9 +1046,9 @@ function AppContent({ user, setUser, businessInfo, setBusinessInfo, error, setEr
         
         {/* Dashboard Routes with Sidebar Layout */}
         <Route path="/dashboard" element={(isAdmin || isMarketing) ? <DashboardLayout user={user} /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>}>
-          <Route index element={isAdmin ? <Dashboard /> : <div className="p-20 text-center">Access Denied</div>} />
-          <Route path="categories" element={isAdmin ? <CategoriesDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
-          <Route path="custom-meals" element={isAdmin ? <CustomMealsDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route index element={(isAdmin || isMarketing) ? <Dashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="categories" element={(isAdmin || isMarketing) ? <CategoriesDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="custom-meals" element={(isAdmin || isMarketing) ? <CustomMealsDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="finance" element={isAdmin ? <FinanceDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="finance/import" element={isAdmin ? <BulkFinanceImport /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="users" element={isAdmin ? <UserManagement /> : <div className="p-20 text-center">Access Denied</div>} />
@@ -1055,8 +1056,8 @@ function AppContent({ user, setUser, businessInfo, setBusinessInfo, error, setEr
           <Route path="logs" element={isAdmin ? <SystemLogs /> : <div className="p-20 text-center">Access Denied</div>} />
         </Route>
 
-        <Route path="/import" element={isAdmin ? <BulkImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. Please login as admin. <Auth onUserChange={setUser} /></div>} />
-        <Route path="/import-custom-meals" element={isAdmin ? <BulkCustomMealsImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. Please login as admin. <Auth onUserChange={setUser} /></div>} />
+        <Route path="/import" element={(isAdmin || isMarketing) ? <BulkImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. Please login as admin. <Auth onUserChange={setUser} /></div>} />
+        <Route path="/import-custom-meals" element={(isAdmin || isMarketing) ? <BulkCustomMealsImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. Please login as admin. <Auth onUserChange={setUser} /></div>} />
       </Routes>
       {((!isDigitalMenu && !isDashboard && !isStaffApp) || !user) && (
         <div className="fixed bottom-4 right-4 z-[60]">

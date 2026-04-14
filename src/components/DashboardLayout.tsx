@@ -157,7 +157,7 @@ export default function DashboardLayout({ user }: { user: any }) {
             </div>
           )}
           
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'marketing') && (
             <SidebarItem 
               icon={<LayoutGrid size={20} />} 
               label="Menu" 
