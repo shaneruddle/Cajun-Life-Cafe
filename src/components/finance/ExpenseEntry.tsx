@@ -232,7 +232,7 @@ const ExpenseEntry: React.FC = () => {
             <h1 className="text-2xl font-display font-bold text-ink">Expense Tracker</h1>
             <p className="text-gray-500 text-sm">Upload receipts to log an expense</p>
           </div>
-          {(userProfile?.role === 'admin' || userProfile?.role === 'manager') && (
+          {(userProfile?.role === 'admin' || userProfile?.role === 'marketing') && (
             <Link 
               to="/dashboard" 
               className="p-2 bg-gray-50 text-gray-500 rounded-xl hover:bg-gray-100 transition-colors"

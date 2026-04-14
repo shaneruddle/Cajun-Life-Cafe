@@ -54,7 +54,7 @@ export default function UserManagement() {
     return () => unsubscribe();
   }, []);
 
-  const handleRoleChange = async (userId: string, newRole: 'admin' | 'manager' | 'staff' | 'cashier' | 'user') => {
+  const handleRoleChange = async (userId: string, newRole: 'admin' | 'marketing' | 'cashier' | 'employee') => {
     try {
       await updateDoc(doc(db, 'users', userId), {
         role: newRole
@@ -167,10 +167,9 @@ export default function UserManagement() {
                               onChange={(e) => handleRoleChange(user.id!, e.target.value as any)}
                               autoFocus
                             >
-                              <option value="user">User</option>
+                              <option value="employee">Employee</option>
                               <option value="cashier">Cashier</option>
-                              <option value="staff">Staff</option>
-                              <option value="manager">Manager</option>
+                              <option value="marketing">Marketing</option>
                               <option value="admin">Admin</option>
                             </select>
                             <button 
@@ -189,10 +188,8 @@ export default function UserManagement() {
                             } ${
                               user.role === 'admin' 
                                 ? 'bg-purple-100 text-purple-700' 
-                                : user.role === 'manager'
+                                : user.role === 'marketing'
                                 ? 'bg-indigo-100 text-indigo-700'
-                                : user.role === 'staff'
-                                ? 'bg-blue-100 text-blue-700'
                                 : user.role === 'cashier'
                                 ? 'bg-emerald-100 text-emerald-700'
                                 : 'bg-gray-100 text-gray-500'

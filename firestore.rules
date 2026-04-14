@@ -7,10 +7,22 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isAdmin() {
       return isAuthenticated() && 
-             request.auth.token.email == "info@cajunlifecafe.com" && 
-             request.auth.token.email_verified == true;
+             (getUserData().role == 'admin' || 
+              (request.auth.token.email == "info@cajunlifecafe.com" && request.auth.token.email_verified == true));
+    }
+
+    function isMarketing() {
+      return isAuthenticated() && (isAdmin() || getUserData().role == 'marketing');
+    }
+
+    function isCashier() {
+      return isAuthenticated() && (isAdmin() || getUserData().role == 'cashier');
     }
 
     // Admin: Full access to everything
@@ -39,7 +51,10 @@ service cloud.firestore {
 
     match /finance_entries/{id} {
       allow read: if isAdmin();
-      allow create: if isAuthenticated();
+      allow create: if isCashier();
     }
+
+    // Employees: Only read their own data (handled by users match)
+    // Marketing: Handled by isAdmin/isMarketing checks in relevant collections if any
   }
 }

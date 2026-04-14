@@ -40,7 +40,7 @@ export default function Auth({ onUserChange }: { onUserChange: (user: any) => vo
           if (!userSnap.exists()) {
             const initialProfile = {
               ...data,
-              role: user.email?.toLowerCase() === 'info@cajunlifecafe.com' ? 'admin' : 'user',
+              role: user.email?.toLowerCase() === 'info@cajunlifecafe.com' ? 'admin' : 'employee',
               createdAt: new Date().toISOString(),
               lastLogin: new Date().toISOString()
             };
@@ -66,7 +66,7 @@ export default function Auth({ onUserChange }: { onUserChange: (user: any) => vo
           console.error("Auth: Firestore error:", err);
           // Fallback to basic user if Firestore fails
           setUser(user);
-          onUserChange({ uid: user.uid, email: user.email, role: user.email?.toLowerCase() === 'info@cajunlifecafe.com' ? 'admin' : 'user' });
+          onUserChange({ uid: user.uid, email: user.email, role: user.email?.toLowerCase() === 'info@cajunlifecafe.com' ? 'admin' : 'employee' });
         }
       } else {
         setUser(null);

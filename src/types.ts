@@ -9,9 +9,13 @@ export interface MenuItem {
   description_russian?: string;
   description_thai?: string;
   price: string;
+  priceLabel?: string;
   price2?: string;
+  price2Label?: string;
   price3?: string;
+  price3Label?: string;
   price4?: string;
+  price4Label?: string;
   category: string;
   image?: string;
   secondaryImage?: string;
@@ -59,7 +63,7 @@ export interface UserProfile {
   id?: string;
   email: string;
   displayName?: string;
-  role: 'admin' | 'manager' | 'staff' | 'cashier' | 'user';
+  role: 'admin' | 'marketing' | 'cashier' | 'employee';
   createdAt: string;
   lastLogin?: string;
   uid: string;

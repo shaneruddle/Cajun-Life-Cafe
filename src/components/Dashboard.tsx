@@ -316,9 +316,13 @@ export default function Dashboard() {
     description_russian: '',
     description_thai: '',
     price: '',
+    priceLabel: '',
     price2: '',
+    price2Label: '',
     price3: '',
+    price3Label: '',
     price4: '',
+    price4Label: '',
     category: 'Smoothie Bowls',
     image: '',
     secondaryImage: '',
@@ -590,9 +594,13 @@ export default function Dashboard() {
       description_russian: '',
       description_thai: '',
       price: '',
+      priceLabel: '',
       price2: '',
+      price2Label: '',
       price3: '',
+      price3Label: '',
       price4: '',
+      price4Label: '',
       category: 'Smoothie Bowls',
       image: '',
       secondaryImage: '',
@@ -979,32 +987,64 @@ export default function Dashboard() {
                       <label className="text-sm font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
                         <span className="text-[14px] font-bold leading-none">฿</span> Price (in THB) *
                       </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <input 
-                          required
-                          value={formData.price}
-                          onChange={e => setFormData({...formData, price: e.target.value})}
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none"
-                          placeholder="Price 1"
-                        />
-                        <input 
-                          value={formData.price2}
-                          onChange={e => setFormData({...formData, price2: e.target.value})}
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none"
-                          placeholder="Price 2"
-                        />
-                        <input 
-                          value={formData.price3}
-                          onChange={e => setFormData({...formData, price3: e.target.value})}
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none"
-                          placeholder="Price 3"
-                        />
-                        <input 
-                          value={formData.price4}
-                          onChange={e => setFormData({...formData, price4: e.target.value})}
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none"
-                          placeholder="Price 4"
-                        />
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <input 
+                            value={formData.priceLabel}
+                            onChange={e => setFormData({...formData, priceLabel: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none bg-gray-50/50"
+                            placeholder="Label 1 (e.g. Small)"
+                          />
+                          <input 
+                            required
+                            value={formData.price}
+                            onChange={e => setFormData({...formData, price: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none"
+                            placeholder="Price 1"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input 
+                            value={formData.price2Label}
+                            onChange={e => setFormData({...formData, price2Label: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none bg-gray-50/50"
+                            placeholder="Label 2"
+                          />
+                          <input 
+                            value={formData.price2}
+                            onChange={e => setFormData({...formData, price2: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none"
+                            placeholder="Price 2"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input 
+                            value={formData.price3Label}
+                            onChange={e => setFormData({...formData, price3Label: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none bg-gray-50/50"
+                            placeholder="Label 3"
+                          />
+                          <input 
+                            value={formData.price3}
+                            onChange={e => setFormData({...formData, price3: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none"
+                            placeholder="Price 3"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input 
+                            value={formData.price4Label}
+                            onChange={e => setFormData({...formData, price4Label: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none bg-gray-50/50"
+                            placeholder="Label 4"
+                          />
+                          <input 
+                            value={formData.price4}
+                            onChange={e => setFormData({...formData, price4: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none"
+                            placeholder="Price 4"
+                          />
+                        </div>
                       </div>
                     </div>
                     

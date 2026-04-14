@@ -6,6 +6,8 @@
 import { motion, AnimatePresence } from "motion/react";
 import { GoogleGenAI } from "@google/genai";
 import { 
+  Users,
+  LogOut,
   MapPin, 
   Phone, 
   Clock, 
@@ -34,6 +36,7 @@ import {
   useNavigate,
   useLocation
 } from "react-router-dom";
+import { signOut } from "firebase/auth";
 import { collection, query, where, orderBy, onSnapshot, getDocs } from "firebase/firestore";
 import { db, auth } from "./firebase";
 import { MenuItem, CustomMealItem, CustomMealOption, Category } from "./types";
@@ -373,41 +376,39 @@ switch (language) {
 };
 
 const renderPrice = (item: MenuItem) => {
-  let prices = item.price.split('/');
-  
-  // If no slashes in primary price, check for separate fields
-  if (prices.length === 1) {
-    const extraPrices = [item.price2, item.price3, item.price4].filter(p => p && p.trim() !== '');
-    if (extraPrices.length > 0) {
-      prices = [item.price, ...extraPrices];
-    }
-  }
+  const priceData = [
+    { price: item.price, label: item.priceLabel },
+    { price: item.price2, label: item.price2Label },
+    { price: item.price3, label: item.price3Label },
+    { price: item.price4, label: item.price4Label }
+  ].filter(p => p.price && p.price.trim() !== '');
 
-  const desc = getLocalizedDesc(item);
-  const proteins = desc.split('/');
-
-  if (prices.length > 1) {
-    // Determine labels
-    let labels: string[] = [];
-    if (proteins.length === prices.length + 1) {
-      // Format: Description / Label 1 / Label 2
-      labels = proteins.slice(1);
-    } else if (proteins.length === prices.length) {
-      // Format: Label 1 / Label 2
-      labels = proteins;
-    } else {
-      // Fallback: use labels from description if available, otherwise generic
-      labels = prices.map((_, i) => proteins[i] || `Option ${i + 1}`);
-    }
-
+  if (priceData.length > 1) {
+    const desc = getLocalizedDesc(item);
+    const proteins = desc.split('/');
+    
     return (
       <div className="space-y-1 mt-3 pt-3 border-t border-gray-50">
-        {prices.map((p, i) => (
-          <div key={i} className="flex justify-between items-center text-sm">
-            <span className="text-gray-500 font-medium">{labels[i]?.trim() || `Option ${i + 1}`}</span>
-            <span className="text-terracotta font-bold">฿{p.trim()}</span>
-          </div>
-        ))}
+        {priceData.map((p, i) => {
+          // Use explicit label if available, otherwise fallback to description parsing
+          let displayLabel = p.label;
+          if (!displayLabel) {
+            if (proteins.length === priceData.length + 1) {
+              displayLabel = proteins[i + 1];
+            } else if (proteins.length === priceData.length) {
+              displayLabel = proteins[i];
+            } else {
+              displayLabel = proteins[i] || `Option ${i + 1}`;
+            }
+          }
+
+          return (
+            <div key={i} className="flex justify-between items-center text-sm">
+              <span className="text-gray-500 font-medium">{displayLabel?.trim()}</span>
+              <span className="text-terracotta font-bold">฿{p.price?.trim()}</span>
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -967,19 +968,23 @@ function AppContent({ user, setUser, businessInfo, setBusinessInfo, error, setEr
     if (!user) return false;
     const isHardcodedAdmin = user.email?.toLowerCase() === "info@cajunlifecafe.com";
     const hasAdminRole = user.role === 'admin';
-    
-    console.log("Auth Debug - User:", user.email, "Role:", user.role, "Verified:", user.emailVerified);
-    console.log("Auth Debug - isAdmin:", isHardcodedAdmin || hasAdminRole);
-    
     return isHardcodedAdmin || hasAdminRole;
   }, [user]);
 
+  const isMarketing = useMemo(() => {
+    return isAdmin || user?.role === 'marketing';
+  }, [user, isAdmin]);
+
   const isStaff = useMemo(() => {
-    return isAdmin || ['manager', 'staff', 'cashier'].includes(user?.role || '');
+    return isAdmin || ['cashier', 'marketing'].includes(user?.role || '');
   }, [user, isAdmin]);
 
   const isCashierOnly = useMemo(() => {
     return user?.role === 'cashier';
+  }, [user]);
+
+  const isEmployee = useMemo(() => {
+    return user?.role === 'employee';
   }, [user]);
 
   const navigate = useNavigate();
@@ -1008,7 +1013,22 @@ function AppContent({ user, setUser, businessInfo, setBusinessInfo, error, setEr
 
   return (
     <div className="min-h-screen">
-      {!isDigitalMenu && !isDashboard && !isStaffApp && <Navbar isAdmin={isAdmin} businessInfo={businessInfo} setUser={setUser} />}
+      {isEmployee && (
+        <div className="fixed inset-0 bg-cream z-[200] flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-20 h-20 bg-terracotta/10 rounded-full flex items-center justify-center text-terracotta mb-6">
+            <Users size={40} />
+          </div>
+          <h2 className="text-2xl font-bold text-ink mb-2">Employee Portal</h2>
+          <p className="text-gray-500 mb-8">Your account is pending approval. Please contact an administrator.</p>
+          <button 
+            onClick={() => signOut(auth)}
+            className="px-8 py-3 bg-terracotta text-white rounded-2xl font-bold hover:bg-terracotta/90 transition-all shadow-lg shadow-terracotta/20 flex items-center gap-2"
+          >
+            <LogOut size={18} /> Sign Out
+          </button>
+        </div>
+      )}
+      {!isDigitalMenu && !isDashboard && !isStaffApp && !isEmployee && <Navbar isAdmin={isAdmin} businessInfo={businessInfo} setUser={setUser} />}
       {isAdmin && error && !isDigitalMenu && (
         <div className="pt-24 px-6">
           <div className="max-w-7xl mx-auto bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3 text-sm">
@@ -1024,15 +1044,15 @@ function AppContent({ user, setUser, businessInfo, setBusinessInfo, error, setEr
         <Route path="/expense" element={isStaff ? <ExpenseEntry /> : <div className="pt-32 text-center h-screen bg-cream">Access Denied. Please login with a staff account.</div>} />
         
         {/* Dashboard Routes with Sidebar Layout */}
-        <Route path="/dashboard" element={isAdmin ? <DashboardLayout user={user} /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. Please login as admin. <Auth onUserChange={setUser} /></div>}>
-          <Route index element={<Dashboard />} />
-          <Route path="categories" element={<CategoriesDashboard />} />
-          <Route path="custom-meals" element={<CustomMealsDashboard />} />
-          <Route path="finance" element={<FinanceDashboard />} />
-          <Route path="finance/import" element={<BulkFinanceImport />} />
-          <Route path="users" element={<UserManagement />} />
-          <Route path="images" element={<ImageManagement />} />
-          <Route path="logs" element={<SystemLogs />} />
+        <Route path="/dashboard" element={(isAdmin || isMarketing) ? <DashboardLayout user={user} /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>}>
+          <Route index element={isAdmin ? <Dashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="categories" element={isAdmin ? <CategoriesDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="custom-meals" element={isAdmin ? <CustomMealsDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="finance" element={isAdmin ? <FinanceDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="finance/import" element={isAdmin ? <BulkFinanceImport /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="users" element={isAdmin ? <UserManagement /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="images" element={(isAdmin || isMarketing) ? <ImageManagement /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="logs" element={isAdmin ? <SystemLogs /> : <div className="p-20 text-center">Access Denied</div>} />
         </Route>
 
         <Route path="/import" element={isAdmin ? <BulkImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. Please login as admin. <Auth onUserChange={setUser} /></div>} />

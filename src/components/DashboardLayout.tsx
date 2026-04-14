@@ -157,67 +157,77 @@ export default function DashboardLayout({ user }: { user: any }) {
             </div>
           )}
           
-          <SidebarItem 
-            icon={<LayoutGrid size={20} />} 
-            label="Menu" 
-            hasSubmenu 
-            isOpen={isMenuOpen}
-            isCollapsed={isCollapsed}
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            isActive={isSubActive('/dashboard/menu') || isActive('/dashboard') || isActive('/dashboard/categories') || isActive('/dashboard/custom-meals')}
-          >
-            {!isCollapsed && (
-              <>
-                <SidebarSubItem 
-                  label="Main Menu" 
-                  to="/dashboard" 
-                  isActive={isActive('/dashboard')} 
-                />
-                <SidebarSubItem 
-                  label="Categories" 
-                  to="/dashboard/categories" 
-                  isActive={isActive('/dashboard/categories')} 
-                />
-                <SidebarSubItem 
-                  label="Custom Meals" 
-                  to="/dashboard/custom-meals" 
-                  isActive={isActive('/dashboard/custom-meals')} 
-                />
-              </>
-            )}
-          </SidebarItem>
+          {user?.role === 'admin' && (
+            <SidebarItem 
+              icon={<LayoutGrid size={20} />} 
+              label="Menu" 
+              hasSubmenu 
+              isOpen={isMenuOpen}
+              isCollapsed={isCollapsed}
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              isActive={isSubActive('/dashboard/menu') || isActive('/dashboard') || isActive('/dashboard/categories') || isActive('/dashboard/custom-meals')}
+            >
+              {!isCollapsed && (
+                <>
+                  <SidebarSubItem 
+                    label="Main Menu" 
+                    to="/dashboard" 
+                    isActive={isActive('/dashboard')} 
+                  />
+                  <SidebarSubItem 
+                    label="Categories" 
+                    to="/dashboard/categories" 
+                    isActive={isActive('/dashboard/categories')} 
+                  />
+                  <SidebarSubItem 
+                    label="Custom Meals" 
+                    to="/dashboard/custom-meals" 
+                    isActive={isActive('/dashboard/custom-meals')} 
+                  />
+                </>
+              )}
+            </SidebarItem>
+          )}
 
-          <SidebarItem 
-            icon={<span className="text-[20px] font-bold leading-none">฿</span>} 
-            label="Finance" 
-            to="/dashboard/finance"
-            isCollapsed={isCollapsed}
-            isActive={isSubActive('/dashboard/finance')}
-          />
+          {user?.role === 'admin' && (
+            <SidebarItem 
+              icon={<span className="text-[20px] font-bold leading-none">฿</span>} 
+              label="Finance" 
+              to="/dashboard/finance"
+              isCollapsed={isCollapsed}
+              isActive={isSubActive('/dashboard/finance')}
+            />
+          )}
 
-          <SidebarItem 
-            icon={<Users size={20} />} 
-            label="Users" 
-            to="/dashboard/users"
-            isCollapsed={isCollapsed}
-            isActive={isActive('/dashboard/users')}
-          />
+          {user?.role === 'admin' && (
+            <SidebarItem 
+              icon={<Users size={20} />} 
+              label="Users" 
+              to="/dashboard/users"
+              isCollapsed={isCollapsed}
+              isActive={isActive('/dashboard/users')}
+            />
+          )}
           
-          <SidebarItem 
-            icon={<ImageIcon size={20} />} 
-            label="Image Management" 
-            to="/dashboard/images"
-            isCollapsed={isCollapsed}
-            isActive={isActive('/dashboard/images')}
-          />
+          {(user?.role === 'admin' || user?.role === 'marketing') && (
+            <SidebarItem 
+              icon={<ImageIcon size={20} />} 
+              label="Image Management" 
+              to="/dashboard/images"
+              isCollapsed={isCollapsed}
+              isActive={isActive('/dashboard/images')}
+            />
+          )}
 
-          <SidebarItem 
-            icon={<Database size={20} />} 
-            label="System Logs" 
-            to="/dashboard/logs"
-            isCollapsed={isCollapsed}
-            isActive={isActive('/dashboard/logs')}
-          />
+          {user?.role === 'admin' && (
+            <SidebarItem 
+              icon={<Database size={20} />} 
+              label="System Logs" 
+              to="/dashboard/logs"
+              isCollapsed={isCollapsed}
+              isActive={isActive('/dashboard/logs')}
+            />
+          )}
 
           <div className={`mt-8 pt-8 border-t border-gray-50 ${isCollapsed ? 'px-0' : ''}`}>
             {!isCollapsed && (
@@ -231,12 +241,14 @@ export default function DashboardLayout({ user }: { user: any }) {
               to="/"
               isCollapsed={isCollapsed}
             />
-            <SidebarItem 
-              icon={<Receipt size={20} />} 
-              label="Staff Portal" 
-              to="/expense"
-              isCollapsed={isCollapsed}
-            />
+            {(user?.role === 'admin' || user?.role === 'cashier' || user?.role === 'marketing') && (
+              <SidebarItem 
+                icon={<Receipt size={20} />} 
+                label="Staff Portal" 
+                to="/expense"
+                isCollapsed={isCollapsed}
+              />
+            )}
             <button 
               onClick={handleSignOut}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all group ${isCollapsed ? 'justify-center px-2' : ''}`}
