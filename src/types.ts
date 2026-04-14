@@ -113,6 +113,8 @@ export interface FinanceEntry {
   uid: string;
   receiptUrls?: string[];
   lineItems?: LineItem[];
+  employeeId?: string;
+  employeeName?: string;
 }
 
 export interface SystemLog {
@@ -123,4 +125,18 @@ export interface SystemLog {
   userId: string;
   timestamp: string;
   category: 'menu' | 'category' | 'custom_meal' | 'finance' | 'user' | 'system' | 'image';
+}
+
+export interface Employee {
+  id?: string;
+  firstName: string;
+  lastName: string;
+  baseSalary: number;
+  position: string;
+  startDate: string;
+  bankBranch: string;
+  bankAccountNumber: string;
+  uid: string;
+  createdAt: string;
+  updatedAt: string;
 }

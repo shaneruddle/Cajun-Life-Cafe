@@ -183,7 +183,7 @@ const Navbar = ({ isAdmin, businessInfo, setUser }: { isAdmin: boolean, business
 };
 
 const Hero = ({ businessInfo }: { businessInfo: BusinessInfo | null }) => {
-  const heroImage = "/menu/Mixed-Berry-Smoothie-Bowl.jpg";
+  const heroImage = "gs://cajun-life-cafe.firebasestorage.app/assets/hero_image.webp";
 
   return (
     <section className="relative h-screen flex items-center justify-center overflow-hidden bg-cream">

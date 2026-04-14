@@ -59,6 +59,7 @@ const FinanceAI: React.FC<FinanceAIProps> = ({ entries }) => {
           type: e.type,
           amount: e.amount,
           category: e.categoryName,
+          employee: e.employeeName,
           desc: e.description,
           items: e.lineItems?.map(li => `${li.description} (${li.weight || ''} ${li.quantity || ''}): ฿${li.amount}`).join(', ')
         }));

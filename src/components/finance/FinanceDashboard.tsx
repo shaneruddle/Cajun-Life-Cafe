@@ -40,37 +40,18 @@ import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, startOfDa
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { handleFirestoreError } from '../../utils/firestore';
-import { OperationType } from '../../types';
+import { OperationType, FinanceEntry as FinanceEntryType, FinanceCategory as FinanceCategoryType, Employee } from '../../types';
 import { logActivity } from '../../utils/logger';
 import FinanceAI from './FinanceAI';
-
-interface FinanceCategory {
-  id: string;
-  name: string;
-  type: 'income' | 'expense' | 'dividend';
-  uid: string;
-}
-
-interface FinanceEntry {
-  id: string;
-  type: 'income' | 'expense' | 'dividend';
-  amount: number;
-  categoryId: string;
-  categoryName: string;
-  description: string;
-  date: string;
-  createdBy: string;
-  createdAt: string;
-  uid: string;
-  receiptUrls?: string[];
-  lineItems?: { description: string; amount: number; quantity?: number; weight?: string }[];
-}
+import Payroll from './Payroll';
 
 const FinanceDashboard: React.FC = () => {
-  const [entries, setEntries] = useState<FinanceEntry[]>([]);
-  const [categories, setCategories] = useState<FinanceCategory[]>([]);
+  const [entries, setEntries] = useState<FinanceEntryType[]>([]);
+  const [categories, setCategories] = useState<FinanceCategoryType[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'entries' | 'categories' | 'reports' | 'ai'>('entries');
+  const [activeTab, setActiveTab] = useState<'entries' | 'categories' | 'reports' | 'ai' | 'payroll'>('entries');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
@@ -84,8 +65,8 @@ const FinanceDashboard: React.FC = () => {
   // Modals
   const [showEntryModal, setShowEntryModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<FinanceEntry | null>(null);
-  const [editingCategory, setEditingCategory] = useState<FinanceCategory | null>(null);
+  const [editingEntry, setEditingEntry] = useState<FinanceEntryType | null>(null);
+  const [editingCategory, setEditingCategory] = useState<FinanceCategoryType | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
   const [modalLineItems, setModalLineItems] = useState<{ description: string; amount: number; quantity?: number; weight?: string }[]>([]);
@@ -115,8 +96,10 @@ const FinanceDashboard: React.FC = () => {
     if (showEntryModal) {
       if (editingEntry) {
         setModalLineItems(editingEntry.lineItems || []);
+        setSelectedCategoryId(editingEntry.categoryId);
       } else {
         setModalLineItems([]);
+        setSelectedCategoryId('');
       }
     }
   }, [editingEntry, showEntryModal]);
@@ -124,20 +107,27 @@ const FinanceDashboard: React.FC = () => {
   useEffect(() => {
     const qEntries = query(collection(db, 'finance_entries'), orderBy('date', 'desc'));
     const unsubscribeEntries = onSnapshot(qEntries, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as FinanceEntry[];
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as FinanceEntryType[];
       setEntries(data);
       setLoading(false);
     });
 
     const qCategories = query(collection(db, 'finance_categories'), orderBy('name', 'asc'));
     const unsubscribeCategories = onSnapshot(qCategories, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as FinanceCategory[];
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as FinanceCategoryType[];
       setCategories(data);
+    });
+
+    const qEmployees = query(collection(db, 'employees'), orderBy('firstName', 'asc'));
+    const unsubscribeEmployees = onSnapshot(qEmployees, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Employee[];
+      setEmployees(data);
     });
 
     return () => {
       unsubscribeEntries();
       unsubscribeCategories();
+      unsubscribeEmployees();
     };
   }, []);
 
@@ -372,6 +362,9 @@ const FinanceDashboard: React.FC = () => {
       return;
     }
 
+    const employeeId = formData.get('employeeId') as string;
+    const employee = employees.find(e => e.id === employeeId);
+
     const baseData = {
       type: formData.get('type') as 'income' | 'expense' | 'dividend',
       amount: Number(formData.get('amount')),
@@ -380,7 +373,9 @@ const FinanceDashboard: React.FC = () => {
       description: formData.get('description') as string,
       date: normalizedDate,
       updatedAt: new Date().toISOString(),
-      lineItems: modalLineItems
+      lineItems: modalLineItems,
+      employeeId: employeeId || undefined,
+      employeeName: employee ? `${employee.firstName} ${employee.lastName}` : undefined
     };
 
     try {
@@ -528,7 +523,7 @@ const FinanceDashboard: React.FC = () => {
         setConfirmModal(prev => ({ ...prev, show: false }));
         setLoading(true);
         try {
-          const groups: Record<string, FinanceCategory[]> = {};
+          const groups: Record<string, FinanceCategoryType[]> = {};
           categories.forEach(cat => {
             const key = `${cat.name.toLowerCase()}_${cat.type}`;
             if (!groups[key]) groups[key] = [];
@@ -731,6 +726,12 @@ const FinanceDashboard: React.FC = () => {
           >
             AI Assistant
           </button>
+          <button 
+            onClick={() => setActiveTab('payroll')}
+            className={`px-6 py-2 rounded-full font-bold text-sm transition-all ${activeTab === 'payroll' ? 'bg-terracotta text-white' : 'text-gray-500 hover:text-ink'}`}
+          >
+            Payroll
+          </button>
         </div>
 
         {/* Tab Content */}
@@ -852,7 +853,16 @@ const FinanceDashboard: React.FC = () => {
                           {entry.type}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{entry.categoryName}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        <div className="flex flex-col">
+                          <span>{entry.categoryName}</span>
+                          {entry.employeeName && (
+                            <span className="text-[10px] text-terracotta font-bold uppercase tracking-wider">
+                              {entry.employeeName}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         <div className="flex items-center gap-2">
                           <span>{entry.description || '-'}</span>
@@ -1480,6 +1490,10 @@ const FinanceDashboard: React.FC = () => {
             <FinanceAI entries={entries} />
           </div>
         )}
+
+        {activeTab === 'payroll' && (
+          <Payroll />
+        )}
       </div>
 
       {/* Entry Modal */}
@@ -1515,7 +1529,8 @@ const FinanceDashboard: React.FC = () => {
                   <label className="block text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">Category</label>
                   <select 
                     name="categoryId" 
-                    defaultValue={editingEntry?.categoryId}
+                    value={selectedCategoryId}
+                    onChange={(e) => setSelectedCategoryId(e.target.value)}
                     required
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-terracotta/20"
                   >
@@ -1525,6 +1540,28 @@ const FinanceDashboard: React.FC = () => {
                     ))}
                   </select>
                 </div>
+
+                {/* Conditional Employee Dropdown */}
+                {categories.find(c => c.id === selectedCategoryId)?.name.toLowerCase().includes('staff') && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                  >
+                    <label className="block text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">Select Employee</label>
+                    <select 
+                      name="employeeId" 
+                      defaultValue={editingEntry?.employeeId}
+                      required
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-terracotta/20"
+                    >
+                      <option value="">Select Employee</option>
+                      {employees.map(emp => (
+                        <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
+                      ))}
+                    </select>
+                  </motion.div>
+                )}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">Amount (฿)</label>
                   <input 
