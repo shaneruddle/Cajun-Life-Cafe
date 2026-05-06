@@ -111,7 +111,7 @@ const SortableRow: React.FC<SortableRowProps> = ({ item, startEdit, handleDelete
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-100 group-hover/item:border-terracotta transition-colors">
             <FirebaseImage 
-              src={normalizeImageUrl(item.image)} 
+              src={normalizeImageUrl(item.primaryPhotoPath || item.image)} 
               fallbackSrc="/logo.png"
               alt={item.name} 
               className="w-full h-full object-cover" 
@@ -247,7 +247,7 @@ const ImageSlot = ({
                   value={value}
                   onChange={e => onChange(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none text-xs bg-white"
-                  placeholder="gs://... or /menu/..."
+                  placeholder="gs://... or menu-items/..."
                 />
               </div>
               {value && (
@@ -404,7 +404,7 @@ export default function Dashboard() {
         let needsUpdate = false;
         const updatedItem: any = {};
         
-        const fields: (keyof MenuItem)[] = ['image', 'secondaryImage', 'highResImage', 'socialImage'];
+        const fields: (keyof MenuItem)[] = ['image', 'secondaryImage', 'highResImage', 'socialImage', 'primaryPhotoPath', 'secondaryPhotoPath'];
         fields.forEach(field => {
           const url = item[field] as string;
           if (url && url.startsWith('gs://') && !url.includes(currentBucket)) {
@@ -468,6 +468,8 @@ export default function Dashboard() {
             secondaryImage: '',
             highResImage: '',
             socialImage: '',
+            primaryPhotoPath: '',
+            secondaryPhotoPath: '',
             promoImages: []
           });
           clearedCount++;
@@ -604,6 +606,8 @@ export default function Dashboard() {
       category: 'Smoothie Bowls',
       image: '',
       secondaryImage: '',
+      primaryPhotoPath: '',
+      secondaryPhotoPath: '',
       highResImage: '',
       socialImage: '',
       promoImages: [],
@@ -628,6 +632,8 @@ export default function Dashboard() {
     setInitialPaths({
       image: item.image || '',
       secondaryImage: item.secondaryImage || '',
+      primaryPhotoPath: item.primaryPhotoPath || '',
+      secondaryPhotoPath: item.secondaryPhotoPath || '',
       highResImage: item.highResImage || '',
       socialImage: item.socialImage || '',
       ...(item.promoImages || []).reduce((acc, url, i) => ({ ...acc, [`promo_${i}`]: url }), {})
@@ -639,7 +645,7 @@ export default function Dashboard() {
     }, 100);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'image' | 'secondaryImage' | 'highResImage' | 'socialImage' | 'promoImages', index?: number) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'image' | 'secondaryImage' | 'highResImage' | 'socialImage' | 'promoImages' | 'primaryPhotoPath' | 'secondaryPhotoPath', index?: number) => {
     const file = e.target.files?.[0];
     console.log("File selected:", file?.name, "Size:", file?.size);
     console.log("Current User:", auth.currentUser?.email, "UID:", auth.currentUser?.uid);
@@ -671,6 +677,8 @@ export default function Dashboard() {
       
       // Use standardized filenames for core slots if possible, or keep original with timestamp
       if (field === 'image') fileName = `primary_${Date.now()}_${fileName}`;
+      else if (field === 'primaryPhotoPath') fileName = `direct_primary_${Date.now()}_${fileName}`;
+      else if (field === 'secondaryPhotoPath') fileName = `direct_secondary_${Date.now()}_${fileName}`;
       else if (field === 'secondaryImage') fileName = `secondary_${Date.now()}_${fileName}`;
       else if (field === 'highResImage') fileName = `highres_${Date.now()}_${fileName}`;
       else if (field === 'socialImage') fileName = `social_${Date.now()}_${fileName}`;
@@ -765,7 +773,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleRenameFile = async (oldGsUrl: string, newGsUrl: string, field: 'image' | 'secondaryImage' | 'highResImage' | 'socialImage' | 'promoImages', index?: number) => {
+  const handleRenameFile = async (oldGsUrl: string, newGsUrl: string, field: 'image' | 'secondaryImage' | 'highResImage' | 'socialImage' | 'promoImages' | 'primaryPhotoPath' | 'secondaryPhotoPath', index?: number) => {
     if (!oldGsUrl || !newGsUrl || oldGsUrl === newGsUrl) return;
     if (!oldGsUrl.startsWith('gs://') || !newGsUrl.startsWith('gs://')) {
       setError("Only gs:// paths can be renamed in storage.");
@@ -1194,11 +1202,30 @@ export default function Dashboard() {
                     {/* Primary Photo (Optimized WebP) */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-ink uppercase tracking-wider">1) Primary Photo (WebP)</h4>
-                        <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">Optimized for Web</span>
+                        <h4 className="text-sm font-bold text-ink uppercase tracking-wider">1) Primary Photo Path (Priority)</h4>
+                        <span className="text-[10px] font-bold text-terracotta bg-terracotta/5 px-2 py-0.5 rounded">Exact Path</span>
                       </div>
                       <ImageSlot
-                        label="Primary"
+                        label="Primary Path"
+                        value={formData.primaryPhotoPath || ''}
+                        initialValue={initialPaths.primaryPhotoPath}
+                        onUpload={(e) => handleFileUpload(e, 'primaryPhotoPath')}
+                        onRemove={() => setFormData(prev => ({ ...prev, primaryPhotoPath: '' }))}
+                        onChange={(val) => setFormData(prev => ({ ...prev, primaryPhotoPath: val }))}
+                        onDownload={() => handleDownload(formData.primaryPhotoPath || '')}
+                        onRename={(old, curr) => handleRenameFile(old, curr, 'primaryPhotoPath')}
+                        uploading={uploading}
+                      />
+                    </div>
+
+                    {/* Legacy Primary Photo */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-ink uppercase tracking-wider">2) Legacy Image Field (Fallback)</h4>
+                        <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded">Legacy</span>
+                      </div>
+                      <ImageSlot
+                        label="Legacy Image"
                         value={formData.image || ''}
                         initialValue={initialPaths.image}
                         onUpload={(e) => handleFileUpload(e, 'image')}
@@ -1210,10 +1237,29 @@ export default function Dashboard() {
                       />
                     </div>
 
+                    {/* Secondary Photo Path */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-ink uppercase tracking-wider">3) Secondary Photo Path</h4>
+                        <span className="text-[10px] font-bold text-terracotta bg-terracotta/5 px-2 py-0.5 rounded">Exact Path</span>
+                      </div>
+                      <ImageSlot
+                        label="Secondary Path"
+                        value={formData.secondaryPhotoPath || ''}
+                        initialValue={initialPaths.secondaryPhotoPath}
+                        onUpload={(e) => handleFileUpload(e, 'secondaryPhotoPath')}
+                        onRemove={() => setFormData(prev => ({ ...prev, secondaryPhotoPath: '' }))}
+                        onChange={(val) => setFormData(prev => ({ ...prev, secondaryPhotoPath: val }))}
+                        onDownload={() => handleDownload(formData.secondaryPhotoPath || '')}
+                        onRename={(old, curr) => handleRenameFile(old, curr, 'secondaryPhotoPath')}
+                        uploading={uploading}
+                      />
+                    </div>
+
                     {/* High-Res Source */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-ink uppercase tracking-wider">2) High-Res Source</h4>
+                        <h4 className="text-sm font-bold text-ink uppercase tracking-wider">4) High-Res Source</h4>
                         <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Original Quality</span>
                       </div>
                       <ImageSlot
@@ -1229,26 +1275,10 @@ export default function Dashboard() {
                       />
                     </div>
 
-                    {/* Secondary Photo */}
-                    <div className="space-y-4">
-                      <h4 className="text-sm font-bold text-ink uppercase tracking-wider">3) Secondary Photo</h4>
-                      <ImageSlot
-                        label="Secondary"
-                        value={formData.secondaryImage || ''}
-                        initialValue={initialPaths.secondaryImage}
-                        onUpload={(e) => handleFileUpload(e, 'secondaryImage')}
-                        onRemove={() => setFormData(prev => ({ ...prev, secondaryImage: '' }))}
-                        onChange={(val) => setFormData(prev => ({ ...prev, secondaryImage: val }))}
-                        onDownload={() => handleDownload(formData.secondaryImage || '')}
-                        onRename={(old, curr) => handleRenameFile(old, curr, 'secondaryImage')}
-                        uploading={uploading}
-                      />
-                    </div>
-
                     {/* Social Media Graphic */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-ink uppercase tracking-wider">4) Social Graphic</h4>
+                        <h4 className="text-sm font-bold text-ink uppercase tracking-wider">5) Social Graphic</h4>
                         <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded">Instagram/FB</span>
                       </div>
                       <ImageSlot
@@ -1268,7 +1298,7 @@ export default function Dashboard() {
                   {/* Promotional Materials */}
                   <div className="space-y-4 pt-4 border-t border-gray-100">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-bold text-ink uppercase tracking-wider">5) Promotional Materials</h4>
+                      <h4 className="text-sm font-bold text-ink uppercase tracking-wider">6) Promotional Materials</h4>
                       <button
                         type="button"
                         onClick={() => setFormData(prev => ({ ...prev, promoImages: [...(prev.promoImages || []), ''] }))}

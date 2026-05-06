@@ -18,6 +18,8 @@ export interface MenuItem {
   price4Label?: string;
   category: string;
   image?: string;
+  primaryPhotoPath?: string;
+  secondaryPhotoPath?: string;
   secondaryImage?: string;
   highResImage?: string;
   socialImage?: string;
@@ -143,4 +145,21 @@ export interface Employee {
   uid: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PayrollSummary {
+  id?: string;
+  month: string; // yyyy-MM
+  employeeId: string;
+  employeeName: string;
+  position: string;
+  baseSalary: number;
+  advances: number;
+  deductions: number;
+  bonuses: number;
+  totalDue: number;
+  status: 'pending' | 'paid';
+  createdAt: string;
+  updatedAt: string;
+  uid: string;
 }

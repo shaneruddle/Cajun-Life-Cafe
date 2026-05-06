@@ -11,7 +11,7 @@ export const INITIAL_MENU_DATA: Partial<MenuItem>[] = [
     description_russian: "Смесь банана, ягодного микса, овсянки, посыпанная свежими фруктами, семенами чая, кусочками миндаля, мюсли. кокосовая стружка",
     description_thai: "กล้วย มิกซ์เบอร์รี่ ข้าวโอ๊ต โรยหน้าด้วยผลไม้สด เมล็ดไช อัลมอนด์สไลด์ กราโนล่า เกล็ดมะพร้าว",
     category: "Smoothie Bowls",
-    image: "/menu/Mixed-Berry-Smoothie-Bowl.jpg",
+    image: "menu-items/Mixed-Berry-Smoothie-Bowl.webp",
     price: "220",
     published: true,
     order: 1
@@ -26,7 +26,7 @@ export const INITIAL_MENU_DATA: Partial<MenuItem>[] = [
     description_russian: "Смесь банана, шпината, спирулины, темного шоколада со свежими фруктами, семенами чая, кусочками миндаля, мюсли и кокосовой стружкой.",
     description_thai: "กล้วย ผักโขม สไปรูลิน่า ดาร์กช็อกโกแลต ท็อปด้วยผลไม้สด เมล็ดไช อัลมอนด์สไลซ์ กราโนล่า เกล็ดมะพร้าว",
     category: "Smoothie Bowls",
-    image: "/menu/Green-Coconut-Dark-Choco-Smoothie-Bowl.jpg",
+    image: "menu-items/Green-Coconut-Dark-Choco-Smoothie-Bowl.webp",
     price: "245",
     published: true,
     order: 2
@@ -38,7 +38,7 @@ export const INITIAL_MENU_DATA: Partial<MenuItem>[] = [
     name_thai: " Cajun Gumbo กับไก่ไส้กรอกและกุ้ง",
     description: "Marinated chicken breast, smoked sausage and shrimp cooked in our own blend of Cajun holy trinity and own special blend of Cajun seasoning. Served with jasmine rice and garlic bread",
     category: "Cajun Food",
-    image: "/menu/Cajun-gumbo-with-chicken-sauseage-and-shrimp.jpg",
+    image: "menu-items/Cajun-gumbo-with-chicken-sausage-and-shrimp.webp",
     price: "380",
     published: true,
     order: 3
@@ -50,7 +50,7 @@ export const INITIAL_MENU_DATA: Partial<MenuItem>[] = [
     name_thai: "ไก่ทอด Cajun หรือกุ้งโปบอย",
     description: "Our own Cajun fried Chicken or Shrimp served on a fresh French bread with lettuce, tomato, pickle and our own Cajun remoulade sauce and French fries",
     category: "Cajun Food",
-    image: "/menu/cajun-fried-shrimp-po-boy.jpg",
+    image: "menu-items/cajun-fried-shrimp-po-boy.webp",
     price: "295 / 380",
     published: true,
     order: 1
@@ -62,7 +62,7 @@ export const INITIAL_MENU_DATA: Partial<MenuItem>[] = [
     name_thai: "แซลมอนย่างเคจันและซัลซ่ามะม่วง",
     description: "Fresh salmon grilled in special blend of Cajun seasoning served with mango & mixed vegetables",
     category: "Main Course",
-    image: "/menu/cajun-grilled-salmon-mango-salsa.jpg",
+    image: "menu-items/cajun-grilled-salmon-mango-salsa.webp",
     price: "390",
     published: true,
     order: 9
@@ -74,7 +74,7 @@ export const INITIAL_MENU_DATA: Partial<MenuItem>[] = [
     name_thai: "ผัดไทย",
     description: "Chicken/Pork/Shrimp/Seafood",
     category: "Thai Food",
-    image: "/menu/pad-thai.jpg",
+    image: "menu-items/pad-thai.webp",
     price: "120/180/200/220",
     published: true,
     order: 0
@@ -86,7 +86,7 @@ export const INITIAL_MENU_DATA: Partial<MenuItem>[] = [
     name_thai: "พุดดิ้งขนมปัง Cajun",
     description: "With Rum Sauce",
     category: "Desserts",
-    image: "/menu/Cajun-Bread-Pudding-with-Rum-Sauce.jpg",
+    image: "menu-items/Cajun-Bread-Pudding-with-Rum-Sauce.webp",
     price: "160",
     published: true,
     order: 4
@@ -98,7 +98,7 @@ export const INITIAL_MENU_DATA: Partial<MenuItem>[] = [
     name_thai: "อาหารเช้าแบบอเมริกัน",
     description: "Choice of eggs (fried eggs/scrambled eggs/omelet/poached eggs) Selection of bacon or ham, smoked sausage, hash browns, whole wheat toast",
     category: "Breakfast",
-    image: "/menu/american-breakfast.jpg",
+    image: "menu-items/american-breakfast.webp",
     price: "250",
     published: true,
     order: 2
@@ -110,7 +110,7 @@ export const INITIAL_MENU_DATA: Partial<MenuItem>[] = [
     name_thai: "เรด ซันเซท",
     description: "Carrot, green apple, orange, beet root (NO ADDED SUGAR)",
     category: "Drinks",
-    image: "/menu/Red-Sunset.jpg",
+    image: "menu-items/Red-Sunset.webp",
     price: "139",
     published: true,
     order: 18
@@ -122,9 +122,19 @@ export const INITIAL_MENU_DATA: Partial<MenuItem>[] = [
     name_thai: "ป๊อปเปอร์ชีส Jalapeno",
     description: "With CLC's Homemade Remoulade Sauce",
     category: "Appetizers",
-    image: "/menu/jalapeno-cheese-poppers.jpg",
+    image: "menu-items/jalapeno-cheese-poppers.webp",
     price: "180",
     published: true,
     order: 10
+  },
+  {
+    name: "Tom Yum",
+    name_thai: "ต้มยำ",
+    description: "Spicy and sour Thai soup with shrimp and mushrooms",
+    category: "Thai Food",
+    primaryPhotoPath: "gs://cajun-life-cafe.firebasestorage.app/menu-items/tom-yum/primary_1778049046559_Tom_Yum.webp",
+    price: "250",
+    published: true,
+    order: 5
   }
 ];

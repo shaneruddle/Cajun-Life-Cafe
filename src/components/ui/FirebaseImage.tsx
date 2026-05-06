@@ -1,42 +1,66 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { imageService } from '../../services/imageService';
 
 interface FirebaseImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
   fallbackSrc?: string;
+  useSkeleton?: boolean;
+  priority?: boolean;
 }
 
 /**
- * FirebaseImage: A smart image component that uses ImageService to resolve URLs
- * and handles automatic fallbacks for common image extensions.
+ * FirebaseImage: A component that resolves URLs using ImageService.
+ * It strictly uses the provided path (ideally primaryPhotoPath) from Firebase Storage.
+ * Implements lazy loading via Intersection Observer and provides a loading skeleton.
  */
 export const FirebaseImage: React.FC<FirebaseImageProps> = ({ 
   src, 
   fallbackSrc = '/logo.png', 
   alt, 
   className,
+  useSkeleton = true,
+  priority = false,
   ...props 
 }) => {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
-  const [errorCount, setErrorCount] = useState(0);
-  const [alternativePaths, setAlternativePaths] = useState<string[]>([]);
-  const [isResolving, setIsResolving] = useState(true);
+  const [isResolving, setIsResolving] = useState(false);
+  const [isInView, setIsInView] = useState(priority);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Intersection Observer for lazy loading
+  useEffect(() => {
+    if (priority) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.01, rootMargin: '800px' }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [src, priority]);
 
   const resolveImage = useCallback(async () => {
     if (!src) {
       setResolvedUrl(fallbackSrc);
-      setIsResolving(false);
       return;
     }
 
     setIsResolving(true);
+    
     try {
       const url = await imageService.resolve(src);
-      console.log(`FirebaseImage: Resolved ${src} to ${url}`);
       setResolvedUrl(url);
-      setAlternativePaths(imageService.getAlternativePaths(url));
     } catch (err) {
-      console.error("FirebaseImage: Failed to resolve source:", src, err);
       setResolvedUrl(fallbackSrc);
     } finally {
       setIsResolving(false);
@@ -44,38 +68,46 @@ export const FirebaseImage: React.FC<FirebaseImageProps> = ({
   }, [src, fallbackSrc]);
 
   useEffect(() => {
-    setErrorCount(0);
-    setAlternativePaths([]);
-    resolveImage();
-  }, [resolveImage]);
+    if (isInView) {
+      resolveImage();
+    }
+  }, [isInView, resolveImage]);
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
 
   const handleError = () => {
-    // Don't handle errors while still resolving the initial URL
-    if (isResolving) return;
-
-    if (errorCount < alternativePaths.length) {
-      const nextPath = alternativePaths[errorCount];
-      console.warn(`FirebaseImage: Failed to load ${resolvedUrl}. Trying fallback ${errorCount + 1}/${alternativePaths.length}: ${nextPath}`);
-      setResolvedUrl(nextPath);
-      setErrorCount(prev => prev + 1);
-    } else if (resolvedUrl !== fallbackSrc) {
-      console.error(`FirebaseImage: All fallbacks failed for ${src}. Final fallback to ${fallbackSrc}`);
+    if (resolvedUrl !== fallbackSrc) {
       setResolvedUrl(fallbackSrc);
     }
   };
 
-  // Use a key that changes with the resolvedUrl to force re-render of the img tag
-  const imgKey = `${src}-${resolvedUrl}-${errorCount}`;
-
   return (
-    <img
-      key={imgKey}
-      src={resolvedUrl || (isResolving ? undefined : fallbackSrc)}
-      alt={alt}
-      className={className}
-      onError={handleError}
-      referrerPolicy="no-referrer"
-      {...props}
-    />
+    <div 
+      ref={containerRef} 
+      className={`relative overflow-hidden ${className || ''}`}
+      style={{ minHeight: props.height ? `${props.height}px` : '100%' }}
+    >
+      {/* Skeleton / Placeholder State */}
+      {useSkeleton && (!resolvedUrl || !imageLoaded) && (
+        <div className="absolute inset-0 bg-gray-100 animate-pulse" />
+      )}
+
+      {resolvedUrl && (
+        <img
+          src={resolvedUrl}
+          alt={alt}
+          decoding="async"
+          loading={priority ? "eager" : "lazy"}
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+          onLoad={handleImageLoad}
+          onError={handleError}
+          referrerPolicy="no-referrer"
+          {...props}
+        />
+      )}
+    </div>
   );
 };

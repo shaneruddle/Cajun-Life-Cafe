@@ -87,15 +87,9 @@ const Navbar = ({ canAccessDashboard, businessInfo, setUser }: { canAccessDashbo
   return (
     <nav className={`${isDashboard ? "sticky top-0 bg-white border-b border-gray-100 py-3 shadow-sm" : "fixed top-0 w-full transition-all duration-300 " + (scrolled ? "bg-white shadow-md py-3" : "bg-transparent py-6")} z-50 w-full`}>
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-        <Link to="/" className="flex items-center">
-          <div className="bg-white p-1.5 rounded-full shadow-md border border-gray-100">
-            <FirebaseImage 
-              src={normalizeImageUrl("/logo.png")} 
-              alt="Cajun Life Cafe Logo" 
-              className="h-10 w-10 rounded-full object-cover"
-            />
-          </div>
-        </Link>
+        <div className="flex items-center">
+          {/* Logo removed as requested */}
+        </div>
         
         <div className="hidden lg:flex space-x-8 items-center">
           {!isDashboard ? (
@@ -225,8 +219,8 @@ const Hero = ({ businessInfo }: { businessInfo: BusinessInfo | null }) => {
 
 const About = () => {
   const images = { 
-    gumbo: "/menu/Cajun-gumbo-with-chicken-sauseage-and-shrimp.jpg", 
-    shrimp: "/menu/cajun-fried-shrimp-plate.jpg" 
+    gumbo: "gs://cajun-life-cafe.firebasestorage.app/menu-items/cajun-spicy-cornbread/direct_primary_1778068202432_Cajun_Spicy_Cornbread.webp", 
+    shrimp: "gs://cajun-life-cafe.firebasestorage.app/menu-items/shrimp-etouffee/direct_primary_1778068163771_Shrimp_Etouffee.webp" 
   };
 
 return (
@@ -245,20 +239,7 @@ return (
       <p className="text-lg text-gray-600 mb-8 leading-relaxed">
         Cajun Food is a robust, rustic food found along the bayous of Louisiana, a combination of Southern cuisines. “Rustic Cuisine”, meaning that is based on locally available ingredients. Cajun Food is not always spicy, BUT IT ALWAYS HAS SPICE. When it is spicy, it should never be so hot that it overpowers the flavor. Instead, the Cajun “Holy Trinity”, of onions, celery and bell pepper contribute to the flavor along with spices like salt, pepper and cayenne.
       </p>
-      <div className="grid grid-cols-3 gap-8">
-        <div className="text-center">
-          <div className="text-3xl font-bold text-terracotta mb-1">5+</div>
-          <div className="text-sm uppercase tracking-wider text-gray-400">Years</div>
-        </div>
-        <div className="text-center">
-          <div className="text-3xl font-bold text-terracotta mb-1">50+</div>
-          <div className="text-sm uppercase tracking-wider text-gray-400">Recipes</div>
-        </div>
-        <div className="text-center">
-          <div className="text-3xl font-bold text-terracotta mb-1">10k+</div>
-          <div className="text-sm uppercase tracking-wider text-gray-400">Happy Guests</div>
-        </div>
-      </div>
+      {/* Statistics grid removed as requested */}
     </motion.div>
     
     <div className="relative">
@@ -270,7 +251,7 @@ return (
         >
           <FirebaseImage 
             src={normalizeImageUrl(images.shrimp)} 
-            alt="Cajun Fried Shrimp" 
+            alt="Shrimp Étouffée" 
             className="pill-image mt-12 w-full bg-gray-100 shadow-xl border-4 border-white"
           />
         </motion.div>
@@ -282,7 +263,7 @@ return (
         >
           <FirebaseImage 
             src={normalizeImageUrl(images.gumbo)} 
-            alt="Cajun Gumbo" 
+            alt="Cajun Spicy Cornbread" 
             className="pill-image w-full bg-gray-100 shadow-xl border-4 border-white"
           />
         </motion.div>
@@ -368,12 +349,31 @@ switch (language) {
 };
 
 const getLocalizedDesc = (item: MenuItem) => {
-switch (language) {
-  case 'zh': return item.description_chinese || item.description;
-  case 'ru': return item.description_russian || item.description;
-  case 'th': return item.description_thai || item.description;
-  default: return item.description;
-}
+  const englishDesc = item.description || "";
+  const englishParts = englishDesc.split('/');
+  
+  let localizedDesc = "";
+  switch (language) {
+    case 'zh': localizedDesc = item.description_chinese || ""; break;
+    case 'ru': localizedDesc = item.description_russian || ""; break;
+    case 'th': localizedDesc = item.description_thai || ""; break;
+    default: localizedDesc = englishDesc;
+  }
+
+  if (language === 'en' || !localizedDesc) return englishDesc;
+
+  const localizedParts = localizedDesc.split('/');
+  
+  // If localized has labels, use them. If not, use English labels.
+  if (localizedParts.length > 1) {
+    return localizedDesc;
+  } else {
+    // Localized is just a main description, append English labels if they exist
+    if (englishParts.length > 1) {
+      return [localizedParts[0], ...englishParts.slice(1)].join(' / ');
+    }
+    return localizedParts[0];
+  }
 };
 
 const renderPrice = (item: MenuItem) => {
@@ -644,7 +644,7 @@ const Footer = ({ businessInfo }: { businessInfo: BusinessInfo | null }) => {
       <h4 className="font-bold mb-6 text-terracotta uppercase tracking-wider text-sm">Quick Links</h4>
       <ul className="space-y-4 text-gray-400">
         <li><a href="#menu" className="hover:text-white transition-colors">Menu</a></li>
-        <li><a href="https://cajun-life-cafe-852341607813.us-west1.run.app/digital-menu" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Digital Menu</a></li>
+        <li><Link to="/menu" className="hover:text-white transition-colors">Digital Menu</Link></li>
         <li><a href="#about" className="hover:text-white transition-colors">Our Story</a></li>
         <li><a href="#location" className="hover:text-white transition-colors">Location</a></li>
         <li><a href={businessInfo?.url || "#"} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Google Maps</a></li>
@@ -1040,7 +1040,7 @@ function AppContent({ user, setUser, businessInfo, setBusinessInfo, error, setEr
       )}
       <Routes>
         <Route path="/" element={isCashierOnly ? <div className="h-screen bg-cream flex items-center justify-center">Redirecting to Staff Portal...</div> : <MainSite isAdmin={isAdmin} businessInfo={businessInfo} />} />
-        <Route path="/menu" element={isCashierOnly ? <div className="h-screen bg-cream flex items-center justify-center">Access Denied</div> : <DigitalMenu />} />
+        <Route path="/menu" element={isCashierOnly ? <div className="h-screen bg-cream flex items-center justify-center">Access Denied</div> : <DigitalMenuDisplay />} />
         <Route path="/digital-menu" element={isCashierOnly ? <div className="h-screen bg-cream flex items-center justify-center">Access Denied</div> : <DigitalMenuDisplay />} />
         <Route path="/expense" element={isStaff ? <ExpenseEntry /> : <div className="pt-32 text-center h-screen bg-cream">Access Denied. Please login with a staff account.</div>} />
         

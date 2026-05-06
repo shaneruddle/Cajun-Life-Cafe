@@ -112,6 +112,45 @@
         "uid": { "type": "string", "description": "Firebase Auth UID" }
       },
       "required": ["email", "role", "uid"]
+    },
+    "Employee": {
+      "title": "Employee",
+      "description": "Employee details and base salary.",
+      "type": "object",
+      "properties": {
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "baseSalary": { "type": "number" },
+        "position": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "bankBranch": { "type": "string" },
+        "bankAccountNumber": { "type": "string" },
+        "uid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["firstName", "lastName", "baseSalary", "position", "uid"]
+    },
+    "PayrollSummary": {
+      "title": "Payroll Summary",
+      "description": "Monthly payroll summary for an employee.",
+      "type": "object",
+      "properties": {
+        "month": { "type": "string", "description": "YYYY-MM" },
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "position": { "type": "string" },
+        "baseSalary": { "type": "number" },
+        "advances": { "type": "number" },
+        "deductions": { "type": "number" },
+        "bonuses": { "type": "number" },
+        "totalDue": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "paid"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "uid": { "type": "string" }
+      },
+      "required": ["month", "employeeId", "totalDue", "uid"]
     }
   },
   "firestore": {
@@ -142,6 +181,14 @@
     "/users/{userId}": {
       "schema": "User",
       "description": "Collection of user profiles."
+    },
+    "/employees/{employeeId}": {
+      "schema": "Employee",
+      "description": "Collection of employees."
+    },
+    "/payroll_summaries/{summaryId}": {
+      "schema": "PayrollSummary",
+      "description": "Collection of monthly payroll summaries."
     }
   }
 }

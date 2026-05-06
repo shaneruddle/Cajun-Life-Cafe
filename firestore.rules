@@ -63,6 +63,14 @@ service cloud.firestore {
       allow create: if isCashier();
     }
 
+    match /employees/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /payroll_summaries/{id} {
+      allow read, write: if isAdmin();
+    }
+
     // Employees: Only read their own data (handled by users match)
     // Marketing: Handled by isAdmin/isMarketing checks in relevant collections if any
   }

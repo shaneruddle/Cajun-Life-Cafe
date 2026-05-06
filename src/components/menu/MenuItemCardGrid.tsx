@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MenuItem } from '../../types';
 import { normalizeImageUrl } from '../../utils/images';
 import { FirebaseImage } from '../ui/FirebaseImage';
+import { ImageModal } from '../ui/ImageModal';
 
 interface MenuItemCardGridProps {
   item: MenuItem;
@@ -9,6 +10,7 @@ interface MenuItemCardGridProps {
   getLocalizedName: (item: MenuItem) => string;
   getLocalizedDesc: (item: MenuItem) => string;
   renderPrice: (item: MenuItem) => React.ReactNode;
+  priority?: boolean;
 }
 
 const MenuItemCardGrid: React.FC<MenuItemCardGridProps> = React.memo(({ 
@@ -16,55 +18,90 @@ const MenuItemCardGrid: React.FC<MenuItemCardGridProps> = React.memo(({
   language, 
   getLocalizedName, 
   getLocalizedDesc, 
-  renderPrice 
+  renderPrice,
+  priority = false
 }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const prices = [item.price, item.price2, item.price3, item.price4].filter(p => p && p.trim() !== '');
   const isMultiPrice = prices.length > 1;
+  const imageUrl = normalizeImageUrl(item.primaryPhotoPath || item.image);
+  const localizedName = getLocalizedName(item);
   
   return (
-    <div className="bg-white p-4 sm:p-5 rounded-[24px] sm:rounded-[32px] shadow-sm flex flex-col group h-full border border-gray-50">
-      <div className="relative h-32 sm:h-40 mb-3 sm:mb-4 overflow-hidden rounded-[20px] sm:rounded-[24px]">
+    <div 
+      className="bg-white p-5 rounded-[40px] shadow-sm flex flex-col group h-full border border-gray-100 hover:shadow-xl transition-all duration-300 w-full max-w-[550px] mx-auto"
+      style={{ contentVisibility: 'auto', containIntrinsicSize: '0 600px' } as React.CSSProperties}
+    >
+      <div 
+        className="relative w-full h-[400px] mb-4 sm:mb-5 overflow-hidden rounded-[20px] sm:rounded-[32px] cursor-pointer shadow-inner bg-gray-50 flex-shrink-0"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsModalOpen(true);
+        }}
+        aria-label="Enlarge image"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { 
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsModalOpen(true); 
+          }
+        }}
+      >
         <FirebaseImage 
-          src={normalizeImageUrl(item.image)} 
+          src={imageUrl} 
           fallbackSrc="/logo.png"
-          alt={item.name} 
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-          loading="lazy"
-          width="200"
-          height="160"
+          alt={localizedName} 
+          className="w-full h-full object-cover"
+          priority={priority}
+          width="600"
+          height="400"
         />
         {!isMultiPrice && (
-          <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-white/90 backdrop-blur-sm px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-terracotta font-bold text-xs sm:text-sm shadow-sm">
+          <div className="absolute top-3 right-3 bg-terracotta px-4 py-1.5 rounded-2xl text-white font-black text-sm shadow-lg">
             ฿{item.price}
           </div>
         )}
       </div>
+
       <div className="flex-1 flex flex-col">
-        <div className="flex justify-between items-start mb-1 sm:mb-2">
-          <h3 className="text-base sm:text-lg font-bold text-ink leading-tight">{getLocalizedName(item)}</h3>
-          {!item.image && !isMultiPrice && <span className="text-terracotta font-bold text-sm sm:text-base">฿{item.price}</span>}
+        <div className="flex items-baseline w-full gap-2 mb-2 sm:mb-3">
+          <h3 className="text-xl sm:text-2xl font-bold text-ink leading-tight group-hover:text-terracotta transition-colors">{localizedName}</h3>
+          {!isMultiPrice && (
+            <>
+              <div className="flex-1 border-b border-dotted border-gray-200 mb-1" />
+              <span className="text-xl sm:text-2xl font-black text-terracotta whitespace-nowrap shrink-0">฿{item.price}</span>
+            </>
+          )}
         </div>
         
-        <p className="text-gray-500 text-[10px] sm:text-xs leading-relaxed line-clamp-3 mb-3 sm:mb-4 flex-1">
+        <p className="text-gray-400 text-xs sm:text-sm leading-relaxed line-clamp-3 mb-5 flex-1">
           {(() => {
             const desc = getLocalizedDesc(item);
             const parts = desc.split('/');
             
             if (isMultiPrice) {
               if (parts.length > prices.length) {
-                // Format: Description / Label 1 / Label 2
                 return parts[0];
               } else if (parts.length === prices.length) {
-                // Format: Label 1 / Label 2 (no main description)
-                return "Multiple options available";
+                return "";
               }
             }
-            return desc.split('/')[0];
+            return parts[0];
           })()}
         </p>
 
         {renderPrice(item)}
       </div>
+
+      <ImageModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        src={imageUrl}
+        alt={localizedName}
+      />
     </div>
   );
 });

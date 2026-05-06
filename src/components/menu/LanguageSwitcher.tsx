@@ -9,7 +9,7 @@ interface LanguageSwitcherProps {
 
 const LanguageSwitcher: React.FC<LanguageSwitcherProps> = React.memo(({ language, setLanguage }) => {
   return (
-    <div className="fixed top-4 right-4 sm:top-8 sm:right-8 z-50 flex bg-white/80 backdrop-blur-md p-1 rounded-full shadow-2xl border border-white/20">
+    <div className="flex bg-white/50 backdrop-blur-sm p-1 rounded-full shadow-sm border border-gray-100 max-w-fit">
       {[
         { code: 'en', label: 'EN' },
         { code: 'zh', label: '中文' },

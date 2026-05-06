@@ -24,6 +24,15 @@ async function startServer() {
   const publicDir = path.join(process.cwd(), 'public');
   
   // Explicit route for menu images to ensure they are served correctly
+  app.get('/menu-items/:filename', (req, res, next) => {
+    const filePath = path.join(publicDir, 'menu-items', req.params.filename);
+    if (fs.existsSync(filePath)) {
+      console.log(`Serving menu item image: ${req.params.filename}`);
+      return res.sendFile(filePath);
+    }
+    next();
+  });
+
   app.get('/menu/:filename', (req, res, next) => {
     const filePath = path.join(publicDir, 'menu', req.params.filename);
     if (fs.existsSync(filePath)) {

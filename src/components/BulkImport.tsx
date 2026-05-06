@@ -29,6 +29,8 @@ const BulkImport: React.FC = () => {
     { key: 'name_thai', label: 'Name (Thai)' },
     { key: 'description_thai', label: 'Description (Thai)' },
     { key: 'image', label: 'Image URL' },
+    { key: 'primaryPhotoPath', label: 'Primary Photo Path (gs://...)' },
+    { key: 'secondaryPhotoPath', label: 'Secondary Photo Path (gs://...)' },
     { key: 'order', label: 'Display Order' },
     { key: 'published', label: 'Published Status' },
     { key: 'originalId', label: 'Unique ID (for updates)' },
@@ -150,8 +152,8 @@ const BulkImport: React.FC = () => {
             item.order = parseInt(value) || 0;
           } else if (field.key === 'published') {
             item.published = value.toLowerCase() === 'yes' || value.toLowerCase() === 'true';
-          } else if (field.key === 'image') {
-            item.image = normalizeImageUrl(value);
+          } else if (field.key === 'image' || field.key === 'primaryPhotoPath' || field.key === 'secondaryPhotoPath') {
+            item[field.key] = normalizeImageUrl(value);
           } else {
             item[field.key] = value || '';
           }

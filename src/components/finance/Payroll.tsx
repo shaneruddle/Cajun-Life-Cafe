@@ -4,9 +4,10 @@ import { db, auth } from '../../firebase';
 import { Employee, OperationType } from '../../types';
 import { handleFirestoreError } from '../../utils/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Edit2, X, UserPlus, Building2, Wallet, Calendar, Briefcase, User } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, UserPlus, Building2, Wallet, Calendar, Briefcase, User, Calculator } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import PayrollSummaryModal from './PayrollSummaryModal';
 
 const POSITIONS = ['Manager', 'Chef', 'Sous Chef', 'Waiter', 'Waitress', 'Cashier', 'Barista', 'Cleaner', 'Kitchen Staff'];
 const BANK_BRANCHES = ['Bangkok Bank', 'Kasikorn Bank', 'SCB', 'Krungthai Bank', 'GSB', 'Krungsri', 'TMBThanachart'];
@@ -15,6 +16,7 @@ const Payroll: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -114,13 +116,22 @@ const Payroll: React.FC = () => {
           <h2 className="text-3xl font-bold text-ink">Payroll Management</h2>
           <p className="text-gray-500 mt-1">Manage your team and their payment details</p>
         </div>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 px-6 py-3 bg-terracotta text-white rounded-2xl font-bold text-sm hover:bg-terracotta/90 transition-all shadow-lg shadow-terracotta/20"
-        >
-          <UserPlus size={18} />
-          Add Employee
-        </button>
+        <div className="flex gap-4">
+          <button 
+            onClick={() => setShowSummaryModal(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-ink rounded-2xl font-bold text-sm hover:bg-gray-50 transition-all shadow-sm"
+          >
+            <Calculator size={18} className="text-terracotta" />
+            Payroll Summary
+          </button>
+          <button 
+            onClick={() => handleOpenModal()}
+            className="flex items-center gap-2 px-6 py-3 bg-terracotta text-white rounded-2xl font-bold text-sm hover:bg-terracotta/90 transition-all shadow-lg shadow-terracotta/20"
+          >
+            <UserPlus size={18} />
+            Add Employee
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -331,6 +342,12 @@ const Payroll: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <PayrollSummaryModal 
+        isOpen={showSummaryModal}
+        onClose={() => setShowSummaryModal(false)}
+        employees={employees}
+      />
     </div>
   );
 };

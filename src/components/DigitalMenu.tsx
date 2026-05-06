@@ -213,11 +213,30 @@ const DigitalMenu = () => {
   }, [language]);
 
   const getLocalizedDesc = useCallback((item: MenuItem) => {
+    const englishDesc = item.description || "";
+    const englishParts = englishDesc.split('/');
+    
+    let localizedDesc = "";
     switch (language) {
-      case 'zh': return item.description_chinese || item.description;
-      case 'ru': return item.description_russian || item.description;
-      case 'th': return item.description_thai || item.description;
-      default: return item.description;
+      case 'zh': localizedDesc = item.description_chinese || ""; break;
+      case 'ru': localizedDesc = item.description_russian || ""; break;
+      case 'th': localizedDesc = item.description_thai || ""; break;
+      default: localizedDesc = englishDesc;
+    }
+
+    if (language === 'en' || !localizedDesc) return englishDesc;
+
+    const localizedParts = localizedDesc.split('/');
+    
+    // If localized has labels, use them. If not, use English labels.
+    if (localizedParts.length > 1) {
+      return localizedDesc;
+    } else {
+      // Localized is just a main description, append English labels if they exist
+      if (englishParts.length > 1) {
+        return [localizedParts[0], ...englishParts.slice(1)].join(' / ');
+      }
+      return localizedParts[0];
     }
   }, [language]);
 
@@ -285,19 +304,17 @@ const DigitalMenu = () => {
 
   return (
     <div className="min-h-screen bg-cream flex flex-col">
-      <LanguageSwitcher language={language} setLanguage={setLanguage} />
-
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Categories */}
         <aside className="w-64 bg-white border-r border-gray-100 overflow-y-auto p-8 hidden lg:block">
           <div className="mb-10 flex flex-col items-center">
-            <FirebaseImage 
-              src={normalizeImageUrl("/logo.png")} 
-              alt="Cajun Life Cafe Logo" 
-              className="w-20 h-20 rounded-full object-cover border-2 border-terracotta shadow-md mb-4"
-            />
+            {/* Logo removed as requested */}
             <h1 className="text-2xl font-display font-bold text-terracotta mb-1">Cajun Life</h1>
             <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Menu Display</p>
+          </div>
+          
+          <div className="mb-8 flex justify-center">
+            <LanguageSwitcher language={language} setLanguage={setLanguage} />
           </div>
           
           <h2 className="text-[10px] uppercase tracking-widest text-gray-400 font-bold mb-6">Categories</h2>
@@ -319,7 +336,11 @@ const DigitalMenu = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-8 lg:p-12">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div className="lg:hidden mb-6 flex justify-center">
+            <LanguageSwitcher language={language} setLanguage={setLanguage} />
+          </div>
+          
           {/* Mobile Categories (Horizontal Scroll) */}
           <div className="lg:hidden flex overflow-x-auto gap-2 sm:gap-3 mb-8 sm:mb-10 pb-2 no-scrollbar">
             {categories.map((cat) => (
@@ -364,7 +385,7 @@ const DigitalMenu = () => {
               </div>
             )}
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {activeCategory === "Build Your Own" ? (
                 <BuildYourOwn 
                   customMealTypes={customMealTypes}
@@ -376,7 +397,7 @@ const DigitalMenu = () => {
                   isAdminView={true}
                 />
               ) : (
-                filteredItems.map((item) => (
+                filteredItems.map((item, index) => (
                   <MenuItemCardGrid 
                     key={item.id}
                     item={item}
@@ -384,6 +405,7 @@ const DigitalMenu = () => {
                     getLocalizedName={getLocalizedName}
                     getLocalizedDesc={getLocalizedDesc}
                     renderPrice={renderPrice}
+                    priority={index < 4}
                   />
                 ))
               )}

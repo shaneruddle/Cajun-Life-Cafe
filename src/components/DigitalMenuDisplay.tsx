@@ -218,11 +218,30 @@ const DigitalMenuDisplay = () => {
   }, [language]);
 
   const getLocalizedDesc = useCallback((item: MenuItem) => {
+    const englishDesc = item.description || "";
+    const englishParts = englishDesc.split('/');
+    
+    let localizedDesc = "";
     switch (language) {
-      case 'zh': return item.description_chinese || item.description;
-      case 'ru': return item.description_russian || item.description;
-      case 'th': return item.description_thai || item.description;
-      default: return item.description;
+      case 'zh': localizedDesc = item.description_chinese || ""; break;
+      case 'ru': localizedDesc = item.description_russian || ""; break;
+      case 'th': localizedDesc = item.description_thai || ""; break;
+      default: localizedDesc = englishDesc;
+    }
+
+    if (language === 'en' || !localizedDesc) return englishDesc;
+
+    const localizedParts = localizedDesc.split('/');
+    
+    // If localized has labels, use them. If not, use English labels.
+    if (localizedParts.length > 1) {
+      return localizedDesc;
+    } else {
+      // Localized is just a main description, append English labels if they exist
+      if (englishParts.length > 1) {
+        return [localizedParts[0], ...englishParts.slice(1)].join(' / ');
+      }
+      return localizedParts[0];
     }
   }, [language]);
 
@@ -280,23 +299,20 @@ const DigitalMenuDisplay = () => {
   }
 
   return (
-    <div className="min-h-screen bg-cream p-4 sm:p-8 md:p-16 lg:p-24 relative">
-      <LanguageSwitcher language={language} setLanguage={setLanguage} />
+    <div className="min-h-screen bg-cream p-4 sm:p-6 md:p-8 relative">
 
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <header className="mb-8 lg:mb-20 lg:text-center lg:flex lg:flex-col lg:items-center">
-          <FirebaseImage 
-            src={normalizeImageUrl("/logo.png")} 
-            alt="Cajun Life Cafe Logo" 
-            className="w-12 h-12 lg:w-64 lg:h-64 rounded-full object-cover border-2 lg:border-4 border-terracotta shadow-lg lg:shadow-2xl mb-0 lg:mb-8 fixed top-4 left-4 lg:relative lg:top-0 lg:left-0 z-50 bg-white"
-            width="256"
-            height="256"
-          />
+          {/* Logo removed as requested */}
           <div className="hidden lg:block">
             <h1 className="text-4xl lg:text-6xl font-display font-bold text-terracotta mb-2">Cajun Life Cafe</h1>
             <p className="text-xs lg:text-sm uppercase tracking-[0.3em] text-gray-400 font-bold">Digital Menu Display</p>
           </div>
         </header>
+
+        <div className="mb-8 lg:mb-12 flex justify-center">
+          <LanguageSwitcher language={language} setLanguage={setLanguage} />
+        </div>
 
         {/* Category Tabs */}
         <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8 lg:mb-20">
@@ -334,8 +350,8 @@ const DigitalMenuDisplay = () => {
                   toggleIngredient={toggleIngredient}
                 />
               ) : (
-                <div className="grid sm:grid-cols-2 gap-x-8 lg:gap-x-16 gap-y-12 sm:gap-y-16">
-                  {filteredItems.map((item) => (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {filteredItems.map((item, index) => (
                     <MenuItemCard 
                       key={item.id}
                       item={item}
@@ -343,6 +359,7 @@ const DigitalMenuDisplay = () => {
                       getLocalizedName={getLocalizedName}
                       getLocalizedDesc={getLocalizedDesc}
                       renderPrice={renderPrice}
+                      priority={index < 4}
                     />
                   ))}
                   {filteredItems.length === 0 && (
