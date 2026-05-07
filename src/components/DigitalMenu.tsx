@@ -251,36 +251,40 @@ const DigitalMenu = () => {
       }
     }
 
+    if (prices.length <= 1) return null;
+
     const desc = getLocalizedDesc(item);
     const proteins = desc.split('/');
 
-    if (prices.length > 1) {
-      // Determine labels
-      let labels: string[] = [];
-      if (proteins.length === prices.length + 1) {
-        // Format: Description / Label 1 / Label 2
-        labels = proteins.slice(1);
-      } else if (proteins.length === prices.length) {
-        // Format: Label 1 / Label 2
-        labels = proteins;
-      } else {
-        // Fallback: use labels from description if available, otherwise generic
-        labels = prices.map((_, i) => proteins[i] || `Option ${i + 1}`);
-      }
+    // Prioritize explicit price labels from the item object
+    const explicitLabels = [
+      item.priceLabel,
+      item.price2Label,
+      item.price3Label,
+      item.price4Label
+    ].filter((l, i) => i < prices.length);
 
-      return (
-        <div className="space-y-1 mt-3 pt-3 border-t border-gray-50">
-          {prices.map((p, i) => (
-            <div key={i} className="flex justify-between items-center text-sm">
-              <span className="text-gray-500 font-medium">{labels[i]?.trim() || `Option ${i + 1}`}</span>
-              <span className="text-terracotta font-bold">฿{p.trim()}</span>
-            </div>
-          ))}
-        </div>
-      );
-    }
+    const labels = explicitLabels.map((l, i) => {
+      if (l && l.trim()) return l.trim();
+      
+      // Fallback to proteins from description if missing explicit labels
+      if (proteins.length === prices.length + 1) return proteins[i + 1].trim();
+      if (proteins.length === prices.length) return proteins[i].trim();
+      
+      return `Option ${i + 1}`;
+    });
 
-    return null;
+    const formattedOptions = labels.map((label, i) => {
+      const cleanLabel = label.trim();
+      const labelText = cleanLabel.charAt(0).toUpperCase() + cleanLabel.slice(1).toLowerCase();
+      return `${labelText} ฿${prices[i].trim()}`;
+    });
+
+    return (
+      <span className="text-sm text-gray-600 leading-relaxed">
+        {formattedOptions.join(' • ')}
+      </span>
+    );
   }, [getLocalizedDesc]);
 
   if (isLoading) {
@@ -405,7 +409,7 @@ const DigitalMenu = () => {
                     getLocalizedName={getLocalizedName}
                     getLocalizedDesc={getLocalizedDesc}
                     renderPrice={renderPrice}
-                    priority={index < 4}
+                    priority={index < 10}
                   />
                 ))
               )}

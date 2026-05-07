@@ -16,7 +16,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { db, auth, storage } from '../firebase';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { imageService } from '../services/imageService';
-import { MenuItem, OperationType } from '../types';
+import { MenuItem, Category, OperationType } from '../types';
 import { handleFirestoreError } from '../utils/firestore';
 import { handleStorageError } from '../utils/storage';
 import { normalizeImageUrl } from '../utils/images';
@@ -289,6 +289,7 @@ const ImageSlot = ({
 
 export default function Dashboard() {
   const [items, setItems] = useState<MenuItem[]>([]);
+  const [categoriesList, setCategoriesList] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -369,16 +370,37 @@ export default function Dashboard() {
       setLoading(false);
     });
 
+    const categoriesQuery = query(collection(db, 'categories'), orderBy('order', 'asc'));
+    const unsubscribeCategories = onSnapshot(categoriesQuery, (snapshot) => {
+      const cats = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Category[];
+      setCategoriesList(cats);
+    }, (err) => {
+      handleFirestoreError(err, 'list', 'categories');
+    });
+
     return () => {
       unsubscribe();
+      unsubscribeCategories();
       clearTimeout(timer);
     };
   }, []);
 
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(items.map(item => item.category)));
-    return ['All', ...cats.sort()];
-  }, [items]);
+    // Collect categories from both the dedicated collection AND existing items
+    const fromCollection = categoriesList.map(c => c.name);
+    const fromItems = items.map(item => item.category);
+    
+    // Merge, unique, and add "Soup & Salad" if not present
+    const allUnique = Array.from(new Set([...fromCollection, ...fromItems]));
+    if (!allUnique.includes('Soup & Salad')) {
+      allUnique.push('Soup & Salad');
+    }
+    
+    return ['All', ...allUnique.sort()];
+  }, [items, categoriesList]);
 
   const filteredItems = useMemo(() => {
     return items.filter(item => {
@@ -1063,17 +1085,11 @@ export default function Dashboard() {
                       <select 
                         value={formData.category}
                         onChange={e => setFormData({...formData, category: e.target.value})}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none bg-white"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none bg-white font-medium text-ink transition-all hover:border-terracotta/50"
                       >
-                        <option>Smoothie Bowls</option>
-                        <option>Drinks</option>
-                        <option>Breakfast</option>
-                        <option>Appetizers</option>
-                        <option>Cajun Food</option>
-                        <option>Main Course</option>
-                        <option>Thai Food</option>
-                        <option>Wine & Beer</option>
-                        <option>Desserts</option>
+                        {categories.filter(c => c !== 'All').map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
                       </select>
                     </div>
                   </div>

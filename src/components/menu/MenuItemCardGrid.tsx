@@ -77,23 +77,30 @@ const MenuItemCardGrid: React.FC<MenuItemCardGridProps> = React.memo(({
           )}
         </div>
         
-        <p className="text-gray-400 text-xs sm:text-sm leading-relaxed line-clamp-3 mb-5 flex-1">
+        <p className="text-gray-600 text-xs sm:text-sm leading-relaxed mb-1 flex-1 line-clamp-4">
           {(() => {
             const desc = getLocalizedDesc(item);
+            const pricesArr = [item.price, item.price2, item.price3, item.price4].filter(p => p && p.trim() !== '');
             const parts = desc.split('/');
             
-            if (isMultiPrice) {
-              if (parts.length > prices.length) {
-                return parts[0];
-              } else if (parts.length === prices.length) {
-                return "";
-              }
+            let finalDesc = parts[0].trim();
+            
+            // Deduplicate if description is repeated "Desc Desc" (simple check)
+            const midpoint = Math.floor(finalDesc.length / 2);
+            if (finalDesc.length > 5 && 
+                finalDesc.slice(0, midpoint).trim().toLowerCase() === finalDesc.slice(midpoint).trim().toLowerCase()) {
+              finalDesc = finalDesc.slice(0, midpoint).trim();
             }
-            return parts[0];
+
+            return (
+              <>
+                {finalDesc}
+                {pricesArr.length > 1 && finalDesc.length > 0 && <span> </span>}
+                {renderPrice(item)}
+              </>
+            );
           })()}
         </p>
-
-        {renderPrice(item)}
       </div>
 
       <ImageModal 
