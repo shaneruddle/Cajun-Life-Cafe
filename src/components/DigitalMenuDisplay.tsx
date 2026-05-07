@@ -246,40 +246,43 @@ const DigitalMenuDisplay = () => {
   }, [language]);
 
   const renderPrice = useCallback((item: MenuItem) => {
-    const prices = [item.price, item.price2, item.price3, item.price4].filter(p => p && p.trim() !== '');
-    if (prices.length <= 1) return null;
+    const extraPrices = [item.price2, item.price3, item.price4].filter(p => p && p.trim() !== '');
+    if (extraPrices.length === 0) return null;
 
     const desc = getLocalizedDesc(item);
     const proteins = desc.split('/');
+    const totalPricesCount = [item.price, item.price2, item.price3, item.price4].filter(p => p && p.trim() !== '').length;
 
     // Prioritize explicit price labels from the item object
     const explicitLabels = [
-      item.priceLabel,
       item.price2Label,
       item.price3Label,
       item.price4Label
-    ].filter((l, i) => i < prices.length);
+    ].filter((l, i) => i < extraPrices.length);
 
     const labels = explicitLabels.map((l, i) => {
       if (l && l.trim()) return l.trim();
       
-      // Fallback to proteins from description if missing explicit labels
-      // Proteins might be: [Desc, Label1, Label2] or [Label1, Label2]
-      if (proteins.length === prices.length + 1) return proteins[i + 1].trim();
-      if (proteins.length === prices.length) return proteins[i].trim();
+      // Fallback to proteins from description
+      // Index in total prices: price2=1, price3=2, price4=3
+      // We want labels for price2, price3, price4.
+      if (proteins.length === totalPricesCount + 1) return proteins[i + 2]?.trim() || `Option ${i + 2}`;
+      if (proteins.length === totalPricesCount) return proteins[i + 1]?.trim() || `Option ${i + 2}`;
       
-      return `Option ${i + 1}`;
+      return `Option ${i + 2}`;
     });
 
     const formattedOptions = labels.map((label, i) => {
       const cleanLabel = label.trim();
       const labelText = cleanLabel.charAt(0).toUpperCase() + cleanLabel.slice(1).toLowerCase();
-      return `${labelText} ฿${prices[i].trim()}`;
+      // Ensure ฿ is applied automatically, removing any existing ones if they exist to avoid duplicates
+      const cleanPrice = extraPrices[i].trim().replace('฿', '');
+      return `${labelText} ฿${cleanPrice}`;
     });
 
     return (
-      <span className="text-sm text-gray-600 leading-relaxed">
-        {formattedOptions.join(' • ')}
+      <span className="text-sm text-gray-600 leading-relaxed italic">
+        {' — '}{formattedOptions.join(' • ')}
       </span>
     );
   }, [getLocalizedDesc]);
@@ -304,23 +307,23 @@ const DigitalMenuDisplay = () => {
   }
 
   return (
-    <div className="min-h-screen bg-cream p-2 sm:p-4 relative">
+    <div className="min-h-screen bg-cream p-1 sm:p-2 relative">
 
       <div className="max-w-6xl mx-auto">
-        <header className="mb-4 lg:mb-8 lg:text-center lg:flex lg:flex-col lg:items-center">
+        <header className="mb-2 lg:mb-4 lg:text-center lg:flex lg:flex-col lg:items-center">
           <div className="hidden lg:block">
-            <h1 className="text-3xl lg:text-5xl font-display font-bold text-terracotta mb-1">Cajun Life Cafe</h1>
+            <h1 className="text-3xl lg:text-5xl font-display font-bold text-terracotta">Cajun Life Cafe</h1>
             <p className="text-[10px] lg:text-xs uppercase tracking-[0.3em] text-gray-400 font-bold">Digital Menu Display</p>
           </div>
         </header>
 
-        <div className="mb-4 lg:mb-6 flex justify-center">
+        <div className="mb-2 lg:mb-4 flex justify-center">
           <LanguageSwitcher language={language} setLanguage={setLanguage} />
         </div>
 
         {/* Category Tabs - Sticky Bar */}
-        <div className="sticky top-0 z-50 py-4 -mx-2 sm:-mx-4 px-2 sm:px-4 mb-6 lg:mb-10 bg-cream/90 backdrop-blur-sm transition-all duration-300 border-b border-transparent hover:border-gray-100">
-          <div className="flex flex-wrap justify-center gap-2">
+        <div className="sticky top-0 z-50 py-2 -mx-1 sm:-mx-2 px-1 sm:px-2 mb-4 lg:mb-6 bg-cream/90 backdrop-blur-sm transition-all duration-300 border-b border-transparent hover:border-gray-100">
+          <div className="flex flex-wrap justify-center gap-1.5">
             {categories.map((cat) => (
               <button
                 key={cat}
@@ -328,7 +331,7 @@ const DigitalMenuDisplay = () => {
                   setActiveCategory(cat);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full font-bold text-[10px] sm:text-sm transition-all border-2 ${
+                className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-full font-bold text-[9px] sm:text-xs transition-all border-2 ${
                   activeCategory === cat 
                   ? "bg-terracotta border-terracotta text-white shadow-lg scale-105" 
                   : "bg-white border-gray-100 text-gray-400 hover:border-terracotta hover:text-terracotta"
@@ -368,7 +371,7 @@ const DigitalMenuDisplay = () => {
                       getLocalizedName={getLocalizedName}
                       getLocalizedDesc={getLocalizedDesc}
                       renderPrice={renderPrice}
-                      priority={index < 10}
+                      priority={index < 2}
                     />
                   ))}
                   {filteredItems.length === 0 && (

@@ -241,48 +241,41 @@ const DigitalMenu = () => {
   }, [language]);
 
   const renderPrice = useCallback((item: MenuItem) => {
-    let prices = item.price.split('/');
-    
-    // If no slashes in primary price, check for separate fields
-    if (prices.length === 1) {
-      const extraPrices = [item.price2, item.price3, item.price4].filter(p => p && p.trim() !== '');
-      if (extraPrices.length > 0) {
-        prices = [item.price, ...extraPrices];
-      }
-    }
-
-    if (prices.length <= 1) return null;
+    const extraPrices = [item.price2, item.price3, item.price4].filter(p => p && p.trim() !== '');
+    if (extraPrices.length === 0) return null;
 
     const desc = getLocalizedDesc(item);
     const proteins = desc.split('/');
+    const totalPricesCount = [item.price, item.price2, item.price3, item.price4].filter(p => p && p.trim() !== '').length;
 
     // Prioritize explicit price labels from the item object
     const explicitLabels = [
-      item.priceLabel,
       item.price2Label,
       item.price3Label,
       item.price4Label
-    ].filter((l, i) => i < prices.length);
+    ].filter((l, i) => i < extraPrices.length);
 
     const labels = explicitLabels.map((l, i) => {
       if (l && l.trim()) return l.trim();
       
-      // Fallback to proteins from description if missing explicit labels
-      if (proteins.length === prices.length + 1) return proteins[i + 1].trim();
-      if (proteins.length === prices.length) return proteins[i].trim();
+      // Fallback to proteins from description
+      if (proteins.length === totalPricesCount + 1) return proteins[i + 2]?.trim() || `Option ${i + 2}`;
+      if (proteins.length === totalPricesCount) return proteins[i + 1]?.trim() || `Option ${i + 2}`;
       
-      return `Option ${i + 1}`;
+      return `Option ${i + 2}`;
     });
 
     const formattedOptions = labels.map((label, i) => {
       const cleanLabel = label.trim();
       const labelText = cleanLabel.charAt(0).toUpperCase() + cleanLabel.slice(1).toLowerCase();
-      return `${labelText} ฿${prices[i].trim()}`;
+      // Ensure ฿ is applied automatically, removing any existing ones if they exist to avoid duplicates
+      const cleanPrice = extraPrices[i].trim().replace('฿', '');
+      return `${labelText} ฿${cleanPrice}`;
     });
 
     return (
-      <span className="text-sm text-gray-600 leading-relaxed">
-        {formattedOptions.join(' • ')}
+      <span className="text-sm text-gray-600 leading-relaxed italic">
+        {' — '}{formattedOptions.join(' • ')}
       </span>
     );
   }, [getLocalizedDesc]);
@@ -409,7 +402,7 @@ const DigitalMenu = () => {
                     getLocalizedName={getLocalizedName}
                     getLocalizedDesc={getLocalizedDesc}
                     renderPrice={renderPrice}
-                    priority={index < 10}
+                    priority={index < 2}
                   />
                 ))
               )}

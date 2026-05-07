@@ -7,22 +7,24 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function getUserRole() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) 
+             ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role 
+             : 'none';
     }
 
     function isAdmin() {
       return isAuthenticated() && 
-             (getUserData().role == 'admin' || 
-              (request.auth.token.email == "info@cajunlifecafe.com" && request.auth.token.email_verified == true));
+             (getUserRole() == 'admin' || 
+              request.auth.token.email == "info@cajunlifecafe.com");
     }
 
     function isMarketing() {
-      return isAuthenticated() && (isAdmin() || getUserData().role == 'marketing');
+      return isAuthenticated() && (isAdmin() || getUserRole() == 'marketing');
     }
 
     function isCashier() {
-      return isAuthenticated() && (isAdmin() || getUserData().role == 'cashier');
+      return isAuthenticated() && (isAdmin() || getUserRole() == 'cashier');
     }
 
     // Admin: Full access to everything

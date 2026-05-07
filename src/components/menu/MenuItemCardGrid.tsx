@@ -33,7 +33,7 @@ const MenuItemCardGrid: React.FC<MenuItemCardGridProps> = React.memo(({
       style={{ contentVisibility: 'auto', containIntrinsicSize: '0 600px' } as React.CSSProperties}
     >
       <div 
-        className="relative w-full h-[400px] mb-4 sm:mb-5 overflow-hidden rounded-[20px] sm:rounded-[32px] cursor-pointer shadow-inner bg-gray-50 flex-shrink-0"
+        className="relative w-full aspect-[3/2] mb-4 sm:mb-5 overflow-hidden rounded-[20px] sm:rounded-[32px] cursor-pointer shadow-inner bg-gray-50 flex-shrink-0"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -56,23 +56,17 @@ const MenuItemCardGrid: React.FC<MenuItemCardGridProps> = React.memo(({
           alt={localizedName} 
           className="w-full h-full object-cover"
           priority={priority}
-          width="600"
-          height="400"
+          aspectRatio="3/2"
         />
-        {!isMultiPrice && (
-          <div className="absolute top-3 right-3 bg-terracotta px-4 py-1.5 rounded-2xl text-white font-black text-sm shadow-lg">
-            ฿{item.price}
-          </div>
-        )}
       </div>
 
       <div className="flex-1 flex flex-col">
         <div className="flex items-baseline w-full gap-2 mb-2 sm:mb-3">
           <h3 className="text-xl sm:text-2xl font-bold text-ink leading-tight group-hover:text-terracotta transition-colors">{localizedName}</h3>
-          {!isMultiPrice && (
+          {item.price && (
             <>
               <div className="flex-1 border-b border-dotted border-gray-200 mb-1" />
-              <span className="text-xl sm:text-2xl font-black text-terracotta whitespace-nowrap shrink-0">฿{item.price}</span>
+              <span className="text-xl sm:text-2xl font-black text-terracotta whitespace-nowrap shrink-0">฿{item.price.replace('฿', '').trim()}</span>
             </>
           )}
         </div>
@@ -80,7 +74,6 @@ const MenuItemCardGrid: React.FC<MenuItemCardGridProps> = React.memo(({
         <p className="text-gray-600 text-xs sm:text-sm leading-relaxed mb-1 flex-1 line-clamp-4">
           {(() => {
             const desc = getLocalizedDesc(item);
-            const pricesArr = [item.price, item.price2, item.price3, item.price4].filter(p => p && p.trim() !== '');
             const parts = desc.split('/');
             
             let finalDesc = parts[0].trim();
@@ -95,7 +88,6 @@ const MenuItemCardGrid: React.FC<MenuItemCardGridProps> = React.memo(({
             return (
               <>
                 {finalDesc}
-                {pricesArr.length > 1 && finalDesc.length > 0 && <span> </span>}
                 {renderPrice(item)}
               </>
             );

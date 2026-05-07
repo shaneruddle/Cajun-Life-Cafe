@@ -54,6 +54,7 @@ interface SortableRowProps {
 }
 
 const SortableRow: React.FC<SortableRowProps> = ({ category, index, startEdit, handleDelete }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
   const {
     attributes,
     listeners,
@@ -69,6 +70,16 @@ const SortableRow: React.FC<SortableRowProps> = ({ category, index, startEdit, h
     zIndex: isDragging ? 1 : 0,
     position: 'relative' as const,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  const onDelete = async () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await handleDelete(category.id!);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -91,16 +102,25 @@ const SortableRow: React.FC<SortableRowProps> = ({ category, index, startEdit, h
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div className="flex justify-end gap-2">
           <button 
-            onClick={() => startEdit(category)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              startEdit(category);
+            }}
             className="p-2 text-gray-400 hover:text-olive transition-colors"
           >
             <Edit2 size={18} />
           </button>
           <button 
-            onClick={() => handleDelete(category.id!)}
-            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDelete();
+            }}
+            disabled={isDeleting}
+            className={`p-2 transition-colors ${isDeleting ? 'text-gray-300' : 'text-gray-400 hover:text-red-500'}`}
           >
-            <Trash2 size={18} />
+            {isDeleting ? <RefreshCw size={18} className="animate-spin" /> : <Trash2 size={18} />}
           </button>
         </div>
       </td>
@@ -204,12 +224,38 @@ export default function CategoriesDashboard() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this category? This will NOT delete items in this category, but they might not show up if you don\'t re-assign them.')) return;
+    if (!id) {
+      console.error("No category ID provided for deletion");
+      setError("Cannot delete: Invalid category ID.");
+      return;
+    }
+
+    if (!window.confirm("Are you sure you want to delete this category?")) return;
+    
+    setError(null);
+    setSuccess(null);
+    
+    console.log(`Starting deletion for category: ${id}`);
+    
     try {
-      await deleteDoc(doc(db, 'categories', id));
+      // 1. Firebase Integration: Use correct ref and doc ID
+      const categoryRef = doc(db, 'categories', id);
+      console.log("Deleting document:", categoryRef.path);
+      await deleteDoc(categoryRef);
+
+      console.log(`Successfully deleted category: ${id}`);
+
+      // 2. State Update: Filter locally for immediate response
+      setCategories(prev => prev.filter(c => c.id !== id));
+
       await logActivity('Category Deleted', `Deleted category ID: ${id}`, 'category');
       setSuccess('Category deleted successfully!');
-    } catch (err) {
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error("Firebase Deletion Error:", err);
+      const errorMessage = err.message || 'Unknown error occurred';
+      setError(`Failed to delete category: ${errorMessage}`);
+      alert(`Delete failed: ${errorMessage}`);
       handleFirestoreError(err, 'delete', `categories/${id}`);
     }
   };

@@ -129,7 +129,12 @@ const SortableRow: React.FC<SortableRowProps> = ({ item, startEdit, handleDelete
         </span>
       </td>
       <td className="px-6 py-4 whitespace-nowrap font-bold text-terracotta">
-        {item.price}
+        ฿{item.price || '0'}
+        {(item.price2 || item.price3 || item.price4) && (
+          <span className="ml-1 text-[10px] text-gray-400 font-normal underline decoration-dotted">
+            + options
+          </span>
+        )}
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <button 
@@ -1023,14 +1028,14 @@ export default function Dashboard() {
                             value={formData.priceLabel}
                             onChange={e => setFormData({...formData, priceLabel: e.target.value})}
                             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none bg-gray-50/50"
-                            placeholder="Label 1 (e.g. Small)"
+                            placeholder="Primary Label (e.g. Small)"
                           />
                           <input 
                             required
                             value={formData.price}
                             onChange={e => setFormData({...formData, price: e.target.value})}
                             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-terracotta outline-none"
-                            placeholder="Price 1"
+                            placeholder="Primary Price"
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-2">

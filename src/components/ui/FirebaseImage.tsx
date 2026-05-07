@@ -7,6 +7,7 @@ interface FirebaseImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   useSkeleton?: boolean;
   priority?: boolean;
   fetchPriority?: 'high' | 'low' | 'auto';
+  aspectRatio?: string;
 }
 
 /**
@@ -21,6 +22,7 @@ export const FirebaseImage: React.FC<FirebaseImageProps> = ({
   className,
   useSkeleton = true,
   priority = false,
+  aspectRatio,
   ...props 
 }) => {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
@@ -52,7 +54,10 @@ export const FirebaseImage: React.FC<FirebaseImageProps> = ({
   return (
     <div 
       className={`relative overflow-hidden ${className || ''}`}
-      style={{ minHeight: props.height ? `${props.height}px` : '100%' }}
+      style={{ 
+        minHeight: props.height ? `${props.height}px` : '100%',
+        aspectRatio: aspectRatio || 'auto'
+      }}
     >
       {resolvedUrl && (
         <img

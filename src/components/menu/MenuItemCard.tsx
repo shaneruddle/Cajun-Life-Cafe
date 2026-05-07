@@ -34,7 +34,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({
     >
       {/* Image Container: 550px width (via card max-w), 400px height, edge-to-edge */}
       <div 
-        className="w-full h-[400px] overflow-hidden flex-shrink-0 bg-gray-50 cursor-pointer relative"
+        className="w-full aspect-[3/2] overflow-hidden flex-shrink-0 bg-gray-50 cursor-pointer relative"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -57,8 +57,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({
           alt={localizedName} 
           className="w-full h-full object-cover"
           priority={priority}
-          width="600"
-          height="400"
+          aspectRatio="3/2"
         />
       </div>
 
@@ -67,11 +66,11 @@ const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({
           <h3 className="text-xl sm:text-2xl font-bold text-ink group-hover:text-terracotta transition-colors leading-tight">
             {localizedName}
           </h3>
-          {!isMultiPrice && (
+          {item.price && (
             <>
               <div className="flex-1 border-b border-dotted border-gray-200 mb-1" />
               <span className="text-xl sm:text-2xl font-black text-terracotta whitespace-nowrap shrink-0">
-                ฿{item.price}
+                ฿{item.price.replace('฿', '').trim()}
               </span>
             </>
           )}
@@ -80,7 +79,6 @@ const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({
         <p className="text-gray-600 text-sm leading-relaxed mb-1 line-clamp-4">
           {(() => {
             const desc = getLocalizedDesc(item);
-            const pricesArr = [item.price, item.price2, item.price3, item.price4].filter(p => p && p.trim() !== '');
             const parts = desc.split('/');
             
             let finalDesc = parts[0].trim();
@@ -95,7 +93,6 @@ const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({
             return (
               <>
                 {finalDesc}
-                {pricesArr.length > 1 && finalDesc.length > 0 && <span> </span>}
                 {renderPrice(item)}
               </>
             );
