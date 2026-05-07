@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { imageService } from '../../services/imageService';
 
 interface FirebaseImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -24,7 +24,6 @@ export const FirebaseImage: React.FC<FirebaseImageProps> = ({
   ...props 
 }) => {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
-  const [imageLoaded, setImageLoaded] = useState(false);
 
   const resolveImage = useCallback(async () => {
     if (!src) {
@@ -44,10 +43,6 @@ export const FirebaseImage: React.FC<FirebaseImageProps> = ({
     resolveImage();
   }, [resolveImage]);
 
-  const handleImageLoad = () => {
-    setImageLoaded(true);
-  };
-
   const handleError = () => {
     if (resolvedUrl !== fallbackSrc) {
       setResolvedUrl(fallbackSrc);
@@ -59,11 +54,6 @@ export const FirebaseImage: React.FC<FirebaseImageProps> = ({
       className={`relative overflow-hidden ${className || ''}`}
       style={{ minHeight: props.height ? `${props.height}px` : '100%' }}
     >
-      {/* Skeleton / Placeholder State */}
-      {useSkeleton && (!resolvedUrl || !imageLoaded) && (
-        <div className="absolute inset-0 bg-gray-100" />
-      )}
-
       {resolvedUrl && (
         <img
           src={resolvedUrl}
@@ -73,7 +63,6 @@ export const FirebaseImage: React.FC<FirebaseImageProps> = ({
           fetchPriority={priority ? "high" : "auto"}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className="w-full h-full object-cover"
-          onLoad={handleImageLoad}
           onError={handleError}
           referrerPolicy="no-referrer"
           {...props}

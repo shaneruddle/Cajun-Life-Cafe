@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 
 // Import the Firebase configuration
@@ -17,6 +17,18 @@ console.log("Initializing Firestore with Database ID:", dbId || "(default)");
 console.log("Initializing Storage with Bucket:", firebaseConfig.storageBucket);
 
 export const db = getFirestore(app, dbId);
+
+// Enable offline persistence
+if (typeof window !== 'undefined') {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn('Firestore persistence failed: Multiple tabs open');
+    } else if (err.code === 'unimplemented') {
+      console.warn('Firestore persistence failed: Browser not supported');
+    }
+  });
+}
+
 export const auth = getAuth(app);
 export const storage = getStorage(app, firebaseConfig.storageBucket);
 

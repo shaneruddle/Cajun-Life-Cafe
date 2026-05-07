@@ -304,39 +304,43 @@ const DigitalMenuDisplay = () => {
   }
 
   return (
-    <div className="min-h-screen bg-cream p-4 sm:p-6 md:p-8 relative">
+    <div className="min-h-screen bg-cream p-2 sm:p-4 relative">
 
       <div className="max-w-6xl mx-auto">
-        <header className="mb-8 lg:mb-20 lg:text-center lg:flex lg:flex-col lg:items-center">
-          {/* Logo removed as requested */}
+        <header className="mb-4 lg:mb-8 lg:text-center lg:flex lg:flex-col lg:items-center">
           <div className="hidden lg:block">
-            <h1 className="text-4xl lg:text-6xl font-display font-bold text-terracotta mb-2">Cajun Life Cafe</h1>
-            <p className="text-xs lg:text-sm uppercase tracking-[0.3em] text-gray-400 font-bold">Digital Menu Display</p>
+            <h1 className="text-3xl lg:text-5xl font-display font-bold text-terracotta mb-1">Cajun Life Cafe</h1>
+            <p className="text-[10px] lg:text-xs uppercase tracking-[0.3em] text-gray-400 font-bold">Digital Menu Display</p>
           </div>
         </header>
 
-        <div className="mb-8 lg:mb-12 flex justify-center">
+        <div className="mb-4 lg:mb-6 flex justify-center">
           <LanguageSwitcher language={language} setLanguage={setLanguage} />
         </div>
 
-        {/* Category Tabs */}
-        <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8 lg:mb-20">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-3 sm:px-8 py-1.5 sm:py-3 rounded-full font-bold text-xs sm:text-lg transition-all border-2 ${
-                activeCategory === cat 
-                ? "bg-terracotta border-terracotta text-white shadow-xl scale-105" 
-                : "bg-white border-gray-100 text-gray-400 hover:border-terracotta hover:text-terracotta"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+        {/* Category Tabs - Sticky Bar */}
+        <div className="sticky top-0 z-50 py-4 -mx-2 sm:-mx-4 px-2 sm:px-4 mb-6 lg:mb-10 bg-cream/90 backdrop-blur-sm transition-all duration-300 border-b border-transparent hover:border-gray-100">
+          <div className="flex flex-wrap justify-center gap-2">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => {
+                  setActiveCategory(cat);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full font-bold text-[10px] sm:text-sm transition-all border-2 ${
+                  activeCategory === cat 
+                  ? "bg-terracotta border-terracotta text-white shadow-lg scale-105" 
+                  : "bg-white border-gray-100 text-gray-400 hover:border-terracotta hover:text-terracotta"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="min-h-[60vh]">
+        <div className="min-h-[60vh] scroll-mt-32">
           <AnimatePresence mode="wait">
             <motion.div 
               key={activeCategory + language}
@@ -378,10 +382,6 @@ const DigitalMenuDisplay = () => {
           </AnimatePresence>
         </div>
 
-        <footer className="mt-32 pt-16 border-t border-gray-200 text-center text-gray-400">
-          <p className="text-lg font-display font-bold text-terracotta mb-2">Cajun Life Cafe</p>
-          <p className="text-sm">Fresh Ingredients • Authentic Recipes • Made with Love</p>
-        </footer>
 
         <MealSummary 
           selectedIngredients={selectedIngredients}

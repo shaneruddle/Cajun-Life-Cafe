@@ -1059,7 +1059,7 @@ function AppContent({ user, setUser, businessInfo, setBusinessInfo, error, setEr
         <Route path="/import" element={(isAdmin || isMarketing) ? <BulkImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. Please login as admin. <Auth onUserChange={setUser} /></div>} />
         <Route path="/import-custom-meals" element={(isAdmin || isMarketing) ? <BulkCustomMealsImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. Please login as admin. <Auth onUserChange={setUser} /></div>} />
       </Routes>
-      {((!isDigitalMenu && !isDashboard && !isStaffApp) || !user) && (
+      {!isDigitalMenu && ((!isDashboard && !isStaffApp) || !user) && (
         <div className="fixed bottom-4 right-4 z-[60]">
           <Auth onUserChange={setUser} />
         </div>

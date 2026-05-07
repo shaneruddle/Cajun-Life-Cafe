@@ -310,26 +310,25 @@ const DigitalMenu = () => {
     <div className="min-h-screen bg-cream flex flex-col">
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Categories */}
-        <aside className="w-64 bg-white border-r border-gray-100 overflow-y-auto p-8 hidden lg:block">
-          <div className="mb-10 flex flex-col items-center">
-            {/* Logo removed as requested */}
-            <h1 className="text-2xl font-display font-bold text-terracotta mb-1">Cajun Life</h1>
-            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Menu Display</p>
+        <aside className="w-64 bg-white border-r border-gray-100 overflow-y-auto p-4 hidden lg:block">
+          <div className="mb-6 flex flex-col items-center">
+            <h1 className="text-xl font-display font-bold text-terracotta mb-0.5">Cajun Life</h1>
+            <p className="text-[9px] uppercase tracking-widest text-gray-400 font-bold">Menu Display</p>
           </div>
           
-          <div className="mb-8 flex justify-center">
+          <div className="mb-6 flex justify-center">
             <LanguageSwitcher language={language} setLanguage={setLanguage} />
           </div>
           
-          <h2 className="text-[10px] uppercase tracking-widest text-gray-400 font-bold mb-6">Categories</h2>
-          <div className="space-y-2">
+          <h2 className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-4">Categories</h2>
+          <div className="space-y-1.5">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`w-full text-left px-5 py-3 rounded-2xl font-medium transition-all ${
+                className={`w-full text-left px-4 py-2 rounded-xl font-medium text-sm transition-all ${
                   activeCategory === cat 
-                  ? "bg-terracotta text-white shadow-md" 
+                  ? "bg-terracotta text-white shadow-sm" 
                   : "text-gray-600 hover:bg-gray-50"
                 }`}
               >
@@ -340,20 +339,20 @@ const DigitalMenu = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="lg:hidden mb-6 flex justify-center">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+          <div className="lg:hidden mb-4 flex justify-center">
             <LanguageSwitcher language={language} setLanguage={setLanguage} />
           </div>
           
           {/* Mobile Categories (Horizontal Scroll) */}
-          <div className="lg:hidden flex overflow-x-auto gap-2 sm:gap-3 mb-8 sm:mb-10 pb-2 no-scrollbar">
+          <div className="lg:hidden flex overflow-x-auto gap-2 mb-6 pb-2 no-scrollbar">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`whitespace-nowrap px-4 sm:px-6 py-2 rounded-full font-medium text-sm sm:text-base transition-all ${
+                className={`whitespace-nowrap px-3 py-1.5 rounded-full font-medium text-xs sm:text-sm transition-all ${
                   activeCategory === cat 
-                  ? "bg-terracotta text-white shadow-lg" 
+                  ? "bg-terracotta text-white shadow-md" 
                   : "bg-white text-ink shadow-sm border border-gray-100"
                 }`}
               >
@@ -362,10 +361,11 @@ const DigitalMenu = () => {
             ))}
           </div>
 
-          <div className="mb-8 sm:mb-12">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-ink">{activeCategory}</h2>
-            <div className="h-1 sm:h-1.5 w-16 sm:w-24 bg-terracotta mt-3 sm:mt-4 rounded-full"></div>
-          </div>          <motion.div 
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-2xl sm:text-3xl font-display font-bold text-ink">{activeCategory}</h2>
+            <div className="h-1 w-12 bg-terracotta mt-2 rounded-full"></div>
+          </div>
+          <motion.div 
             key={activeCategory + language}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -398,7 +398,7 @@ const DigitalMenu = () => {
                   filteredCustomMeals={filteredCustomMeals}
                   isSelected={isSelected}
                   toggleIngredient={toggleIngredient}
-                  isAdminView={true}
+                  isAdminView={false}
                 />
               ) : (
                 filteredItems.map((item, index) => (
