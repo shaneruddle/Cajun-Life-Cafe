@@ -71,28 +71,11 @@ const MenuItemCardGrid: React.FC<MenuItemCardGridProps> = React.memo(({
           )}
         </div>
         
-        <p className="text-gray-600 text-xs sm:text-sm leading-relaxed mb-1 flex-1 line-clamp-4">
-          {(() => {
-            const desc = getLocalizedDesc(item);
-            const parts = desc.split('/');
-            
-            let finalDesc = parts[0].trim();
-            
-            // Deduplicate if description is repeated "Desc Desc" (simple check)
-            const midpoint = Math.floor(finalDesc.length / 2);
-            if (finalDesc.length > 5 && 
-                finalDesc.slice(0, midpoint).trim().toLowerCase() === finalDesc.slice(midpoint).trim().toLowerCase()) {
-              finalDesc = finalDesc.slice(0, midpoint).trim();
-            }
-
-            return (
-              <>
-                {finalDesc}
-                {renderPrice(item)}
-              </>
-            );
-          })()}
+        <p className="text-gray-600 text-xs sm:text-sm leading-relaxed mb-1 flex-1">
+          {getLocalizedDesc(item)}
         </p>
+        
+        {renderPrice(item)}
       </div>
 
       <ImageModal 

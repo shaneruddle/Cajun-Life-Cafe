@@ -73,6 +73,18 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    match /loyalty_customers/{id} {
+      allow read, write: if isAdmin();
+      match /transactions/{txId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
+    match /system_logs/{id} {
+      allow read, write: if isAdmin();
+      allow create: if isAuthenticated(); // Allow any staff to log
+    }
+
     // Employees: Only read their own data (handled by users match)
     // Marketing: Handled by isAdmin/isMarketing checks in relevant collections if any
   }

@@ -218,74 +218,35 @@ const DigitalMenuDisplay = () => {
   }, [language]);
 
   const getLocalizedDesc = useCallback((item: MenuItem) => {
-    const englishDesc = item.description || "";
-    const englishParts = englishDesc.split('/');
-    
-    let localizedDesc = "";
     switch (language) {
-      case 'zh': localizedDesc = item.description_chinese || ""; break;
-      case 'ru': localizedDesc = item.description_russian || ""; break;
-      case 'th': localizedDesc = item.description_thai || ""; break;
-      default: localizedDesc = englishDesc;
-    }
-
-    if (language === 'en' || !localizedDesc) return englishDesc;
-
-    const localizedParts = localizedDesc.split('/');
-    
-    // If localized has labels, use them. If not, use English labels.
-    if (localizedParts.length > 1) {
-      return localizedDesc;
-    } else {
-      // Localized is just a main description, append English labels if they exist
-      if (englishParts.length > 1) {
-        return [localizedParts[0], ...englishParts.slice(1)].join(' / ');
-      }
-      return localizedParts[0];
+      case 'zh': return item.description_chinese || item.description || "";
+      case 'ru': return item.description_russian || item.description || "";
+      case 'th': return item.description_thai || item.description || "";
+      default: return item.description || "";
     }
   }, [language]);
 
   const renderPrice = useCallback((item: MenuItem) => {
-    const extraPrices = [item.price2, item.price3, item.price4].filter(p => p && p.trim() !== '');
-    if (extraPrices.length === 0) return null;
+    const extraPriceData = [
+      { price: item.price2, label: item.price2Label },
+      { price: item.price3, label: item.price3Label },
+      { price: item.price4, label: item.price4Label }
+    ].filter(p => p.price && p.price.trim() !== '');
 
-    const desc = getLocalizedDesc(item);
-    const proteins = desc.split('/');
-    const totalPricesCount = [item.price, item.price2, item.price3, item.price4].filter(p => p && p.trim() !== '').length;
+    if (extraPriceData.length === 0) return null;
 
-    // Prioritize explicit price labels from the item object
-    const explicitLabels = [
-      item.price2Label,
-      item.price3Label,
-      item.price4Label
-    ].filter((l, i) => i < extraPrices.length);
-
-    const labels = explicitLabels.map((l, i) => {
-      if (l && l.trim()) return l.trim();
-      
-      // Fallback to proteins from description
-      // Index in total prices: price2=1, price3=2, price4=3
-      // We want labels for price2, price3, price4.
-      if (proteins.length === totalPricesCount + 1) return proteins[i + 2]?.trim() || `Option ${i + 2}`;
-      if (proteins.length === totalPricesCount) return proteins[i + 1]?.trim() || `Option ${i + 2}`;
-      
-      return `Option ${i + 2}`;
-    });
-
-    const formattedOptions = labels.map((label, i) => {
-      const cleanLabel = label.trim();
-      const labelText = cleanLabel.charAt(0).toUpperCase() + cleanLabel.slice(1).toLowerCase();
-      // Ensure ฿ is applied automatically, removing any existing ones if they exist to avoid duplicates
-      const cleanPrice = extraPrices[i].trim().replace('฿', '');
-      return `${labelText} ฿${cleanPrice}`;
+    const formattedOptions = extraPriceData.map((p) => {
+      const labelText = p.label ? p.label.trim() : "";
+      const cleanPrice = p.price!.trim().replace('฿', '');
+      return `${labelText} ฿${cleanPrice}`.trim();
     });
 
     return (
-      <span className="text-sm text-gray-600 leading-relaxed italic">
-        {' — '}{formattedOptions.join(' • ')}
-      </span>
+      <div className="mt-2 pt-2 border-t border-gray-50 text-lg font-black text-terracotta">
+        {formattedOptions.join(' — ')}
+      </div>
     );
-  }, [getLocalizedDesc]);
+  }, []);
 
   if (isLoading) {
     return (

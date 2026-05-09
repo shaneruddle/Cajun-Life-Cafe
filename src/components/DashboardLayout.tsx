@@ -6,6 +6,7 @@ import {
   Utensils, 
   Menu as MenuIcon, 
   Users, 
+  Star,
   ChevronDown, 
   ChevronRight,
   ChevronLeft,
@@ -196,6 +197,16 @@ export default function DashboardLayout({ user }: { user: any }) {
               to="/dashboard/finance"
               isCollapsed={isCollapsed}
               isActive={isSubActive('/dashboard/finance')}
+            />
+          )}
+
+          {user?.role === 'admin' && (
+            <SidebarItem 
+              icon={<Star size={20} />} 
+              label="Loyalty & Payments" 
+              to="/dashboard/loyalty"
+              isCollapsed={isCollapsed}
+              isActive={isActive('/dashboard/loyalty')}
             />
           )}
 

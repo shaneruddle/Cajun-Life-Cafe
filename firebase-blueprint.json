@@ -151,6 +151,20 @@
         "uid": { "type": "string" }
       },
       "required": ["month", "employeeId", "totalDue", "uid"]
+    },
+    "LoyaltyCustomer": {
+      "title": "Loyalty Customer",
+      "description": "Customer in the loyalty and wallet system.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "mobile": { "type": "string" },
+        "balance": { "type": "number" },
+        "isVerified": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "mobile", "balance"]
     }
   },
   "firestore": {
@@ -189,6 +203,10 @@
     "/payroll_summaries/{summaryId}": {
       "schema": "PayrollSummary",
       "description": "Collection of monthly payroll summaries."
+    },
+    "/loyalty_customers/{customerId}": {
+      "schema": "LoyaltyCustomer",
+      "description": "Collection of loyalty customers."
     }
   }
 }

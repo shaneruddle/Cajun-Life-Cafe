@@ -65,6 +65,7 @@ import DashboardLayout from "./components/DashboardLayout";
 import UserManagement from "./components/UserManagement";
 import ImageManagement from "./components/ImageManagement";
 import SystemLogs from "./components/SystemLogs";
+import LoyaltyDashboard from "./components/LoyaltyDashboard";
 import { fetchPlaceDetails, BusinessInfo } from "./services/googlePlaces";
 import { Toaster, toast } from "sonner";
 
@@ -349,67 +350,31 @@ switch (language) {
 };
 
 const getLocalizedDesc = (item: MenuItem) => {
-  const englishDesc = item.description || "";
-  const englishParts = englishDesc.split('/');
-  
-  let localizedDesc = "";
   switch (language) {
-    case 'zh': localizedDesc = item.description_chinese || ""; break;
-    case 'ru': localizedDesc = item.description_russian || ""; break;
-    case 'th': localizedDesc = item.description_thai || ""; break;
-    default: localizedDesc = englishDesc;
-  }
-
-  if (language === 'en' || !localizedDesc) return englishDesc;
-
-  const localizedParts = localizedDesc.split('/');
-  
-  // If localized has labels, use them. If not, use English labels.
-  if (localizedParts.length > 1) {
-    return localizedDesc;
-  } else {
-    // Localized is just a main description, append English labels if they exist
-    if (englishParts.length > 1) {
-      return [localizedParts[0], ...englishParts.slice(1)].join(' / ');
-    }
-    return localizedParts[0];
+    case 'zh': return item.description_chinese || item.description || "";
+    case 'ru': return item.description_russian || item.description || "";
+    case 'th': return item.description_thai || item.description || "";
+    default: return item.description || "";
   }
 };
 
 const renderPrice = (item: MenuItem) => {
-  const priceData = [
-    { price: item.price, label: item.priceLabel },
+  const extraPriceData = [
     { price: item.price2, label: item.price2Label },
     { price: item.price3, label: item.price3Label },
     { price: item.price4, label: item.price4Label }
   ].filter(p => p.price && p.price.trim() !== '');
 
-  if (priceData.length > 1) {
-    const desc = getLocalizedDesc(item);
-    const proteins = desc.split('/');
-    
-    return (
-      <div className="space-y-1 mt-3 pt-3 border-t border-gray-50">
-        {priceData.map((p, i) => {
-          // Use explicit label if available, otherwise fallback to description parsing
-          let displayLabel = p.label;
-          if (!displayLabel) {
-            if (proteins.length === priceData.length + 1) {
-              displayLabel = proteins[i + 1];
-            } else if (proteins.length === priceData.length) {
-              displayLabel = proteins[i];
-            } else {
-              displayLabel = proteins[i] || `Option ${i + 1}`;
-            }
-          }
+  if (extraPriceData.length > 0) {
+    const formattedOptions = extraPriceData.map((p) => {
+      const labelText = p.label ? p.label.trim() : "";
+      const cleanPrice = p.price!.trim().replace('฿', '');
+      return `${labelText} ฿${cleanPrice}`.trim();
+    });
 
-          return (
-            <div key={i} className="flex justify-between items-center text-sm">
-              <span className="text-gray-500 font-medium">{displayLabel?.trim()}</span>
-              <span className="text-terracotta font-bold">฿{p.price?.trim()}</span>
-            </div>
-          );
-        })}
+    return (
+      <div className="mt-2 pt-2 border-t border-gray-50 text-lg font-black text-terracotta">
+        {formattedOptions.join(' — ')}
       </div>
     );
   }
@@ -1052,6 +1017,7 @@ function AppContent({ user, setUser, businessInfo, setBusinessInfo, error, setEr
           <Route path="finance" element={isAdmin ? <FinanceDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="finance/import" element={isAdmin ? <BulkFinanceImport /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="users" element={isAdmin ? <UserManagement /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="loyalty" element={isAdmin ? <LoyaltyDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="images" element={(isAdmin || isMarketing) ? <ImageManagement /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="logs" element={isAdmin ? <SystemLogs /> : <div className="p-20 text-center">Access Denied</div>} />
         </Route>
