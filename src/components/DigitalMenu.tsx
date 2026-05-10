@@ -238,7 +238,7 @@ const DigitalMenu = () => {
 
     return (
       <div className="mt-2 pt-2 border-t border-gray-50 text-lg font-black text-terracotta">
-        {formattedOptions.join(' — ')}
+        {formattedOptions.join(' ')}
       </div>
     );
   }, []);

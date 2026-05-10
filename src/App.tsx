@@ -316,10 +316,15 @@ const Menu = () => {
       
       setItems(sortedItems);
       if (sortedItems.length > 0 && !activeCategory) {
-        // Find the first category from the ordered list that has items
-        const firstCat = categoryList.length > 0 
-          ? categoryList.find(c => sortedItems.some(i => i.category === c.name))?.name || sortedItems[0].category
-          : sortedItems[0].category;
+        // Find the first category from the ordered list that has items, excluding "More Add Ons"
+        const availableCats = categoryList.length > 0 
+          ? categoryList.filter(c => c.name !== "More Add Ons")
+          : [];
+        
+        const firstCat = availableCats.length > 0
+          ? availableCats.find(c => sortedItems.some(i => i.category === c.name))?.name || sortedItems.find(i => i.category !== "More Add Ons")?.category || sortedItems[0].category
+          : sortedItems.find(i => i.category !== "More Add Ons")?.category || sortedItems[0].category;
+          
         setActiveCategory(firstCat);
       }
     }, (err) => {
@@ -329,11 +334,14 @@ const Menu = () => {
   }, [categoryList]);
 
   const categories = useMemo(() => {
+    let cats: string[] = [];
     if (categoryList.length > 0) {
-      return categoryList.map(c => c.name);
+      cats = categoryList.map(c => c.name);
+    } else {
+      cats = Array.from(new Set<string>(items.map(item => item.category))).sort();
     }
-    const cats = Array.from(new Set<string>(items.map(item => item.category)));
-    return cats.sort();
+    // Exclude "More Add Ons" from the main landing page
+    return cats.filter(cat => cat !== "More Add Ons");
   }, [items, categoryList]);
 
 const filteredItems = useMemo(() => {
@@ -374,7 +382,7 @@ const renderPrice = (item: MenuItem) => {
 
     return (
       <div className="mt-2 pt-2 border-t border-gray-50 text-lg font-black text-terracotta">
-        {formattedOptions.join(' — ')}
+        {formattedOptions.join(' ')}
       </div>
     );
   }

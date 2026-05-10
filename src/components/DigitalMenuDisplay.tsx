@@ -15,6 +15,13 @@ import BuildYourOwn from "./menu/BuildYourOwn";
 import MealSummary from "./menu/MealSummary";
 import LanguageSwitcher from "./menu/LanguageSwitcher";
 
+const SimpleListMember = ({ item, getLocalizedName }: { item: MenuItem; getLocalizedName: (item: MenuItem) => string }) => (
+  <div className="flex justify-between items-center py-4 border-b border-gray-100 group hover:bg-cream/50 px-4 rounded-2xl transition-colors bg-white/50 backdrop-blur-sm">
+    <span className="font-bold text-ink text-sm sm:text-base">{getLocalizedName(item)}</span>
+    <span className="font-black text-terracotta text-sm sm:text-base">฿{item.price?.replace('฿', '').trim()}</span>
+  </div>
+);
+
 type Language = 'en' | 'zh' | 'ru' | 'th';
 
 interface SelectedIngredient {
@@ -243,7 +250,7 @@ const DigitalMenuDisplay = () => {
 
     return (
       <div className="mt-2 pt-2 border-t border-gray-50 text-lg font-black text-terracotta">
-        {formattedOptions.join(' — ')}
+        {formattedOptions.join(' ')}
       </div>
     );
   }, []);
@@ -323,17 +330,25 @@ const DigitalMenuDisplay = () => {
                   toggleIngredient={toggleIngredient}
                 />
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className={activeCategory === "More Add Ons" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "grid grid-cols-1 lg:grid-cols-2 gap-6"}>
                   {filteredItems.map((item, index) => (
-                    <MenuItemCard 
-                      key={item.id}
-                      item={item}
-                      language={language}
-                      getLocalizedName={getLocalizedName}
-                      getLocalizedDesc={getLocalizedDesc}
-                      renderPrice={renderPrice}
-                      priority={index < 2}
-                    />
+                    activeCategory === "More Add Ons" ? (
+                      <SimpleListMember 
+                        key={item.id} 
+                        item={item} 
+                        getLocalizedName={getLocalizedName} 
+                      />
+                    ) : (
+                      <MenuItemCard 
+                        key={item.id}
+                        item={item}
+                        language={language}
+                        getLocalizedName={getLocalizedName}
+                        getLocalizedDesc={getLocalizedDesc}
+                        renderPrice={renderPrice}
+                        priority={index < 2}
+                      />
+                    )
                   ))}
                   {filteredItems.length === 0 && (
                     <div className="col-span-full text-center py-24 bg-white/50 rounded-[40px] border-2 border-dashed border-gray-200">
