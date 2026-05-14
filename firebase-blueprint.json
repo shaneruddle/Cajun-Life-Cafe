@@ -157,6 +157,8 @@
       "description": "Customer in the loyalty and wallet system.",
       "type": "object",
       "properties": {
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
         "name": { "type": "string" },
         "mobile": { "type": "string" },
         "balance": { "type": "number" },
@@ -165,6 +167,32 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "mobile", "balance"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A wallet transaction (top-up, redeem, bonus).",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["TOP_UP", "REDEEM", "BONUS"] },
+        "amount": { "type": "number" },
+        "bonus": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "details": { "type": "string" },
+        "memo": { "type": "string" },
+        "receiptUrl": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "qty": { "type": "number" },
+              "price": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["type", "amount", "timestamp"]
     }
   },
   "firestore": {
@@ -207,6 +235,10 @@
     "/loyalty_customers/{customerId}": {
       "schema": "LoyaltyCustomer",
       "description": "Collection of loyalty customers."
+    },
+    "/loyalty_customers/{customerId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Collection of wallet transactions for a customer."
     }
   }
 }

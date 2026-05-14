@@ -66,6 +66,7 @@ import UserManagement from "./components/UserManagement";
 import ImageManagement from "./components/ImageManagement";
 import SystemLogs from "./components/SystemLogs";
 import LoyaltyDashboard from "./components/LoyaltyDashboard";
+import CRMDirectory from "./components/CRMDirectory";
 import { fetchPlaceDetails, BusinessInfo } from "./services/googlePlaces";
 import { Toaster, toast } from "sonner";
 
@@ -964,10 +965,9 @@ function AppContent({ user, setUser, businessInfo, setBusinessInfo, error, setEr
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user && isCashierOnly && !isStaffApp) {
-      navigate("/expense");
-    }
-  }, [user, isCashierOnly, isStaffApp, navigate]);
+    // If cashier, they can now access loyalty and expense via dashboard
+    // No more forced redirect to /expense only
+  }, [user, isCashierOnly, navigate]);
 
   useEffect(() => {
     fetchPlaceDetails(PLACE_ID)
@@ -1012,20 +1012,21 @@ function AppContent({ user, setUser, businessInfo, setBusinessInfo, error, setEr
         </div>
       )}
       <Routes>
-        <Route path="/" element={isCashierOnly ? <div className="h-screen bg-cream flex items-center justify-center">Redirecting to Staff Portal...</div> : <MainSite isAdmin={isAdmin} businessInfo={businessInfo} />} />
+        <Route path="/" element={isCashierOnly ? <Navigate to="/expense" replace /> : <MainSite isAdmin={isAdmin} businessInfo={businessInfo} />} />
         <Route path="/menu" element={isCashierOnly ? <div className="h-screen bg-cream flex items-center justify-center">Access Denied</div> : <DigitalMenuDisplay />} />
         <Route path="/digital-menu" element={isCashierOnly ? <div className="h-screen bg-cream flex items-center justify-center">Access Denied</div> : <DigitalMenuDisplay />} />
         <Route path="/expense" element={isStaff ? <ExpenseEntry /> : <div className="pt-32 text-center h-screen bg-cream">Access Denied. Please login with a staff account.</div>} />
         
         {/* Dashboard Routes with Sidebar Layout */}
-        <Route path="/dashboard" element={(isAdmin || isMarketing) ? <DashboardLayout user={user} /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>}>
-          <Route index element={(isAdmin || isMarketing) ? <Dashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+        <Route path="/dashboard" element={(isAdmin || isMarketing || isStaff) ? <DashboardLayout user={user} /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>}>
+          <Route index element={(isAdmin || isMarketing) ? <Dashboard /> : <Navigate to="/dashboard/loyalty" />} />
           <Route path="categories" element={(isAdmin || isMarketing) ? <CategoriesDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="custom-meals" element={(isAdmin || isMarketing) ? <CustomMealsDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="finance" element={isAdmin ? <FinanceDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="finance/import" element={isAdmin ? <BulkFinanceImport /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="users" element={isAdmin ? <UserManagement /> : <div className="p-20 text-center">Access Denied</div>} />
-          <Route path="loyalty" element={isAdmin ? <LoyaltyDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="loyalty" element={(isAdmin || isStaff) ? <LoyaltyDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="crm" element={(isAdmin || isMarketing) ? <CRMDirectory /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="images" element={(isAdmin || isMarketing) ? <ImageManagement /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="logs" element={isAdmin ? <SystemLogs /> : <div className="p-20 text-center">Access Denied</div>} />
         </Route>

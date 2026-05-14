@@ -290,8 +290,8 @@ const DigitalMenuDisplay = () => {
         </div>
 
         {/* Category Tabs - Sticky Bar */}
-        <div className="sticky top-0 z-50 py-2 -mx-1 sm:-mx-2 px-1 sm:px-2 mb-4 lg:mb-6 bg-cream/90 backdrop-blur-sm transition-all duration-300 border-b border-transparent hover:border-gray-100">
-          <div className="flex flex-wrap justify-center gap-1.5">
+        <div className="sticky top-0 z-50 py-3 -mx-1 sm:-mx-2 px-1 sm:px-2 mb-4 lg:mb-8 bg-cream/95 backdrop-blur-md transition-all duration-300 border-b border-gray-100/50">
+          <div className="flex overflow-x-auto no-scrollbar scroll-smooth gap-3 px-2 pb-1">
             {categories.map((cat) => (
               <button
                 key={cat}
@@ -299,10 +299,10 @@ const DigitalMenuDisplay = () => {
                   setActiveCategory(cat);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-full font-bold text-[9px] sm:text-xs transition-all border-2 ${
+                className={`px-6 py-3 rounded-full font-bold text-sm sm:text-base whitespace-nowrap transition-all border-2 flex-shrink-0 ${
                   activeCategory === cat 
-                  ? "bg-terracotta border-terracotta text-white shadow-lg scale-105" 
-                  : "bg-white border-gray-100 text-gray-400 hover:border-terracotta hover:text-terracotta"
+                  ? "bg-terracotta border-terracotta text-white shadow-xl shadow-terracotta/20 scale-105" 
+                  : "bg-white border-gray-200 text-gray-600 hover:border-terracotta hover:text-terracotta active:scale-95"
                 }`}
               >
                 {cat}

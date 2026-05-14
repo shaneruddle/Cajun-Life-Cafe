@@ -200,13 +200,23 @@ export default function DashboardLayout({ user }: { user: any }) {
             />
           )}
 
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'cashier') && (
             <SidebarItem 
               icon={<Star size={20} />} 
               label="Loyalty & Payments" 
               to="/dashboard/loyalty"
               isCollapsed={isCollapsed}
               isActive={isActive('/dashboard/loyalty')}
+            />
+          )}
+
+          {user?.role === 'admin' && (
+            <SidebarItem 
+              icon={<Users size={20} />} 
+              label="CRM & Directory" 
+              to="/dashboard/crm"
+              isCollapsed={isCollapsed}
+              isActive={isActive('/dashboard/crm')}
             />
           )}
 

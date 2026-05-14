@@ -126,6 +126,178 @@ async function startServer() {
     }
   });
 
+  app.post("/api/send-otp", async (req, res) => {
+    const { to } = req.body;
+    const accountSid = process.env.VITE_TWILIO_ACCOUNT_SID || process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.VITE_TWILIO_AUTH_TOKEN || process.env.TWILIO_AUTH_TOKEN;
+    const verifyServiceSid = process.env.VITE_TWILIO_VERIFY_SERVICE_SID || process.env.TWILIO_VERIFY_SERVICE_SID;
+
+    if (!accountSid || !authToken || !verifyServiceSid) {
+      return res.status(500).json({ success: false, error: "Twilio Verify credentials not configured" });
+    }
+
+    try {
+      const url = `https://verify.twilio.com/v2/Services/${verifyServiceSid}/Verifications`;
+      const authHeader = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+      
+      const params = new URLSearchParams();
+      params.append('To', to);
+      params.append('Channel', 'sms');
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${authHeader}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params.toString()
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json() as any;
+        return res.status(response.status).json({ success: false, error: errorData.message || response.statusText });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Twilio Verify error:", error);
+      res.status(500).json({ success: false, error: error instanceof Error ? error.message : "Internal server error" });
+    }
+  });
+
+  app.post("/api/verify-otp", async (req, res) => {
+    const { to, code } = req.body;
+    const accountSid = process.env.VITE_TWILIO_ACCOUNT_SID || process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.VITE_TWILIO_AUTH_TOKEN || process.env.TWILIO_AUTH_TOKEN;
+    const verifyServiceSid = process.env.VITE_TWILIO_VERIFY_SERVICE_SID || process.env.TWILIO_VERIFY_SERVICE_SID;
+
+    if (!accountSid || !authToken || !verifyServiceSid) {
+      return res.status(500).json({ success: false, error: "Twilio Verify credentials not configured" });
+    }
+
+    try {
+      const url = `https://verify.twilio.com/v2/Services/${verifyServiceSid}/VerificationCheck`;
+      const authHeader = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+      
+      const params = new URLSearchParams();
+      params.append('To', to);
+      params.append('Code', code);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${authHeader}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params.toString()
+      });
+
+      const data = await response.json() as any;
+
+      if (!response.ok) {
+        return res.status(response.status).json({ success: false, error: data.message || response.statusText });
+      }
+
+      if (data.status === 'approved') {
+        res.json({ success: true });
+      } else {
+        res.json({ success: false, error: "Invalid verification code" });
+      }
+    } catch (error) {
+      console.error("Twilio Verify check error:", error);
+      res.status(500).json({ success: false, error: error instanceof Error ? error.message : "Internal server error" });
+    }
+  });
+
+  app.post("/api/send-sms", async (req, res) => {
+    const { to, body } = req.body;
+    const accountSid = process.env.VITE_TWILIO_ACCOUNT_SID || process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.VITE_TWILIO_AUTH_TOKEN || process.env.TWILIO_AUTH_TOKEN;
+    const fromNumber = process.env.VITE_TWILIO_PHONE_NUMBER || process.env.TWILIO_PHONE_NUMBER;
+    const messagingServiceSid = process.env.VITE_TWILIO_MESSAGING_SERVICE_SID || process.env.TWILIO_MESSAGING_SERVICE_SID;
+
+    if (!accountSid || !authToken || (!fromNumber && !messagingServiceSid)) {
+      return res.status(500).json({ success: false, error: "Twilio credentials not configured" });
+    }
+
+    try {
+      const twilio = (await import('twilio')).default;
+      const client = twilio(accountSid, authToken);
+
+      const senderId = process.env.VITE_TWILIO_SENDER_ID || process.env.TWILIO_SENDER_ID || "CajunCafe";
+      
+      console.log(`Attempting to send SMS to ${to}. Configuration: SenderID=${senderId}, FromNumber=${fromNumber}, MessagingService=${messagingServiceSid ? 'YES' : 'NO'}`);
+      
+      let message;
+      try {
+        if (messagingServiceSid) {
+          console.log(`Using Messaging Service: ${messagingServiceSid}`);
+          message = await client.messages.create({
+            body: body,
+            messagingServiceSid: messagingServiceSid,
+            to: to
+          });
+        } else {
+          // Thailand (+66) often requires registration for Alphanumeric Sender IDs.
+          // If destination is Thailand and we have a From phone number, prefer it over Alphanumeric ID.
+          const usePhoneInsteadOfAlpha = to.startsWith('+66') && fromNumber;
+          
+          if (usePhoneInsteadOfAlpha) {
+            console.log(`Forcing phone number for Thailand destination: ${fromNumber}`);
+            message = await client.messages.create({
+              body: body,
+              from: fromNumber,
+              to: to
+            });
+          } else {
+            console.log(`Using Sender ID: ${senderId}`);
+            message = await client.messages.create({
+              body: body,
+              from: senderId,
+              to: to
+            });
+          }
+        }
+      } catch (innerError: any) {
+        console.warn(`Primary send attempt failed (Code ${innerError.code}): ${innerError.message}`);
+        
+        // Fallback or specific error handling
+        if (innerError.code === 21612 && fromNumber && senderId !== fromNumber) {
+          console.log(`Sender ID "${senderId}" not supported for ${to}. Retrying with phone number: ${fromNumber}`);
+          message = await client.messages.create({
+            body: body,
+            from: fromNumber,
+            to: to
+          });
+        } else {
+          throw innerError;
+        }
+      }
+
+      console.log(`SMS sent successfully. SID: ${message.sid}`);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Twilio SDK error:", error);
+      
+      let errorMessage = error.message || "Internal Twilio error";
+      
+      if (error.code === 21612) {
+        errorMessage = `Alphanumeric Sender ID is not supported for ${to}. Please use a Twilio Phone Number or Messaging Service with Thailand SMS permissions enabled.`;
+      } else if (error.code === 21606) {
+         errorMessage = `The 'From' number ${fromNumber} is not a valid sender for the destination ${to}. Please check your Twilio geo-permissions for Thailand.`;
+      } else if (error.message.includes("current combination of 'To' and/or 'From'")) {
+         errorMessage = `Twilio cannot send this message from ${fromNumber} to ${to}. This usually means SMS Geo-Permissions for Thailand are not enabled in your Twilio Console, or the sender type is not allowed for this destination.`;
+      }
+
+      res.status(500).json({ 
+        success: false, 
+        error: errorMessage,
+        code: error.code,
+        moreInfo: error.moreInfo || 'https://www.twilio.com/docs/errors/' + error.code
+      });
+    }
+  });
+
   app.post("/api/contact", async (req, res) => {
     const { name, email, message } = req.body;
     console.log("New Contact Form Submission:");

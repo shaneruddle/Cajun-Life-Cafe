@@ -130,7 +130,53 @@ export interface SystemLog {
   userEmail: string;
   userId: string;
   timestamp: string;
-  category: 'menu' | 'category' | 'custom_meal' | 'finance' | 'user' | 'system' | 'image';
+  category: 'menu' | 'category' | 'custom_meal' | 'finance' | 'user' | 'system' | 'image' | 'crm' | 'loyalty';
+}
+
+export interface CRMCustomer {
+  id?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  mobile: string;
+  notes?: string;
+  lastVisit?: string;
+  totalSpend: number;
+  loyaltyId?: string; // Links to loyalty_customers
+  status: 'active' | 'inactive';
+  uid: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LoyaltyCustomer {
+  id?: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  mobile: string;
+  balance: number;
+  createdAt: any;
+  updatedAt: any;
+  isVerified: boolean;
+}
+
+export interface LoyaltyTransactionItem {
+  name: string;
+  qty: number;
+  price: number;
+}
+
+export interface LoyaltyTransaction {
+  id: string;
+  type: 'TOP_UP' | 'REDEEM' | 'BONUS';
+  amount: number;
+  bonus?: number;
+  timestamp: any;
+  details: string;
+  receiptUrl?: string;
+  memo?: string;
+  items?: LoyaltyTransactionItem[];
 }
 
 export interface Employee {
