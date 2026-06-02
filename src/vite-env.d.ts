@@ -1,13 +1,17 @@
 /// <reference types="vite/client" />
-
 interface ImportMetaEnv {
+    // Google Maps embed key (client-side map display only — restrict by HTTP referrer in Google Cloud Console)
   readonly VITE_GOOGLE_MAPS_API_KEY: string;
-  readonly VITE_TWILIO_ACCOUNT_SID: string;
-  readonly VITE_TWILIO_AUTH_TOKEN: string;
-  readonly VITE_TWILIO_PHONE_NUMBER: string;
-  readonly VITE_TWILIO_VERIFY_SERVICE_SID: string;
+    // Firebase client-side config
+  readonly VITE_FIREBASE_API_KEY: string;
+    readonly VITE_FIREBASE_AUTH_DOMAIN: string;
+    readonly VITE_FIREBASE_PROJECT_ID: string;
+    readonly VITE_FIREBASE_STORAGE_BUCKET: string;
+    readonly VITE_FIREBASE_MESSAGING_SENDER_ID: string;
+    readonly VITE_FIREBASE_APP_ID: string;
+    readonly VITE_FIREBASE_DATABASE_ID: string;
+    // NOTE: Twilio credentials must NEVER use VITE_ prefix — they are server-side only (see server.ts)
 }
-
 interface ImportMeta {
-  readonly env: ImportMetaEnv;
+    readonly env: ImportMetaEnv;
 }
