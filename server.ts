@@ -353,6 +353,37 @@ async function startServer() {
   });
 
   // Vite middleware for development
+
+    // Gemini AI proxy endpoint — keeps API key server-side only
+    app.post("/api/ai", async (req, res) => {
+          const { prompt, context } = req.body;
+          const apiKey = process.env.GEMINI_API_KEY;
+          if (!apiKey) {
+                  return res.status(500).json({ error: "Gemini API key not configured on the server." });
+          }
+          try {
+                  const response = await fetch(
+                            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+                    {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                              contents: [{ parts: [{ text: context ? `${context}\n\n${prompt}` : prompt }] }],
+                                }),
+                    }
+                          );
+                  if (!response.ok) {
+                            const errText = await response.text();
+                            return res.status(response.status).json({ error: `Gemini API error: ${errText}` });
+                  }
+                  const data = await response.json() as any;
+                  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+                  res.json({ success: true, text });
+          } catch (error) {
+                  console.error("Gemini proxy error:", error);
+                  res.status(500).json({ error: "Internal server error calling Gemini API." });
+          }
+    });
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
