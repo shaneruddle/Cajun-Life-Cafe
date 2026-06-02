@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
-import firebaseConfig from '../../firebase-applet-config.json';
+const firebaseConfig = { storageBucket: 'cajun-life-cafe.firebasestorage.app' };
 import { imageService } from '../services/imageService';
 import { MenuItem, Category, OperationType } from '../types';
 import { handleFirestoreError } from '../utils/firestore';
