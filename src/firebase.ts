@@ -14,7 +14,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-export const db = getFirestore(app);
+// Menu data lives in the AI Studio named database
+export const db = getFirestore(app, "ai-studio-88dfc183-b7e7-45b8-b831-62b1a7bbdb29");
 export const auth = getAuth(app);
 export const storage = getStorage(app, firebaseConfig.storageBucket);
 
