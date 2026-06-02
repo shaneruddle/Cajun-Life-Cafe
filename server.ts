@@ -13,12 +13,12 @@ async function startServer() {
   const app = express();
   const PORT = parseInt(process.env.PORT || "8080");
 
-  app.use(express.json({ limit: "10mb" }));
+  app.use(express.json({ limit: "20mb" }));
 
   const publicDir = path.join(process.cwd(), "public");
   const distDir = path.join(process.cwd(), "dist");
 
-  // Serve menu images
+  // Static file routes
   app.get("/menu-items/:filename", (req, res, next) => {
     const filePath = path.join(publicDir, "menu-items", req.params.filename);
     if (fs.existsSync(filePath)) return res.sendFile(filePath);
@@ -39,9 +39,71 @@ async function startServer() {
 
   app.use(express.static(publicDir));
 
-  // ── Twilio SMS / OTP ──────────────────────────────────────────────
-  // Kept for future loyalty / CRM SMS features. Not active yet.
+  // ── OCR Receipt Endpoint ───────────────────────────────────────────
+  // Accepts a base64 image, sends to Gemini Vision, returns structured line items
+  app.post("/api/ocr-receipt", async (req, res) => {
+    const { imageBase64, mimeType = "image/jpeg" } = req.body;
+    const apiKey = process.env.GEMINI_API_KEY;
 
+    if (!apiKey) {
+      return res.status(500).json({ success: false, error: "OCR service not configured" });
+    }
+    if (!imageBase64) {
+      return res.status(400).json({ success: false, error: "No image provided" });
+    }
+
+    try {
+      const prompt = `Analyse this Thai or English receipt/invoice image and extract the line items.
+Return ONLY valid JSON in this exact format, no markdown, no explanation:
+{
+  "supplier": "supplier name or empty string",
+  "date": "date in YYYY-MM-DD format or empty string",
+  "total": number or null,
+  "currency": "THB",
+  "items": [
+    {
+      "description": "item name in English",
+      "quantity": number or null,
+      "unit": "unit of measurement or empty string",
+      "unit_price": number or null,
+      "total_price": number or null
+    }
+  ]
+}
+If you cannot read the receipt clearly, return the same structure with empty/null values.`;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: prompt },
+                { inline_data: { mime_type: mimeType, data: imageBase64 } }
+              ]
+            }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
+          })
+        }
+      );
+
+      const data = await response.json() as any;
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      // Strip any markdown fences and parse
+      const clean = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      const parsed = JSON.parse(clean);
+
+      return res.json({ success: true, data: parsed });
+    } catch (error) {
+      console.error("OCR error:", error);
+      return res.status(500).json({ success: false, error: "Failed to process receipt" });
+    }
+  });
+
+  // ── Twilio SMS / OTP ──────────────────────────────────────────────
   app.post("/api/send-sms", async (req, res) => {
     const { to, body } = req.body;
     const accountSid = process.env.TWILIO_ACCOUNT_SID;

@@ -52,6 +52,7 @@ import ImageManagement from "./components/ImageManagement";
 import SystemLogs from "./components/SystemLogs";
 import LoyaltyDashboard from "./components/LoyaltyDashboard";
 import CRMDirectory from "./components/CRMDirectory";
+import FinanceDashboard from "./components/finance/FinanceDashboard";
 import { Toaster } from "sonner";
 
 const BUSINESS = {
@@ -512,6 +513,7 @@ function AppContent({ user, setUser }: any) {
           <Route path="categories" element={isAdmin || isMarketing ? <CategoriesDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="custom-meals" element={isAdmin || isMarketing ? <CustomMealsDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="users" element={isAdmin ? <UserManagement /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="finance" element={isAdmin ? <FinanceDashboard user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="loyalty" element={isAdmin || isStaff ? <LoyaltyDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="crm" element={isAdmin || isMarketing ? <CRMDirectory /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="images" element={isAdmin || isMarketing ? <ImageManagement /> : <div className="p-20 text-center">Access Denied</div>} />
