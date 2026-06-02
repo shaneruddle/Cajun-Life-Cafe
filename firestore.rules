@@ -15,9 +15,8 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && 
-             (getUserRole() == 'admin' || 
-              request.auth.token.email == "info@cajunlifecafe.com");
-    }
+                             (getUserRole() == 'admin' || request.auth.token.role == 'admin');
+
 
     function isMarketing() {
       return isAuthenticated() && (isAdmin() || getUserRole() == 'marketing');
