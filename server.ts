@@ -40,10 +40,10 @@ async function startServer() {
   app.use(express.static(publicDir));
 
   // ── OCR Receipt Endpoint ───────────────────────────────────────────
-  // Accepts a base64 image, sends to Gemini Vision, returns structured line items
+  // Accepts a base64 image, sends to Google Cloud Vision API, returns structured line items
   app.post("/api/ocr-receipt", async (req, res) => {
     const { imageBase64, mimeType = "image/jpeg" } = req.body;
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.CLOUD_VISION_API_KEY;
 
     if (!apiKey) {
       return res.status(500).json({ success: false, error: "OCR service not configured" });
@@ -53,50 +53,98 @@ async function startServer() {
     }
 
     try {
-      const prompt = `Analyse this Thai or English receipt/invoice image and extract the line items.
-Return ONLY valid JSON in this exact format, no markdown, no explanation:
-{
-  "supplier": "supplier name or empty string",
-  "date": "date in YYYY-MM-DD format or empty string",
-  "total": number or null,
-  "currency": "THB",
-  "items": [
-    {
-      "description": "item name in English",
-      "quantity": number or null,
-      "unit": "unit of measurement or empty string",
-      "unit_price": number or null,
-      "total_price": number or null
-    }
-  ]
-}
-If you cannot read the receipt clearly, return the same structure with empty/null values.`;
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      // Step 1: Extract raw text from image using Cloud Vision
+      const visionResponse = await fetch(
+        `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: prompt },
-                { inline_data: { mime_type: mimeType, data: imageBase64 } }
-              ]
-            }],
-            generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
+            requests: [{
+              image: { content: imageBase64 },
+              features: [{ type: "TEXT_DETECTION", maxResults: 1 }]
+            }]
           })
         }
       );
 
-      const data = await response.json() as any;
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const visionData = await visionResponse.json() as any;
+      const rawText = visionData?.responses?.[0]?.fullTextAnnotation?.text || "";
 
-      // Strip any markdown fences and parse
-      const clean = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      const parsed = JSON.parse(clean);
+      if (!rawText) {
+        return res.json({
+          success: true,
+          data: { supplier: "", date: "", total: null, currency: "THB", items: [] }
+        });
+      }
 
-      return res.json({ success: true, data: parsed });
+      // Step 2: Parse the raw text into structured data
+      const lines = rawText.split("\n").map((l: string) => l.trim()).filter(Boolean);
+
+      // Extract supplier (first non-empty line)
+      const supplier = lines[0] || "";
+
+      // Extract date (look for date patterns)
+      const datePattern = /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})/;
+      let date = "";
+      for (const line of lines) {
+        const match = line.match(datePattern);
+        if (match) {
+          // Normalise to YYYY-MM-DD
+          const parts = match[1].split(/[\/\-\.]/);
+          if (parts.length === 3) {
+            if (parts[2].length === 4) {
+              date = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+            } else if (parts[0].length === 4) {
+              date = `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
+            }
+          }
+          break;
+        }
+      }
+
+      // Extract total (look for total/grand total patterns)
+      let total: number | null = null;
+      const totalPattern = /(?:total|grand total|รวม|ยอดรวม|amount due)[^\d]*(\d[\d,]*\.?\d*)/i;
+      for (const line of lines) {
+        const match = line.match(totalPattern);
+        if (match) {
+          total = parseFloat(match[1].replace(/,/g, ""));
+          break;
+        }
+      }
+      // Fallback: last number on a line containing a large value
+      if (total === null) {
+        for (let i = lines.length - 1; i >= 0; i--) {
+          const match = lines[i].match(/(\d[\d,]*\.?\d{2})$/);
+          if (match) {
+            const val = parseFloat(match[1].replace(/,/g, ""));
+            if (val > 0) { total = val; break; }
+          }
+        }
+      }
+
+      // Extract line items (lines with a price at the end)
+      const itemPattern = /^(.+?)\s+(\d+\.?\d*)\s*(?:x\s*(\d+\.?\d*))?\s+(\d[\d,]*\.?\d*)$/;
+      const items: any[] = [];
+      for (const line of lines) {
+        const match = line.match(itemPattern);
+        if (match) {
+          items.push({
+            description: match[1].trim(),
+            quantity: match[2] ? parseFloat(match[2]) : null,
+            unit: "",
+            unit_price: match[3] ? parseFloat(match[3]) : null,
+            total_price: match[4] ? parseFloat(match[4].replace(/,/g, "")) : null,
+          });
+        }
+      }
+
+      return res.json({
+        success: true,
+        data: { supplier, date, total, currency: "THB", items }
+      });
+
     } catch (error) {
       console.error("OCR error:", error);
       return res.status(500).json({ success: false, error: "Failed to process receipt" });
