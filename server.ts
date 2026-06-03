@@ -137,7 +137,9 @@ ${rawText}`
 
       return res.json({
         success: true,
-        data: parsed
+        data: parsed,
+        _raw: rawText,
+        _claude: claudeText
       });
 
     } catch (error) {
