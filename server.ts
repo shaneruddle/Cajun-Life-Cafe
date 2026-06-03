@@ -15,6 +15,9 @@ async function startServer() {
 
   app.use(express.json({ limit: "20mb" }));
 
+  // Version endpoint
+  app.get("/api/version", (_req, res) => res.json({ version: "2026-06-03 12:06:06 UTC", has_anthropic: !!process.env.ANTHROPIC_API_KEY }));
+
   // ── CORS ──────────────────────────────────────────────────────────
   app.use((req, res, next) => {
     const allowed = [
