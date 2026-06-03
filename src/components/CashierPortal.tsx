@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ExpenseItem } from './finance/types';
-const _BUILD = '2026-06-03 07:54:51 UTC'; // forces bundle rehash
+const _BUILD = '2026-06-03 08:24:51 UTC - 2026-06-03 07:54:51 UTC'; // forces bundle rehash
 
 const EXPENSE_CATEGORIES = [
   { id: 'food',       name: 'Food & Ingredients' },
@@ -478,7 +478,7 @@ function ExpenseForm({ user }: { user: any }) {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between sticky top-0 z-10">
-        <button onClick={reset} className="text-terracotta font-semibold text-sm flex items-center gap-1">
+        <button onClick={reset} className="text-terracotta font-semibold text-sm flex items-center gap-1 px-3 py-3 -ml-3 rounded-xl active:bg-terracotta/10">
           ← Back
         </button>
         <h1 className="font-bold text-gray-900">Review Expense</h1>
