@@ -262,6 +262,7 @@ function ExpenseForm({ user }: { user: any }) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [scanning, setScanning]     = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [lightbox, setLightbox] = useState(false);
   const [todayCount, setTodayCount] = useState(0);
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -461,7 +462,7 @@ function ExpenseForm({ user }: { user: any }) {
           </button>
         </div>
 
-        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+        <input ref={cameraInputRef} type="file" accept="image/*;capture=camera" capture="environment" className="hidden"
           onChange={e => e.target.files?.[0] && handleImageSelected(e.target.files[0])} />
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
           onChange={e => e.target.files?.[0] && handleImageSelected(e.target.files[0])} />
@@ -476,7 +477,7 @@ function ExpenseForm({ user }: { user: any }) {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between sticky top-0 z-10">
-        <button onClick={() => setStep('capture')} className="text-terracotta font-semibold text-sm flex items-center gap-1">
+        <button onClick={reset} className="text-terracotta font-semibold text-sm flex items-center gap-1">
           ← Back
         </button>
         <h1 className="font-bold text-gray-900">Review Expense</h1>
@@ -491,7 +492,11 @@ function ExpenseForm({ user }: { user: any }) {
         {/* Receipt preview */}
         {imagePreview && (
           <div className="mb-5 relative">
-            <img src={imagePreview} alt="Receipt" className="w-full max-h-44 object-contain rounded-2xl border border-gray-200 bg-gray-50" />
+            <img
+              src={imagePreview} alt="Receipt"
+              onClick={() => setLightbox(true)}
+              className="w-full max-h-44 object-contain rounded-2xl border border-gray-200 bg-gray-50 cursor-zoom-in"
+            />
             {scanning && (
               <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center">
                 <div className="bg-white rounded-2xl px-4 py-3 flex items-center gap-2 text-sm font-semibold text-terracotta">
@@ -499,6 +504,22 @@ function ExpenseForm({ user }: { user: any }) {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Lightbox */}
+        {lightbox && imagePreview && (
+          <div
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setLightbox(false)}
+          >
+            <img src={imagePreview} alt="Receipt full size" className="max-w-full max-h-full rounded-xl object-contain" />
+            <button
+              onClick={() => setLightbox(false)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/40 transition-colors"
+            >
+              <X size={20} />
+            </button>
           </div>
         )}
 
