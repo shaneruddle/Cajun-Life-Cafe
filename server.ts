@@ -97,7 +97,7 @@ Return ONLY valid JSON with no markdown fences:
 Rules:
 - date: always return empty string "" — the app will use today's date
 - total: look for ยอดรวม, รวมทั้งสิ้น, รวมเงิน, TOTAL, grand total. If on second page, sum visible line items
-- items: extract every line item from the receipt. For Thai text translate description to English. Include quantity, unit price and total price for each item where visible
+- items: extract every line item from the receipt. For Thai text translate description to English. The AMOUNT column is the total_price for each line. Dashes (—) after numbers are decorative, not negative signs. If you see "680 —" that means total_price is 680. If a number appears split across columns like "103" and "56" it means 103.56. Set unit_price equal to total_price if no separate unit price column exists
 - supplier: use the shop/brand name from the receipt header`
               }
             ]
