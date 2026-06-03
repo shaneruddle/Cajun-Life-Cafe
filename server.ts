@@ -120,20 +120,39 @@ async function startServer() {
         }
       }
 
-      // Extract total (look for total/grand total patterns)
+      // Extract total — try multiple Thai/English patterns in priority order
       let total: number | null = null;
-      const totalPattern = /(?:total|grand total|รวม|ยอดรวม|amount due)[^\d]*(\d[\d,]*\.?\d*)/i;
+
+      // Priority 1: explicit total keywords (Thai and English)
+      const totalKeywords = /(?:รวมทั้งสิ้น|ยอดรวม|รวมเงิน|จำนวนเงิน|total amount|grand total|net total|amount due|total|รวม)[^\d]*([\d,]+\.?\d*)/i;
       for (const line of lines) {
-        const match = line.match(totalPattern);
+        const match = line.match(totalKeywords);
         if (match) {
-          total = parseFloat(match[1].replace(/,/g, ""));
-          break;
+          const val = parseFloat(match[1].replace(/,/g, ""));
+          if (val > 0) { total = val; break; }
         }
       }
-      // Fallback: last number on a line containing a large value
+
+      // Priority 2: look for largest number near the bottom third of the receipt
+      if (total === null) {
+        const bottomLines = lines.slice(Math.floor(lines.length * 0.5));
+        let maxVal = 0;
+        for (const line of bottomLines) {
+          const matches = line.match(/[\d,]+\.\d{2}/g);
+          if (matches) {
+            for (const m of matches) {
+              const val = parseFloat(m.replace(/,/g, ""));
+              if (val > maxVal) { maxVal = val; }
+            }
+          }
+        }
+        if (maxVal > 0) total = maxVal;
+      }
+
+      // Priority 3: last standalone number anywhere
       if (total === null) {
         for (let i = lines.length - 1; i >= 0; i--) {
-          const match = lines[i].match(/(\d[\d,]*\.?\d{2})$/);
+          const match = lines[i].match(/([\d,]+\.\d{2})$/);
           if (match) {
             const val = parseFloat(match[1].replace(/,/g, ""));
             if (val > 0) { total = val; break; }
