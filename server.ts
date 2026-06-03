@@ -178,7 +178,8 @@ async function startServer() {
 
       return res.json({
         success: true,
-        data: { supplier, date, total, currency: "THB", items }
+        data: { supplier, date, total, currency: "THB", items },
+        _raw: rawText  // debug: remove later
       });
 
     } catch (error) {
