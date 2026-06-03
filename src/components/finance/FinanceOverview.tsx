@@ -7,7 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 
 const CATEGORY_COLORS = ['#C84B31', '#4A5240', '#E8DCC8', '#8B7355', '#6B8F71', '#D4A853'];
 
-export default function FinanceOverview() {
+export default function FinanceOverview({ financeRole = 'owner' }: { financeRole?: string }) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [income, setIncome] = useState<Income[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -32,6 +32,7 @@ export default function FinanceOverview() {
   const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + e.total, 0), [expenses]);
   const totalIncome = useMemo(() => income.reduce((s, i) => s + i.amount, 0), [income]);
   const net = totalIncome - totalExpenses;
+  const showProfit = financeRole === 'owner';
 
   const expensesByCategory = useMemo(() => {
     const map: Record<string, number> = {};
