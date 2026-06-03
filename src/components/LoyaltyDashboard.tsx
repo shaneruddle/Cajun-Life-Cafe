@@ -42,6 +42,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { LoyaltyCustomer, LoyaltyTransaction, LoyaltyTransactionItem } from '../types';
+import { logActivity } from '../utils/logger';
 
 // SMS Helper
 const triggerSMSText = (mobile: string, message: string) => {
@@ -114,18 +115,7 @@ export default function LoyaltyDashboard() {
 
   // Audit Log Helper
   const logLoyaltyAction = async (actionType: string, details: string, targetMobile: string) => {
-    try {
-      await addDoc(collection(db, 'system_logs'), {
-        timestamp: serverTimestamp(),
-        admin_email: adminEmail,
-        action_type: actionType,
-        details: details,
-        target_customer_mobile: targetMobile,
-        category: 'loyalty'
-      });
-    } catch (error) {
-      console.error('Audit log failed:', error);
-    }
+    await logActivity(actionType, `${details} · mobile: ${targetMobile}`, 'loyalty');
   };
 
   const findCustomer = async (mobile: string) => {
