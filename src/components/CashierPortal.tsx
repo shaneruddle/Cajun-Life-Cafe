@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ExpenseItem } from './finance/types';
+const _BUILD = '2026-06-03 07:54:51 UTC'; // forces bundle rehash
 
 const EXPENSE_CATEGORIES = [
   { id: 'food',       name: 'Food & Ingredients' },
@@ -462,7 +463,7 @@ function ExpenseForm({ user }: { user: any }) {
           </button>
         </div>
 
-        <input ref={cameraInputRef} type="file" accept="image/*;capture=camera" capture="environment" className="hidden"
+        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
           onChange={e => e.target.files?.[0] && handleImageSelected(e.target.files[0])} />
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
           onChange={e => e.target.files?.[0] && handleImageSelected(e.target.files[0])} />
