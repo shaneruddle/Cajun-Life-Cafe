@@ -47,7 +47,7 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp
-  ChefHat,
+    Calculator,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
@@ -159,7 +159,7 @@ const SortableRow: React.FC<SortableRowProps> = ({ item, startEdit, handleDelete
             className="p-2 text-gray-400 hover:text-terracotta transition-colors"
             title="Recipe & Food Cost"
           >
-            <ChefHat size={18} />
+            <Calculator size={18} />
           </button>
           <button 
             onClick={() => startEdit(item)}
