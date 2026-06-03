@@ -15,6 +15,23 @@ async function startServer() {
 
   app.use(express.json({ limit: "20mb" }));
 
+  // ── CORS ──────────────────────────────────────────────────────────
+  app.use((req, res, next) => {
+    const allowed = [
+      "https://cajunlifecafe.com",
+      "https://cajun-life-cafe.web.app",
+      "https://cajun-life-cafe.firebaseapp.com",
+    ];
+    const origin = req.headers.origin || "";
+    if (allowed.includes(origin) || !origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin || "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+    }
+    if (req.method === "OPTIONS") return res.sendStatus(204);
+    next();
+  });
+
   const publicDir = path.join(process.cwd(), "public");
   const distDir = path.join(process.cwd(), "dist");
 
