@@ -16,21 +16,13 @@ async function startServer() {
   app.use(express.json({ limit: "20mb" }));
 
   // Version endpoint
-  app.get("/api/version", (_req, res) => res.json({ version: "2026-06-03 12:06:06 UTC", has_anthropic: !!process.env.ANTHROPIC_API_KEY }));
+  app.get("/api/version", (_req, res) => res.json({ version: "2026-06-03 12:41:07 UTC", has_anthropic: !!process.env.ANTHROPIC_API_KEY }));
 
   // ── CORS ──────────────────────────────────────────────────────────
   app.use((req, res, next) => {
-    const allowed = [
-      "https://cajunlifecafe.com",
-      "https://cajun-life-cafe.web.app",
-      "https://cajun-life-cafe.firebaseapp.com",
-    ];
-    const origin = req.headers.origin || "";
-    if (allowed.includes(origin) || !origin) {
-      res.setHeader("Access-Control-Allow-Origin", origin || "*");
-      res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
-    }
+    res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
     if (req.method === "OPTIONS") return res.sendStatus(204);
     next();
   });
