@@ -5,7 +5,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { MenuItem } from '../../types';
-import { X, Plus, Trash2, TrendingUp, TrendingDown, Minus, ChefHat } from 'lucide-react';
+import { X, Plus, Trash2, TrendingUp, TrendingDown, Minus, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Ingredient {
@@ -140,7 +140,7 @@ export default function MenuItemCosting({ item, onClose }: Props) {
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
-            <ChefHat size={20} className="text-terracotta" />
+            <Calculator size={20} className="text-terracotta" />
             <div>
               <h2 className="font-bold text-ink text-lg leading-tight">{item.name}</h2>
               <p className="text-xs text-gray-400">Recipe & Food Cost</p>
