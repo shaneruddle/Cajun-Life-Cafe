@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, addDoc, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
+import { logActivity } from '../../utils/logger';
 import { db } from '../../firebase';
 import { Income } from './types';
 import { Check, Loader2 } from 'lucide-react';
@@ -37,6 +38,11 @@ export default function LogIncome({ user, financeRole = 'owner' }: { user: any; 
         logged_by: user?.email || 'unknown',
         created_at: new Date().toISOString(),
       });
+      await logActivity(
+        'Income Logged',
+        `฿${parseFloat(formData.amount).toLocaleString()} · ${formData.category} · ${formData.date}${formData.notes ? ' · ' + formData.notes : ''}`,
+        'finance'
+      );
       toast.success('Income logged');
       setFormData(p => ({ ...p, amount: '', notes: '' }));
     } catch (err) {
