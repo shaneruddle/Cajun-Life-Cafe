@@ -54,7 +54,7 @@ export default function UserManagement() {
     return () => unsubscribe();
   }, []);
 
-  const handleRoleChange = async (userId: string, newRole: 'admin' | 'marketing' | 'cashier' | 'employee') => {
+  const handleRoleChange = async (userId: string, newRole: 'admin' | 'manager' | 'marketing' | 'cashier' | 'employee') => {
     try {
       await updateDoc(doc(db, 'users', userId), {
         role: newRole
