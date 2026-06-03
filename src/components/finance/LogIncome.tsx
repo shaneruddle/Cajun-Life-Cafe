@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 const INCOME_CATEGORIES = ['Food', 'Drinks', 'Meal Preps', 'Catering', 'Other'];
 
-export default function LogIncome({ user }: { user: any }) {
+export default function LogIncome({ user, financeRole = 'owner' }: { user: any; financeRole?: string }) {
   const [saving, setSaving] = useState(false);
   const [recent, setRecent] = useState<Income[]>([]);
   const [formData, setFormData] = useState({
