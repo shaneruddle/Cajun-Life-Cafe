@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, where, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase';
 import { ExpenseItem } from './types';
@@ -17,7 +17,12 @@ const EXPENSE_CATEGORIES = [
   { id: 'other', name: 'Other' },
 ];
 
-export default function LogExpense({ user }: { user: any }) {
+export default function LogExpense({ user, financeRole = 'owner' }: { user: any; financeRole?: string }) {
+  const sevenDaysAgo = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().slice(0, 10);
+  })();
   const [step, setStep] = useState<'capture' | 'review' | 'saving'>('capture');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
