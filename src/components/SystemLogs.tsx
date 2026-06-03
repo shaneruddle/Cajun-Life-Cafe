@@ -26,14 +26,16 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 
 const LOG_CATEGORIES = [
-  { id: 'all', label: 'All Activities' },
-  { id: 'menu', label: 'Menu' },
-  { id: 'category', label: 'Categories' },
+  { id: 'all',         label: 'All Activities' },
+  { id: 'finance',     label: 'Finance' },
+  { id: 'loyalty',     label: 'Loyalty' },
+  { id: 'crm',         label: 'CRM' },
+  { id: 'menu',        label: 'Menu' },
+  { id: 'category',    label: 'Categories' },
   { id: 'custom_meal', label: 'Custom Meals' },
-  { id: 'finance', label: 'Finance' },
-  { id: 'user', label: 'Users' },
-  { id: 'image', label: 'Images' },
-  { id: 'system', label: 'System' }
+  { id: 'user',        label: 'Users' },
+  { id: 'image',       label: 'Images' },
+  { id: 'system',      label: 'System' }
 ];
 
 const CategoryBadge = ({ category }: { category: SystemLog['category'] }) => {
@@ -44,6 +46,8 @@ const CategoryBadge = ({ category }: { category: SystemLog['category'] }) => {
     finance: 'bg-green-50 text-green-600 border-green-100',
     user: 'bg-indigo-50 text-indigo-600 border-indigo-100',
     image: 'bg-pink-50 text-pink-600 border-pink-100',
+    loyalty: 'bg-amber-50 text-amber-600 border-amber-100',
+    crm: 'bg-teal-50 text-teal-600 border-teal-100',
     system: 'bg-gray-50 text-gray-600 border-gray-100'
   };
 
