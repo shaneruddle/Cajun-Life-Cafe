@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { collection, addDoc, updateDoc, doc, onSnapshot, query, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { logActivity } from '../../utils/logger';
 import { Ingredient } from './types';
 import { MenuItem } from '../../types';
 import { Plus, ChevronDown, ChevronUp, Scale } from 'lucide-react';
