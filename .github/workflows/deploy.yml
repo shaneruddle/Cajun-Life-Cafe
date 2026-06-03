@@ -70,6 +70,6 @@ jobs:
             --region asia-east1 \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars CLOUD_VISION_API_KEY=${{ secrets.CLOUD_VISION_API_KEY }} \
+            --set-env-vars GEMINI_API_KEY=${{ secrets.CLOUD_VISION_API_KEY }} \
             --project cajun-life-cafe \
             --quiet
