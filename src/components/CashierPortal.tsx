@@ -174,6 +174,34 @@ function TodaySummary({ open, onClose, user }: { open: boolean; onClose: () => v
   }, [open]);
 
   const total = expenses.reduce((s, e) => s + (e.total || 0), 0);
+  const [editingExpense, setEditingExpense] = useState<any>(null);
+  const [editTotal, setEditTotal] = useState('');
+  const [editSupplier, setEditSupplier] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Delete this expense?')) return;
+    try {
+      await import('firebase/firestore').then(({ deleteDoc, doc }) =>
+        deleteDoc(doc(db, 'finance_expenses', id))
+      );
+      toast.success('Expense deleted');
+    } catch { toast.error('Failed to delete'); }
+  };
+
+  const handleEditSave = async () => {
+    if (!editingExpense) return;
+    try {
+      const { updateDoc, doc } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'finance_expenses', editingExpense.id), {
+        total:    parseFloat(editTotal) || 0,
+        supplier: editSupplier,
+        notes:    editNotes,
+      });
+      toast.success('Expense updated');
+      setEditingExpense(null);
+    } catch { toast.error('Failed to update'); }
+  };
   const byCategory: Record<string, number> = {};
   expenses.forEach(e => {
     byCategory[e.category_name] = (byCategory[e.category_name] || 0) + (e.total || 0);
@@ -212,17 +240,29 @@ function TodaySummary({ open, onClose, user }: { open: boolean; onClose: () => v
             </div>
           ) : (
             expenses.map(e => (
-              <div key={e.id} className="flex items-start justify-between bg-gray-50 rounded-2xl px-4 py-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-terracotta bg-terracotta/10 px-2 py-0.5 rounded-full">
-                      {e.category_name}
-                    </span>
+              <div key={e.id} className="bg-gray-50 rounded-2xl px-4 py-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-terracotta bg-terracotta/10 px-2 py-0.5 rounded-full">
+                        {e.category_name}
+                      </span>
+                    </div>
+                    <p className="font-semibold text-gray-900 mt-1 truncate">{e.supplier || 'No supplier'}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">by {e.logged_by} · {e.created_at ? new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''}</p>
                   </div>
-                  <p className="font-semibold text-gray-900 mt-1 truncate">{e.supplier || 'No supplier'}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">by {e.logged_by} · {e.created_at ? new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''}</p>
+                  <div className="flex items-center gap-2 ml-4 shrink-0">
+                    <p className="font-bold text-gray-900 text-lg">{fmt(e.total || 0)}</p>
+                    <button onClick={() => { setEditingExpense(e); setEditTotal(String(e.total || '')); setEditSupplier(e.supplier || ''); setEditNotes(e.notes || ''); }}
+                      className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors">
+                      <Pencil size={15} />
+                    </button>
+                    <button onClick={() => handleDelete(e.id)}
+                      className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition-colors">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
                 </div>
-                <p className="font-bold text-gray-900 ml-4 text-lg shrink-0">{fmt(e.total || 0)}</p>
               </div>
             ))
           )}
@@ -238,6 +278,36 @@ function TodaySummary({ open, onClose, user }: { open: boolean; onClose: () => v
                 <span className="font-semibold text-gray-900">{fmt(amt)}</span>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Edit modal */}
+        {editingExpense && (
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center" onClick={() => setEditingExpense(null)}>
+            <div className="bg-white w-full max-w-lg rounded-t-3xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
+              <h3 className="font-bold text-lg text-gray-900">Edit Expense</h3>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</label>
+                <input value={editSupplier} onChange={e => setEditSupplier(e.target.value)}
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-terracotta" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Amount (฿)</label>
+                <input type="number" value={editTotal} onChange={e => setEditTotal(e.target.value)}
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-terracotta" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Notes</label>
+                <input value={editNotes} onChange={e => setEditNotes(e.target.value)}
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-terracotta" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setEditingExpense(null)}
+                  className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm">Cancel</button>
+                <button onClick={handleEditSave}
+                  className="flex-1 py-3 rounded-xl bg-terracotta text-white font-semibold text-sm">Save Changes</button>
+              </div>
+            </div>
           </div>
         )}
 
