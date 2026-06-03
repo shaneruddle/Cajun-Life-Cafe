@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { collection, addDoc, where, serverTimestamp } from 'firebase/firestore';
+import { logActivity } from '../../utils/logger';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase';
 import { ExpenseItem } from './types';
@@ -143,6 +144,11 @@ export default function LogExpense({ user, financeRole = 'owner' }: { user: any;
         created_at: new Date().toISOString(),
       });
 
+      await logActivity(
+        'Expense Logged',
+        `฿${parseFloat(formData.total).toLocaleString()} · ${formData.category_name} · ${formData.supplier || 'no supplier'} · ${formData.date}`,
+        'finance'
+      );
       toast.success('Expense logged successfully');
       // Reset
       setStep('capture');
