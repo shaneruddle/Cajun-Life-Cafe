@@ -18,7 +18,8 @@
         "source": "/api/**",
         "run": {
           "serviceId": "cajun-life-cafe-server",
-          "region": "asia-east1"
+          "region": "asia-east1",
+          "_note": "2026-06-03 11:40:06 UTC"
         }
       },
       {
