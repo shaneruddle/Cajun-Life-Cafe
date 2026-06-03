@@ -1,41 +1,23 @@
 {
-  "firestore": {
-    "rules": "firestore.rules"
-  },
-  "storage": {
-    "rules": "storage.rules"
-  },
+  "firestore": { "rules": "firestore.rules" },
+  "storage": { "rules": "storage.rules" },
   "hosting": {
     "site": "cajun-life-cafe",
     "public": "dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
         "source": "/api/**",
         "run": {
           "serviceId": "cajun-life-cafe-server",
-          "region": "asia-east1",
-          "_note": "2026-06-03 11:40:06 UTC"
+          "region": "asia-east1"
         }
       },
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
+      { "source": "**", "destination": "/index.html" }
     ],
     "headers": [
-      {
-        "source": "/menu-items/**",
-        "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
-      },
-      {
-        "source": "**/*.@(js|css)",
-        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000" }]
-      }
+      { "source": "/menu-items/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }] },
+      { "source": "**/*.@(js|css)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000" }] }
     ]
   }
 }
