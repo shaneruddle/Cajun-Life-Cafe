@@ -314,7 +314,7 @@ function ExpenseForm({ user }: { user: any }) {
         r.onerror = rej;
         r.readAsDataURL(file);
       });
-      const response = await fetch('/api/ocr-receipt', {
+      const response = await fetch('https://cajun-life-cafe-server-1006330230181.asia-east1.run.app/api/ocr-receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
