@@ -268,7 +268,7 @@ export default function DashboardLayout({ user }: { user: any }) {
               <SidebarItem 
                 icon={<Receipt size={20} />} 
                 label="Staff Portal" 
-                to="/expense"
+                to="/cashier"
                 isCollapsed={isCollapsed}
               />
             )}
