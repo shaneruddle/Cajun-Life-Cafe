@@ -119,20 +119,7 @@ export default function CRMDirectory() {
   }, [customers, searchQuery, filter, loyaltyMembers]);
 
   const logCRMAction = async (action: string, details: string) => {
-    try {
-      await logActivity(action, details, 'crm');
-      // legacy block kept for reference — logActivity handles the write
-      if (false) { await addDoc(collection(db, 'system_logs'), {
-        action,
-        details,
-        userEmail: adminEmail,
-        userId: adminUid,
-        timestamp: new Date().toISOString(),
-        category: 'crm'
-      });
-    } catch (err) {
-      console.error('Failed to log CRM action:', err);
-    }
+    await logActivity(action, details, 'crm');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
