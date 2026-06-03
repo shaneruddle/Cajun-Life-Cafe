@@ -53,6 +53,7 @@ import SystemLogs from "./components/SystemLogs";
 import LoyaltyDashboard from "./components/LoyaltyDashboard";
 import CRMDirectory from "./components/CRMDirectory";
 import FinanceDashboard from "./components/finance/FinanceDashboard";
+import CashierPortal from "./components/CashierPortal";
 import { Toaster } from "sonner";
 
 const BUSINESS = {
@@ -523,6 +524,7 @@ function AppContent({ user, setUser }: any) {
           <Route path="logs" element={isAdmin ? <SystemLogs /> : <div className="p-20 text-center">Access Denied</div>} />
         </Route>
         <Route path="/import" element={isAdmin || isMarketing ? <BulkImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
+        <Route path="/cashier" element={<CashierPortal />} />
         <Route path="/import-custom-meals" element={isAdmin || isMarketing ? <BulkCustomMealsImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
       </Routes>
       {!isDigitalMenu && !isDashboard && !user && (
