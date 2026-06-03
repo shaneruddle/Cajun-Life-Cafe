@@ -22,6 +22,7 @@ import { handleStorageError } from '../utils/storage';
 import { normalizeImageUrl } from '../utils/images';
 import { logActivity } from '../utils/logger';
 import { FirebaseImage } from './ui/FirebaseImage';
+import MenuItemCosting from './menu/MenuItemCosting';
 import { 
   Plus, 
   Edit2, 
@@ -46,6 +47,7 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp
+  ChefHat,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
@@ -71,6 +73,7 @@ import { CSS } from '@dnd-kit/utilities';
 interface SortableRowProps {
   item: MenuItem;
   startEdit: (item: MenuItem) => void;
+  onCosting: (item: MenuItem) => void;
   handleDelete: (id: string) => Promise<void>;
   togglePublished: (item: MenuItem) => Promise<void>;
 }
@@ -151,6 +154,13 @@ const SortableRow: React.FC<SortableRowProps> = ({ item, startEdit, handleDelete
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div className="flex justify-end gap-2">
+          <button
+            onClick={() => onCosting(item)}
+            className="p-2 text-gray-400 hover:text-terracotta transition-colors"
+            title="Recipe & Food Cost"
+          >
+            <ChefHat size={18} />
+          </button>
           <button 
             onClick={() => startEdit(item)}
             className="p-2 text-gray-400 hover:text-olive transition-colors"
@@ -289,6 +299,11 @@ const ImageSlot = ({
         </div>
       </div>
     </div>
+
+      {/* Food costing panel */}
+      {costingItem && (
+        <MenuItemCosting item={costingItem} onClose={() => setCostingItem(null)} />
+      )}
   );
 };
 
@@ -297,6 +312,7 @@ export default function Dashboard() {
   const [categoriesList, setCategoriesList] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [costingItem, setCostingItem] = useState<MenuItem | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -1447,6 +1463,7 @@ export default function Dashboard() {
                         key={item.id} 
                         item={item} 
                         startEdit={startEdit}
+                    onCosting={setCostingItem}
                         handleDelete={handleDelete}
                         togglePublished={togglePublished}
                       />
