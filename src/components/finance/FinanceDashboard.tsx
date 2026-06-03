@@ -6,23 +6,34 @@ import Ingredients from './Ingredients';
 import FinanceReports from './FinanceReports';
 import { LayoutDashboard, Receipt, TrendingUp, Scale, FileBarChart } from 'lucide-react';
 
-const TABS = [
-  { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={16} /> },
-  { id: 'expense', label: 'Log Expense', icon: <Receipt size={16} /> },
-  { id: 'income', label: 'Log Income', icon: <TrendingUp size={16} /> },
-  { id: 'ingredients', label: 'Ingredients', icon: <Scale size={16} /> },
-  { id: 'reports', label: 'Reports', icon: <FileBarChart size={16} /> },
+type FinanceRole = 'owner' | 'manager' | 'cashier';
+
+function getFinanceRole(user: any): FinanceRole {
+  if (!user) return 'cashier';
+  if (user.email?.toLowerCase() === 'info@cajunlifecafe.com' || user.role === 'admin') return 'owner';
+  if (user.role === 'manager') return 'manager';
+  return 'cashier';
+}
+
+const ALL_TABS = [
+  { id: 'overview',     label: 'Overview',     icon: <LayoutDashboard size={16} />, roles: ['owner', 'manager'] },
+  { id: 'expense',      label: 'Log Expense',  icon: <Receipt size={16} />,         roles: ['owner', 'manager', 'cashier'] },
+  { id: 'income',       label: 'Log Income',   icon: <TrendingUp size={16} />,      roles: ['owner', 'manager', 'cashier'] },
+  { id: 'ingredients',  label: 'Ingredients',  icon: <Scale size={16} />,           roles: ['owner', 'manager'] },
+  { id: 'reports',      label: 'Reports',      icon: <FileBarChart size={16} />,    roles: ['owner'] },
 ];
 
 export default function FinanceDashboard({ user }: { user: any }) {
-  const [activeTab, setActiveTab] = useState('overview');
+  const financeRole = getFinanceRole(user);
+  const tabs = ALL_TABS.filter(t => t.roles.includes(financeRole));
+  const [activeTab, setActiveTab] = useState(tabs[0]?.id || 'expense');
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Tab nav */}
       <div className="bg-white border-b border-gray-100 px-6 sticky top-0 z-10">
         <div className="flex gap-1 overflow-x-auto">
-          {TABS.map(tab => (
+          {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -41,11 +52,11 @@ export default function FinanceDashboard({ user }: { user: any }) {
 
       {/* Tab content */}
       <div>
-        {activeTab === 'overview' && <FinanceOverview />}
-        {activeTab === 'expense' && <LogExpense user={user} />}
-        {activeTab === 'income' && <LogIncome user={user} />}
+        {activeTab === 'overview'    && <FinanceOverview financeRole={financeRole} />}
+        {activeTab === 'expense'     && <LogExpense user={user} financeRole={financeRole} />}
+        {activeTab === 'income'      && <LogIncome user={user} financeRole={financeRole} />}
         {activeTab === 'ingredients' && <Ingredients />}
-        {activeTab === 'reports' && <FinanceReports />}
+        {activeTab === 'reports'     && <FinanceReports />}
       </div>
     </div>
   );
