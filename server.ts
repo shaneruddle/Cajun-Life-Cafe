@@ -89,12 +89,16 @@ async function startServer() {
 Return ONLY valid JSON with no markdown fences:
 {
   "supplier": "shop or supplier name",
-  "date": "YYYY-MM-DD or empty string",
+  "date": "",
   "total": total amount as number or null,
   "currency": "THB",
-  "items": [{"description": "item name", "quantity": number or null, "unit": "", "unit_price": number or null, "total_price": number or null}]
+  "items": [{"description": "item name in English", "quantity": number or null, "unit": "unit of measure or empty string", "unit_price": number or null, "total_price": number or null}]
 }
-For Thai receipts: look for ยอดรวม, รวมทั้งสิ้น, or the final total amount at the bottom. If the total is on a second page, sum the visible line item totals.`
+Rules:
+- date: always return empty string "" — the app will use today's date
+- total: look for ยอดรวม, รวมทั้งสิ้น, รวมเงิน, TOTAL, grand total. If on second page, sum visible line items
+- items: extract every line item from the receipt. For Thai text translate description to English. Include quantity, unit price and total price for each item where visible
+- supplier: use the shop/brand name from the receipt header`
               }
             ]
           }]
