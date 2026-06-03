@@ -14,6 +14,7 @@ import { logActivity } from '../utils/logger';
 import {
   LogIn, LogOut, Camera, Upload, Loader2, Check, Trash2, Plus,
   ClipboardList, X, ChevronDown, AlertCircle, RefreshCw,
+  Pencil, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ExpenseItem } from './finance/types';
