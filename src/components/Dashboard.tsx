@@ -78,7 +78,7 @@ interface SortableRowProps {
   togglePublished: (item: MenuItem) => Promise<void>;
 }
 
-const SortableRow: React.FC<SortableRowProps> = ({ item, startEdit, handleDelete, togglePublished }) => {
+const SortableRow: React.FC<SortableRowProps> = ({ item, startEdit, handleDelete, togglePublished, onCosting }) => {
   const {
     attributes,
     listeners,
