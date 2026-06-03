@@ -96,90 +96,41 @@ async function startServer() {
       }
 
       // Step 2: Parse the raw text into structured data
-      const lines = rawText.split("\n").map((l: string) => l.trim()).filter(Boolean);
+      // Use Claude API to parse the raw text intelligently
+      const claudeResp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.ANTHROPIC_API_KEY || "",
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 1024,
+          messages: [{
+            role: "user",
+            content: `Extract data from this Thai/English receipt OCR text. Return ONLY valid JSON, no markdown:
+{
+  "supplier": "shop name or empty string",
+  "date": "YYYY-MM-DD or empty string",
+  "total": number or null,
+  "currency": "THB",
+  "items": [{"description": "item name in English", "quantity": number or null, "unit": "", "unit_price": number or null, "total_price": number or null}]
+}
 
-      // Extract supplier (first non-empty line)
-      const supplier = lines[0] || "";
-
-      // Extract date (look for date patterns)
-      const datePattern = /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})/;
-      let date = "";
-      for (const line of lines) {
-        const match = line.match(datePattern);
-        if (match) {
-          // Normalise to YYYY-MM-DD
-          const parts = match[1].split(/[\/\-\.]/);
-          if (parts.length === 3) {
-            if (parts[2].length === 4) {
-              date = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
-            } else if (parts[0].length === 4) {
-              date = `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
-            }
-          }
-          break;
-        }
-      }
-
-      // Extract total — try multiple Thai/English patterns in priority order
-      let total: number | null = null;
-
-      // Priority 1: explicit total keywords (Thai and English)
-      const totalKeywords = /(?:รวมทั้งสิ้น|ยอดรวม|รวมเงิน|จำนวนเงิน|total amount|grand total|net total|amount due|total|รวม)[^\d]*([\d,]+\.?\d*)/i;
-      for (const line of lines) {
-        const match = line.match(totalKeywords);
-        if (match) {
-          const val = parseFloat(match[1].replace(/,/g, ""));
-          if (val > 0) { total = val; break; }
-        }
-      }
-
-      // Priority 2: look for largest number near the bottom third of the receipt
-      if (total === null) {
-        const bottomLines = lines.slice(Math.floor(lines.length * 0.5));
-        let maxVal = 0;
-        for (const line of bottomLines) {
-          const matches = line.match(/[\d,]+\.\d{2}/g);
-          if (matches) {
-            for (const m of matches) {
-              const val = parseFloat(m.replace(/,/g, ""));
-              if (val > maxVal) { maxVal = val; }
-            }
-          }
-        }
-        if (maxVal > 0) total = maxVal;
-      }
-
-      // Priority 3: last standalone number anywhere
-      if (total === null) {
-        for (let i = lines.length - 1; i >= 0; i--) {
-          const match = lines[i].match(/([\d,]+\.\d{2})$/);
-          if (match) {
-            const val = parseFloat(match[1].replace(/,/g, ""));
-            if (val > 0) { total = val; break; }
-          }
-        }
-      }
-
-      // Extract line items (lines with a price at the end)
-      const itemPattern = /^(.+?)\s+(\d+\.?\d*)\s*(?:x\s*(\d+\.?\d*))?\s+(\d[\d,]*\.?\d*)$/;
-      const items: any[] = [];
-      for (const line of lines) {
-        const match = line.match(itemPattern);
-        if (match) {
-          items.push({
-            description: match[1].trim(),
-            quantity: match[2] ? parseFloat(match[2]) : null,
-            unit: "",
-            unit_price: match[3] ? parseFloat(match[3]) : null,
-            total_price: match[4] ? parseFloat(match[4].replace(/,/g, "")) : null,
-          });
-        }
-      }
+Receipt text:
+${rawText}`
+          }]
+        })
+      });
+      const claudeData = await claudeResp.json() as any;
+      const claudeText = claudeData?.content?.[0]?.text || "{}";
+      const clean = claudeText.replace(/\`\`\`json\n?/g, "").replace(/\`\`\`\n?/g, "").trim();
+      const parsed = JSON.parse(clean);
 
       return res.json({
         success: true,
-        data: { supplier, date, total, currency: "THB", items },
-        _raw: rawText  // debug: remove later
+        data: parsed
       });
 
     } catch (error) {
