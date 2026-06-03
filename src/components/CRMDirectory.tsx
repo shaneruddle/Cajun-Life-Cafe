@@ -120,7 +120,9 @@ export default function CRMDirectory() {
 
   const logCRMAction = async (action: string, details: string) => {
     try {
-      await addDoc(collection(db, 'system_logs'), {
+      await logActivity(action, details, 'crm');
+      // legacy block kept for reference — logActivity handles the write
+      if (false) { await addDoc(collection(db, 'system_logs'), {
         action,
         details,
         userEmail: adminEmail,
