@@ -2,28 +2,27 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper Functions
     function isAuthenticated() {
       return request.auth != null;
     }
 
     function getUserRole() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) 
-             ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role 
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
              : 'none';
     }
 
     function isAdmin() {
-      return isAuthenticated() && 
-                             (getUserRole() == 'admin' || request.auth.token.role == 'admin');
-
+      return isAuthenticated() &&
+             (getUserRole() == 'admin' || request.auth.token.role == 'admin');
+    }
 
     function isMarketing() {
       return isAuthenticated() && (isAdmin() || getUserRole() == 'marketing');
     }
 
     function isCashier() {
-      return isAuthenticated() && (isAdmin() || getUserRole() == 'cashier');
+      return isAuthenticated() && (isAdmin() || getUserRole() == 'cashier' || getUserRole() == 'manager');
     }
 
     // Admin: Full access to everything
@@ -32,16 +31,16 @@ service cloud.firestore {
     }
 
     // Public: Read access to menu and settings
-    match /menu/{id} { 
-      allow read: if true; 
+    match /menu/{id} {
+      allow read: if true;
       allow write: if isMarketing();
     }
-    match /categories/{id} { 
-      allow read: if true; 
+    match /categories/{id} {
+      allow read: if true;
       allow write: if isMarketing();
     }
-    match /custom_meals/{id} { 
-      allow read: if true; 
+    match /custom_meals/{id} {
+      allow read: if true;
       allow write: if isMarketing();
     }
     match /settings/{id} { allow read: if true; }
@@ -54,37 +53,47 @@ service cloud.firestore {
       allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
 
-    // Finance: Authenticated users can read categories and create entries
+    // Finance
     match /finance_categories/{id} {
       allow read: if isAuthenticated();
     }
-
     match /finance_entries/{id} {
       allow read: if isAdmin();
       allow create: if isCashier();
+    }
+    match /finance_expenses/{id} {
+      allow read, write: if isCashier();
+    }
+    match /finance_incomes/{id} {
+      allow read, write: if isCashier();
+    }
+    match /finance_ingredients/{id} {
+      allow read, write: if isCashier();
     }
 
     match /employees/{id} {
       allow read, write: if isAdmin();
     }
-
     match /payroll_summaries/{id} {
       allow read, write: if isAdmin();
     }
 
     match /loyalty_customers/{id} {
-      allow read, write: if isAdmin();
+      allow read, write: if isCashier();
       match /transactions/{txId} {
-        allow read, write: if isAdmin();
+        allow read, write: if isCashier();
       }
+    }
+    match /loyalty_transactions/{id} {
+      allow read, write: if isCashier();
+    }
+    match /crm_customers/{id} {
+      allow read, write: if isCashier();
     }
 
     match /system_logs/{id} {
-      allow read, write: if isAdmin();
-      allow create: if isAuthenticated(); // Allow any staff to log
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
     }
-
-    // Employees: Only read their own data (handled by users match)
-    // Marketing: Handled by isAdmin/isMarketing checks in relevant collections if any
   }
 }
