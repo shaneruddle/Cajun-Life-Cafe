@@ -204,7 +204,6 @@ const ImageSlot = ({
   const hasChanged = initialValue && value !== initialValue && value.startsWith('gs://') && initialValue.startsWith('gs://');
 
   return (
-    <>
     <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
       <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
         <div className="relative group">
@@ -301,10 +300,6 @@ const ImageSlot = ({
       </div>
     </div>
 
-      {/* Food costing panel */}
-      {costingItem && (
-        <MenuItemCosting item={costingItem} onClose={() => setCostingItem(null)} />
-      )}
     </>
   );
 };
