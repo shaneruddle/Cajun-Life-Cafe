@@ -144,6 +144,41 @@ export default function LogExpense({ user, financeRole = 'owner' }: { user: any;
         created_at: new Date().toISOString(),
       });
 
+      // Auto-update ingredient costs from line items
+      if (formData.items && formData.items.length > 0) {
+        try {
+          const { getDocs, query: q2, collection: col2, where, updateDoc: upDoc, doc: docRef, addDoc: aDoc } = await import('firebase/firestore');
+          const ingSnap = await getDocs(q2(col2(db, 'finance_ingredients')));
+          const ingList = ingSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+          for (const item of formData.items) {
+            if (!item.description || !item.unit_price) continue;
+            // Find matching ingredient by name (case-insensitive partial match)
+            const itemName = item.description.toLowerCase().replace(/[^a-z0-9 ]/g, '');
+            const match = ingList.find(ing => {
+              const ingName = ing.name.toLowerCase().replace(/[^a-z0-9 ]/g, '');
+              return itemName.includes(ingName) || ingName.includes(itemName);
+            });
+            if (match) {
+              await upDoc(docRef(db, 'finance_ingredients', match.id), {
+                current_cost_per_unit: item.unit_price,
+              });
+              // Log purchase record
+              await aDoc(col2(db, 'ingredient_purchases'), {
+                ingredient_id: match.id,
+                ingredient_name: match.name,
+                quantity: item.quantity || 1,
+                unit: item.unit || match.unit,
+                unit_cost: item.unit_price,
+                total_cost: item.total_price || item.unit_price,
+                date: formData.date,
+                supplier: formData.supplier,
+                created_at: new Date().toISOString(),
+              });
+            }
+          }
+        } catch (e) { console.warn('Ingredient cost update failed', e); }
+      }
+
       await logActivity(
         'Expense Logged',
         `฿${parseFloat(formData.total).toLocaleString()} · ${formData.category_name} · ${formData.supplier || 'no supplier'} · ${formData.date}`,
