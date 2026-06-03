@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '../firebase';
+import { logActivity } from '../utils/logger';
 import {
   LogIn, LogOut, Camera, Upload, Loader2, Check, Trash2, Plus,
   ClipboardList, X, ChevronDown, AlertCircle, RefreshCw,
@@ -376,6 +377,11 @@ function ExpenseForm({ user }: { user: any }) {
         logged_by:     user?.email || 'unknown',
         created_at:    new Date().toISOString(),
       });
+      await logActivity(
+        'Expense Logged (Cashier Portal)',
+        `฿${parseFloat(formData.total).toLocaleString()} · ${formData.category_name} · ${formData.supplier || 'no supplier'} · ${formData.date}`,
+        'finance'
+      );
       setStep('done');
     } catch (err) {
       console.error(err);
