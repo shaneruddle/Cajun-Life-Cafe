@@ -60,12 +60,12 @@ async function startServer() {
   app.use(express.static(publicDir));
 
   // ── OCR Receipt Endpoint ───────────────────────────────────────────
-  // Accepts a base64 image, sends to Google Cloud Vision API, returns structured line items
+  // Accepts a base64 image, sends directly to Claude Vision, returns structured data
   app.post("/api/ocr-receipt", async (req, res) => {
     const { imageBase64, mimeType = "image/jpeg" } = req.body;
-    const apiKey = process.env.CLOUD_VISION_API_KEY;
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
-    if (!apiKey) {
+    if (!anthropicKey) {
       return res.status(500).json({ success: false, error: "OCR service not configured" });
     }
     if (!imageBase64) {
@@ -73,40 +73,12 @@ async function startServer() {
     }
 
     try {
-      // Step 1: Extract raw text from image using Cloud Vision
-      const visionResponse = await fetch(
-        `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            requests: [{
-              image: { content: imageBase64 },
-              features: [{ type: "TEXT_DETECTION", maxResults: 1 }]
-            }]
-          })
-        }
-      );
-
-      const visionData = await visionResponse.json() as any;
-      const rawText = visionData?.responses?.[0]?.fullTextAnnotation?.text || "";
-
-      if (!rawText) {
-        return res.json({
-          success: true,
-          data: { supplier: "", date: "", total: null, currency: "THB", items: [] }
-        });
-      }
-
-      // Step 2: Parse the raw text into structured data
-      // Use Claude API to parse the raw text intelligently
-      console.log("OCR_RAW_TEXT_LENGTH:", rawText.length, "PREVIEW:", rawText.substring(0, 200));
-      console.log("ANTHROPIC_KEY_SET:", !!process.env.ANTHROPIC_API_KEY);
+      // Send image directly to Claude — no Vision API needed
       const claudeResp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": process.env.ANTHROPIC_API_KEY || "",
+          "x-api-key": anthropicKey,
           "anthropic-version": "2023-06-01"
         },
         body: JSON.stringify({
@@ -114,33 +86,35 @@ async function startServer() {
           max_tokens: 1024,
           messages: [{
             role: "user",
-            content: `Extract data from this Thai/English receipt OCR text. Return ONLY valid JSON, no markdown:
+            content: [
+              {
+                type: "image",
+                source: { type: "base64", media_type: mimeType, data: imageBase64 }
+              },
+              {
+                type: "text",
+                text: `You are a receipt parser. Look at this receipt image and extract the data.
+Return ONLY valid JSON with no markdown fences:
 {
-  "supplier": "shop name or empty string",
+  "supplier": "shop or supplier name",
   "date": "YYYY-MM-DD or empty string",
-  "total": number or null,
+  "total": total amount as number or null,
   "currency": "THB",
-  "items": [{"description": "item name in English", "quantity": number or null, "unit": "", "unit_price": number or null, "total_price": number or null}]
+  "items": [{"description": "item name", "quantity": number or null, "unit": "", "unit_price": number or null, "total_price": number or null}]
 }
-
-Receipt text:
-${rawText}`
+For Thai receipts: look for ยอดรวม, รวมทั้งสิ้น, or the final total amount at the bottom. If the total is on a second page, sum the visible line item totals.`
+              }
+            ]
           }]
         })
       });
+
       const claudeData = await claudeResp.json() as any;
-      console.log("CLAUDE_STATUS:", claudeResp.status, "ERROR:", claudeData?.error);
       const claudeText = claudeData?.content?.[0]?.text || "{}";
-      console.log("CLAUDE_RESPONSE:", claudeText.substring(0, 300));
-      const clean = claudeText.replace(/\`\`\`json\n?/g, "").replace(/\`\`\`\n?/g, "").trim();
+      const clean = claudeText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       const parsed = JSON.parse(clean);
 
-      return res.json({
-        success: true,
-        data: parsed,
-        _raw: rawText,
-        _claude: claudeText
-      });
+      return res.json({ success: true, data: parsed });
 
     } catch (error) {
       console.error("OCR error:", error);
