@@ -46,8 +46,8 @@ import {
   Trash,
   RefreshCw,
   ChevronDown,
-  ChevronUp
-    Calculator,
+  ChevronUp,
+  Calculator,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
