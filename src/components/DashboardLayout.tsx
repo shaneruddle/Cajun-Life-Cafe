@@ -106,6 +106,8 @@ const SidebarSubItem: React.FC<{ label: string; to: string; isActive: boolean }>
 );
 
 export default function DashboardLayout({ user }: { user: any }) {
+  const isAdmin = user?.email?.toLowerCase() === 'info@cajunlifecafe.com' || user?.role === 'admin';
+  const canSeeFinance = isAdmin || user?.role === 'manager' || user?.role === 'cashier';
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
