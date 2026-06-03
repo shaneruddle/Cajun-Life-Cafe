@@ -488,6 +488,9 @@ function AppContent({ user, setUser }: any) {
   }, [user]);
 
   const isMarketing = useMemo(() => isAdmin || user?.role === "marketing", [user, isAdmin]);
+  const isManager = useMemo(() => isAdmin || user?.role === "manager", [user, isAdmin]);
+  const isCashier = useMemo(() => user?.role === "cashier", [user]);
+  const canAccessFinance = useMemo(() => isAdmin || isManager || isCashier, [isAdmin, isManager, isCashier]);
   const isStaff = useMemo(() => isAdmin || ["cashier", "marketing"].includes(user?.role || ""), [user, isAdmin]);
   const isEmployee = useMemo(() => user?.role === "employee", [user]);
 
@@ -513,7 +516,7 @@ function AppContent({ user, setUser }: any) {
           <Route path="categories" element={isAdmin || isMarketing ? <CategoriesDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="custom-meals" element={isAdmin || isMarketing ? <CustomMealsDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="users" element={isAdmin ? <UserManagement /> : <div className="p-20 text-center">Access Denied</div>} />
-          <Route path="finance" element={isAdmin ? <FinanceDashboard user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="finance" element={canAccessFinance ? <FinanceDashboard user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="loyalty" element={isAdmin || isStaff ? <LoyaltyDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="crm" element={isAdmin || isMarketing ? <CRMDirectory /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="images" element={isAdmin || isMarketing ? <ImageManagement /> : <div className="p-20 text-center">Access Denied</div>} />
