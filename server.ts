@@ -16,7 +16,7 @@ async function startServer() {
   app.use(express.json({ limit: "20mb" }));
 
   // Version endpoint
-  app.get("/api/version", (_req, res) => res.json({ version: "2026-06-03 12:41:07 UTC", has_anthropic: !!process.env.ANTHROPIC_API_KEY }));
+  app.get("/api/version", (_req, res) => res.json({ version: "2026-06-03 12:48:59 UTC", has_anthropic: !!process.env.ANTHROPIC_API_KEY }));
 
   // ── CORS ──────────────────────────────────────────────────────────
   app.use((req, res, next) => {
@@ -102,11 +102,14 @@ For Thai receipts: look for ยอดรวม, รวมทั้งสิ้�
       });
 
       const claudeData = await claudeResp.json() as any;
+      console.log("CLAUDE_RAW_STATUS:", claudeResp.status);
+      console.log("CLAUDE_RAW_DATA:", JSON.stringify(claudeData).substring(0, 500));
       const claudeText = claudeData?.content?.[0]?.text || "{}";
+      console.log("CLAUDE_TEXT:", claudeText.substring(0, 300));
       const clean = claudeText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      const parsed = JSON.parse(clean);
-
-      return res.json({ success: true, data: parsed });
+      let parsed: any = {};
+      try { parsed = JSON.parse(clean); } catch(e) { console.error("JSON_PARSE_ERR:", e, "TEXT:", clean); }
+      return res.json({ success: true, data: parsed, _debug: claudeText.substring(0, 200) });
 
     } catch (error) {
       console.error("OCR error:", error);
