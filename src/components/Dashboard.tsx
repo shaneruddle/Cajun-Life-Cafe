@@ -865,6 +865,7 @@ export default function Dashboard() {
   );
 
   return (
+    <>
     <div className="min-h-screen bg-cream p-6 md:p-12 relative z-0 pt-8">
       <div className="max-w-6xl mx-auto mt-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-24 gap-10">
@@ -1473,5 +1474,10 @@ export default function Dashboard() {
         </DndContext>
       </div>
     </div>
+
+      {costingItem && (
+        <MenuItemCosting item={costingItem} onClose={() => setCostingItem(null)} />
+      )}
+    </>
   );
 }
