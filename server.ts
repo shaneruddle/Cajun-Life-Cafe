@@ -97,6 +97,8 @@ async function startServer() {
 
       // Step 2: Parse the raw text into structured data
       // Use Claude API to parse the raw text intelligently
+      console.log("OCR_RAW_TEXT_LENGTH:", rawText.length, "PREVIEW:", rawText.substring(0, 200));
+      console.log("ANTHROPIC_KEY_SET:", !!process.env.ANTHROPIC_API_KEY);
       const claudeResp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -124,7 +126,9 @@ ${rawText}`
         })
       });
       const claudeData = await claudeResp.json() as any;
+      console.log("CLAUDE_STATUS:", claudeResp.status, "ERROR:", claudeData?.error);
       const claudeText = claudeData?.content?.[0]?.text || "{}";
+      console.log("CLAUDE_RESPONSE:", claudeText.substring(0, 300));
       const clean = claudeText.replace(/\`\`\`json\n?/g, "").replace(/\`\`\`\n?/g, "").trim();
       const parsed = JSON.parse(clean);
 
