@@ -299,8 +299,6 @@ const ImageSlot = ({
         </div>
       </div>
     </div>
-
-    </>
   );
 };
 
