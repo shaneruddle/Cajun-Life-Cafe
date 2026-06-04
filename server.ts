@@ -312,7 +312,7 @@ Rules:
       });
     } catch (err: any) {
       console.error("Activation token lookup error:", err);
-      return res.status(500).json({ error: "Server error", detail: err?.message || String(err), code: err?.code });
+      return res.status(500).json({ error: "Server error" });
     }
   });
 
