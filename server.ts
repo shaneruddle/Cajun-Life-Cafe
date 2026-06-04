@@ -299,6 +299,67 @@ Rules:
     }
   });
 
+
+  // ── LINE Push Message ─────────────────────────────────────────────
+  // Sends an outbound push message to a customer's LINE account
+  app.post("/api/line-push", async (req, res) => {
+    const { lineUserId, message } = req.body;
+    const channelSecret = process.env.LINE_CHANNEL_SECRET || "";
+    const channelId = process.env.LINE_CHANNEL_ID || "";
+
+    if (!lineUserId || !message) {
+      return res.status(400).json({ success: false, error: "lineUserId and message required" });
+    }
+    if (!channelId || !channelSecret) {
+      return res.status(500).json({ success: false, error: "LINE not configured" });
+    }
+
+    try {
+      // Get channel access token
+      const tokenResp = await fetch("https://api.line.me/v2/oauth/accessToken", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "client_credentials",
+          client_id: channelId,
+          client_secret: channelSecret
+        })
+      });
+      const tokenData = await tokenResp.json() as any;
+      const accessToken = tokenData.access_token;
+
+      if (!accessToken) {
+        console.error("LINE token error:", tokenData);
+        return res.status(500).json({ success: false, error: "Failed to get LINE access token" });
+      }
+
+      // Send push message
+      const pushResp = await fetch("https://api.line.me/v2/bot/message/push", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          to: lineUserId,
+          messages: [{ type: "text", text: message }]
+        })
+      });
+
+      const pushData = await pushResp.json() as any;
+      if (pushResp.ok) {
+        console.log(`LINE push sent to ${lineUserId}`);
+        return res.json({ success: true });
+      } else {
+        console.error("LINE push error:", pushData);
+        return res.status(500).json({ success: false, error: pushData.message });
+      }
+    } catch (error) {
+      console.error("LINE push exception:", error);
+      return res.status(500).json({ success: false, error: "Failed to send LINE message" });
+    }
+  });
+
   // ── Serve React app (production) ──────────────────────────────────
   if (fs.existsSync(distDir)) {
     app.use(express.static(distDir));
