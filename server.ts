@@ -268,9 +268,14 @@ Rules:
   });
 
   // Main webhook — receives messages from LINE
-  // Always returns 200, completely silent — no auto-replies
+  // Always returns 200, logs User IDs for linking purposes
   app.post("/api/line-webhook", (req, res) => {
     res.status(200).json({ status: "ok" });
+    const events = req.body?.events || [];
+    for (const event of events) {
+      const userId = event.source?.userId;
+      if (userId) console.log(`LINE user ID: ${userId}`);
+    }
   });
 
 
