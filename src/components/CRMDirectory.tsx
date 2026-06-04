@@ -15,6 +15,7 @@ import {
 import { db, auth } from '../firebase';
 import { CRMCustomer, SystemLog } from '../types';
 import { handleFirestoreError } from '../utils/firestore';
+import { logActivity } from '../utils/logger';
 import { sendVerificationCode } from '../services/twilioSMS';
 import { 
   Users, 
