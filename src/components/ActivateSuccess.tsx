@@ -5,7 +5,7 @@ export default function ActivateSuccess() {
         <div className="text-5xl">✅</div>
         <h1 className="text-2xl font-bold text-ink">You're all linked!</h1>
         <p className="text-gray-500">Your LINE account is now connected to your Cajun Life Cafe wallet. You'll receive notifications when your balance changes.</p>
-        <p className="text-3xl">🌶️</p>
+        <img src="https://firebasestorage.googleapis.com/v0/b/cajun-life-cafe.firebasestorage.app/o/logos%2Fsquare_logo.png?alt=media" alt="Cajun Life Cafe" className="w-16 h-16 mx-auto rounded-xl" />
       </div>
     </div>
   );
