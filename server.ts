@@ -268,26 +268,9 @@ Rules:
   });
 
   // Main webhook — receives messages from LINE
-  // Always returns 200 immediately to LINE, then processes async
+  // Always returns 200, completely silent — no auto-replies
   app.post("/api/line-webhook", (req, res) => {
     res.status(200).json({ status: "ok" });
-
-    const body = req.body;
-    console.log("LINE webhook received:", JSON.stringify(body).substring(0, 200));
-
-    for (const event of (body.events || [])) {
-      if (event.type === "message" && event.message?.type === "text") {
-        const replyToken = event.replyToken;
-        const lineUserId = event.source?.userId;
-        const text = event.message.text;
-        console.log(`LINE message from ${lineUserId}: ${text}`);
-
-        // Reply with a simple acknowledgement for now
-        replyLineMessage(replyToken,
-          "🌶️ Thanks for messaging Cajun Life Cafe! Our team will reply shortly."
-        ).catch(err => console.error("LINE reply error:", err));
-      }
-    }
   });
 
 
