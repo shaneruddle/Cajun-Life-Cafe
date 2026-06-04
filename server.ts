@@ -268,63 +268,24 @@ Rules:
   });
 
   // Main webhook — receives messages from LINE
-  // Looks up customer balance by LINE User ID and replies
-  app.post("/api/line-webhook", async (req, res) => {
-    const signature = req.headers["x-line-signature"] as string;
+  // Always returns 200 immediately to LINE, then processes async
+  app.post("/api/line-webhook", (req, res) => {
+    res.status(200).json({ status: "ok" });
+
     const body = req.body;
-
-    const rawBody = JSON.stringify(body);
-    if (LINE_CHANNEL_SECRET && !verifyLineSignature(rawBody, signature)) {
-      console.error("LINE: invalid signature");
-      return res.status(403).json({ error: "Invalid signature" });
-    }
-
-    res.status(200).json({ status: "ok" }); // Respond to LINE immediately
+    console.log("LINE webhook received:", JSON.stringify(body).substring(0, 200));
 
     for (const event of (body.events || [])) {
-      if (event.type === "message" && event.message.type === "text") {
-        const lineUserId = event.source.userId;
+      if (event.type === "message" && event.message?.type === "text") {
         const replyToken = event.replyToken;
+        const lineUserId = event.source?.userId;
+        const text = event.message.text;
+        console.log(`LINE message from ${lineUserId}: ${text}`);
 
-        try {
-          // Look up loyalty customer by lineUserId
-          const { initializeApp, getApps, cert } = await import("firebase-admin/app");
-          const { getFirestore } = await import("firebase-admin/firestore");
-
-          if (!getApps().length) {
-            const { applicationDefault } = await import("firebase-admin/app");
-            initializeApp({ 
-              credential: process.env.FIREBASE_SERVICE_ACCOUNT 
-                ? cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
-                : applicationDefault(),
-              databaseURL: "https://cajun-life-cafe.firebaseio.com"
-            });
-          }
-          const db = getFirestore(undefined, 'ai-studio-88dfc183-b7e7-45b8-b831-62b1a7bbdb29');
-
-          const snap = await db.collection("loyalty_customers")
-            .where("lineUserId", "==", lineUserId)
-            .limit(1)
-            .get();
-
-          if (snap.empty) {
-            // Not linked — don't reply, let staff handle the conversation normally
-            console.log("LINE: unlinked user messaged, ignoring:", lineUserId);
-            continue;
-          }
-
-          const customer = snap.docs[0].data();
-          const firstName = customer.firstName || customer.name || "there";
-          const balance = (customer.balance || 0).toLocaleString("en-US");
-
-          await replyLineMessage(replyToken,
-            `🌶️ Hi ${firstName}!\n\nYour Cajun Life Cafe wallet balance is:\n฿${balance}\n\nThank you for being a valued member! 🙏`
-          );
-          console.log(`LINE: balance reply sent to ${lineUserId} (${firstName}): ฿${balance}`);
-
-        } catch (err) {
-          console.error("LINE webhook error:", err);
-        }
+        // Reply with a simple acknowledgement for now
+        replyLineMessage(replyToken,
+          "🌶️ Thanks for messaging Cajun Life Cafe! Our team will reply shortly."
+        ).catch(err => console.error("LINE reply error:", err));
       }
     }
   });
