@@ -56,7 +56,8 @@ export default function CRMDirectory() {
     email: '',
     mobile: '',
     notes: '',
-    status: 'active' as 'active' | 'inactive'
+    status: 'active' as 'active' | 'inactive',
+    lineUserId: ''
   });
 
   const adminEmail = auth.currentUser?.email || 'unknown';
@@ -134,6 +135,18 @@ export default function CRMDirectory() {
           ...formData,
           updatedAt: new Date().toISOString()
         });
+
+        // Also sync lineUserId to loyalty_customers if linked
+        if (formData.lineUserId !== undefined) {
+          const loyaltyQ = query(collection(db, 'loyalty_customers'), where('mobile', '==', formData.mobile), limit(1));
+          const loyaltySnap = await getDocs(loyaltyQ);
+          if (!loyaltySnap.empty) {
+            await updateDoc(doc(db, 'loyalty_customers', loyaltySnap.docs[0].id), {
+              lineUserId: formData.lineUserId,
+              updatedAt: new Date().toISOString()
+            });
+          }
+        }
         await logCRMAction('Customer Updated', `Updated customer: ${formData.firstName} ${formData.lastName} (${formData.email})`);
         toast.success('Customer updated successfully');
       } else {
@@ -153,7 +166,7 @@ export default function CRMDirectory() {
       
       setShowAddModal(false);
       setSelectedCustomerId(null);
-      setFormData({ firstName: '', lastName: '', email: '', mobile: '', notes: '', status: 'active' });
+      setFormData({ firstName: '', lastName: '', email: '', mobile: '', notes: '', status: 'active', lineUserId: '' });
     } catch (err) {
       console.error('Error saving customer:', err);
       toast.error('Failed to save customer');
@@ -219,7 +232,8 @@ export default function CRMDirectory() {
       email: customer.email,
       mobile: customer.mobile,
       notes: customer.notes || '',
-      status: customer.status || 'active'
+      status: customer.status || 'active',
+      lineUserId: (customer as any).lineUserId || ''
     });
     setShowAddModal(true);
   };
@@ -277,7 +291,7 @@ export default function CRMDirectory() {
         <button 
           onClick={() => {
             setSelectedCustomerId(null);
-            setFormData({ firstName: '', lastName: '', email: '', mobile: '', notes: '', status: 'active' });
+            setFormData({ firstName: '', lastName: '', email: '', mobile: '', notes: '', status: 'active', lineUserId: '' });
             setShowAddModal(true);
           }}
           className="bg-ink text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg hover:bg-black transition-all"
@@ -594,6 +608,21 @@ export default function CRMDirectory() {
                         className="w-full pl-14 pr-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-terracotta outline-none transition-all font-medium resize-none"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest px-1">LINE User ID</label>
+                    <div className="relative">
+                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">LINE</span>
+                      <input
+                        type="text"
+                        value={formData.lineUserId}
+                        onChange={(e) => setFormData({...formData, lineUserId: e.target.value})}
+                        placeholder="Paste LINE User ID (e.g. Uxxxxxxxx...)"
+                        className="w-full pl-16 pr-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-terracotta outline-none transition-all font-medium font-mono text-sm"
+                      />
+                    </div>
+                    <p className="text-[10px] text-gray-400 px-1">Find in LINE OA Manager → Chats → customer profile. Enables wallet notifications via LINE.</p>
                   </div>
 
                   <div className="pt-4 flex gap-4">
