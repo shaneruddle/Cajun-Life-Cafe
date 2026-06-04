@@ -85,10 +85,11 @@ export default function CRMDirectory() {
       snapshot.docs.forEach(doc => {
         const data = doc.data();
         if (data.mobile) {
-          // Store normalised (digits only) so we can match regardless of format
           const digits = data.mobile.replace(/\D/g, '');
-          members[digits] = true;
-          members[data.mobile] = true; // also store raw
+          const last9 = digits.slice(-9); // last 9 digits — works regardless of +66 / 0 prefix
+          members[data.mobile] = true;  // raw
+          members[digits] = true;       // digits only
+          members[last9] = true;        // last 9 — the universal key
         }
       });
       setLoyaltyMembers(members);
@@ -424,7 +425,8 @@ export default function CRMDirectory() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filteredCustomers.map((customer) => {
-                const isLoyalty = loyaltyMembers[customer.mobile] || loyaltyMembers[customer.mobile?.replace(/\D/g, '')];
+                const mobileDigits = customer.mobile?.replace(/\D/g, '') || '';
+                const isLoyalty = loyaltyMembers[customer.mobile] || loyaltyMembers[mobileDigits] || loyaltyMembers[mobileDigits.slice(-9)];
                 const isInactive = customer.status === 'inactive';
                 return (
                   <tr 
