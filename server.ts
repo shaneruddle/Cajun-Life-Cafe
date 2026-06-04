@@ -3,8 +3,16 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import fs from "fs";
+import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 
 dotenv.config();
+
+// ── Firebase Admin — initialise once at startup ───────────────────────────
+if (!getApps().length) {
+  initializeApp({ credential: applicationDefault() });
+}
+const adminDb = getFirestore(undefined, 'ai-studio-88dfc183-b7e7-45b8-b831-62b1a7bbdb29');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -289,15 +297,13 @@ Rules:
   app.get("/api/activate/:token", async (req, res) => {
     const { token } = req.params;
     try {
-      const { initializeApp, getApps, applicationDefault } = await import("firebase-admin/app");
-      const { getFirestore } = await import("firebase-admin/firestore");
-      if (!getApps().length) {
-        initializeApp({ credential: applicationDefault() });
-      }
-      const db = getFirestore(undefined, 'ai-studio-88dfc183-b7e7-45b8-b831-62b1a7bbdb29');
-      const snap = await db.collection("activation_tokens").doc(token).get();
-      if (!snap.exists) return res.status(404).json({ error: "Invalid or expired link" });
-      const data = snap.data()!;
+      // Query by token field (tokens stored with addDoc — doc ID is random)
+      const snap = await adminDb.collection("activation_tokens")
+        .where("token", "==", token)
+        .limit(1)
+        .get();
+      if (snap.empty) return res.status(404).json({ error: "Invalid or expired link" });
+      const data = snap.docs[0].data();
       if (data.used) return res.status(400).json({ error: "This link has already been used" });
       return res.json({ 
         valid: true, 
@@ -353,32 +359,51 @@ Rules:
 
       if (!lineUserId) return res.redirect(`/activate/error?msg=Could+not+get+LINE+ID`);
 
-      // Look up activation token and save lineUserId
-      const { initializeApp, getApps, applicationDefault } = await import("firebase-admin/app");
-      const { getFirestore } = await import("firebase-admin/firestore");
-      if (!getApps().length) {
-        initializeApp({ credential: applicationDefault() });
-      }
-      const db = getFirestore(undefined, 'ai-studio-88dfc183-b7e7-45b8-b831-62b1a7bbdb29');
-      
-      const tokenDoc = await db.collection("activation_tokens").doc(activationToken).get();
-      if (!tokenDoc.exists || tokenDoc.data()!.used) {
+      // Look up activation token by field (tokens stored with addDoc — doc ID is random)
+      const tokenSnap = await adminDb.collection("activation_tokens")
+        .where("token", "==", activationToken)
+        .limit(1)
+        .get();
+      if (tokenSnap.empty || tokenSnap.docs[0].data().used) {
         return res.redirect(`/activate/error?msg=Link+already+used`);
       }
 
-      const { loyaltyCustomerId } = tokenDoc.data()!;
+      const tokenDocRef = tokenSnap.docs[0].ref;
+      let { loyaltyCustomerId, mobile } = tokenSnap.docs[0].data();
+
+      // If loyaltyCustomerId is null (new customer not yet in loyalty system),
+      // try to find them by mobile number (handling +66 / 0 format differences)
+      if (!loyaltyCustomerId && mobile) {
+        const mobileVariants = [mobile, mobile.replace(/^\+66/, '0'), mobile.replace(/^0/, '+66')];
+        for (const m of mobileVariants) {
+          const loyaltySnap = await adminDb.collection("loyalty_customers")
+            .where("mobile", "==", m)
+            .limit(1)
+            .get();
+          if (!loyaltySnap.empty) {
+            loyaltyCustomerId = loyaltySnap.docs[0].id;
+            break;
+          }
+        }
+      }
+
+      if (!loyaltyCustomerId) {
+        console.error(`LINE Login: no loyalty customer found for token ${activationToken}`);
+        return res.redirect(`/activate/error?msg=Customer+not+yet+registered+in+loyalty+system`);
+      }
 
       // Save lineUserId to loyalty_customers
-      await db.collection("loyalty_customers").doc(loyaltyCustomerId).update({
+      await adminDb.collection("loyalty_customers").doc(loyaltyCustomerId).update({
         lineUserId,
         updatedAt: new Date().toISOString()
       });
 
       // Mark token as used
-      await db.collection("activation_tokens").doc(activationToken).update({
+      await tokenDocRef.update({
         used: true,
         usedAt: new Date().toISOString(),
-        lineUserId
+        lineUserId,
+        loyaltyCustomerId  // backfill in case it was null
       });
 
       console.log(`LINE Login: linked ${lineUserId} to loyalty customer ${loyaltyCustomerId}`);
