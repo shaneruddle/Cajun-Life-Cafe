@@ -178,7 +178,7 @@ export default function LoyaltyDashboard() {
 
         // Partial match in local list
         const partialMatch = loyaltyMembers.find(m => 
-          m.mobile.includes(normalized) || 
+          (m.mobile ?? "").includes(normalized) || 
           (m.firstName + ' ' + m.lastName).toLowerCase().includes(mobile.toLowerCase())
         );
 
@@ -406,7 +406,7 @@ New balance: ฿${newBalance.toLocaleString()}`
   };
 
   const filteredMembers = loyaltyMembers.filter(m => 
-    m.mobile.includes(searchQuery) || 
+    (m.mobile ?? "").includes(searchQuery) || 
     m.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     m.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     m.lastName?.toLowerCase().includes(searchQuery.toLowerCase())
