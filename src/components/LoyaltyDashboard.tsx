@@ -249,7 +249,7 @@ export default function LoyaltyDashboard() {
       setRegEmail('');
       setRegCountryCode('+66');
       
-      await logLoyaltyAction('Customer Registered', `New member ${fullName} registered`, normalizedMobile || 'no mobile');
+      await logLoyaltyAction('Customer Registered', `New member: ${fullName} | Mobile: ${normalizedMobile || 'no mobile'} | Registered by: ${adminEmail}`, normalizedMobile || 'no mobile');
       toast.success('Member registered successfully');
     } catch (error) {
       console.error('Registration error:', error);
@@ -321,7 +321,7 @@ export default function LoyaltyDashboard() {
       setCustomer(prev => prev ? { ...prev, balance: newBalance } : null);
       setTopUpAmount('');
       
-      await logLoyaltyAction('Balance Loaded', `Loaded ฿${amount} + ฿${bonus} bonus to ${customer.mobile}`, customer.mobile);
+      await logLoyaltyAction('Balance Loaded', `Customer: ${customer.firstName} ${customer.lastName} (${customer.mobile}) | Cash paid: ฿${amount} | Bonus (10%): ฿${bonus} | Total added: ฿${totalAdd} | Balance before: ฿${(customer.balance || 0).toLocaleString()} | Balance after: ฿${newBalance.toLocaleString()} | Staff: ${adminEmail}`, customer.mobile);
       
       // Send SMS notification
       try {
@@ -375,7 +375,7 @@ export default function LoyaltyDashboard() {
       setCustomer(prev => prev ? { ...prev, balance: newBalance } : null);
       setCashTopUpAmount('');
       
-      await logLoyaltyAction('Wallet Top Up', `Top up ฿${cash} to ${customer.mobile}`, customer.mobile);
+      await logLoyaltyAction('Wallet Top Up', `Customer: ${customer.firstName} ${customer.lastName} (${customer.mobile}) | Cash paid: ฿${cash} | Bonus (10%): ฿${bonus} | Total added: ฿${totalPoints} | Balance before: ฿${(customer.balance || 0).toLocaleString()} | Balance after: ฿${newBalance.toLocaleString()} | Staff: ${adminEmail}`, customer.mobile);
       
       // Send SMS notification
       try {
@@ -479,7 +479,7 @@ export default function LoyaltyDashboard() {
         processedBy: adminEmail
       });
 
-      await logLoyaltyAction('Receipt Redemption', `Redeemed ฿${amount} from ${customer.mobile}`, customer.mobile);
+      await logLoyaltyAction('Receipt Redemption', `Customer: ${customer.firstName} ${customer.lastName} (${customer.mobile}) | Amount deducted: ฿${amount} | Balance before: ฿${customer.balance.toLocaleString()} | Balance after: ฿${newBalance.toLocaleString()} | Receipt: ${receiptUrl} | Staff: ${adminEmail}`, customer.mobile);
 
       // Send LINE notification
       if (customer.lineUserId) {
