@@ -75,6 +75,8 @@ export default function LoyaltyDashboard() {
   const [regFirstName, setRegFirstName] = useState('');
   const [regLastName, setRegLastName] = useState('');
   const [regMobile, setRegMobile] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regCountryCode, setRegCountryCode] = useState('+66');
 
   // Wallet State
   const [topUpAmount, setTopUpAmount] = useState('');
@@ -217,13 +219,16 @@ export default function LoyaltyDashboard() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!regFirstName.trim()) { toast.error('First name is required'); return; }
     setIsRegistering(true);
     
     try {
       const fullName = `${regFirstName} ${regLastName}`.trim();
-      const normalizedMobile = regMobile.replace(/\D/g, '');
+      // Combine country code with mobile digits only
+      const mobileDigits = regMobile.replace(/\D/g, '');
+      const normalizedMobile = mobileDigits ? `${regCountryCode}${mobileDigits}` : '';
 
-      const newCustomer = {
+      const newCustomer: any = {
         firstName: regFirstName,
         lastName: regLastName,
         name: fullName,
@@ -233,6 +238,7 @@ export default function LoyaltyDashboard() {
         updatedAt: serverTimestamp(),
         isVerified: false
       };
+      if (regEmail) newCustomer.email = regEmail;
       
       const docRef = await addDoc(collection(db, 'loyalty_customers'), newCustomer);
       setCustomer({ ...newCustomer, id: docRef.id } as LoyaltyCustomer);
@@ -240,8 +246,10 @@ export default function LoyaltyDashboard() {
       setRegFirstName('');
       setRegLastName('');
       setRegMobile('');
+      setRegEmail('');
+      setRegCountryCode('+66');
       
-      await logLoyaltyAction('Customer Registered', `New member ${fullName} registered`, normalizedMobile);
+      await logLoyaltyAction('Customer Registered', `New member ${fullName} registered`, normalizedMobile || 'no mobile');
       toast.success('Member registered successfully');
     } catch (error) {
       console.error('Registration error:', error);
@@ -551,7 +559,7 @@ export default function LoyaltyDashboard() {
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">First Name</label>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">First Name *</label>
                   <input 
                     required
                     value={regFirstName}
@@ -563,7 +571,6 @@ export default function LoyaltyDashboard() {
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Last Name</label>
                   <input 
-                    required
                     value={regLastName}
                     onChange={(e) => setRegLastName(e.target.value)}
                     placeholder="Doe"
@@ -572,18 +579,63 @@ export default function LoyaltyDashboard() {
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Mobile Number</label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                  <input 
-                    required
-                    value={regMobile}
-                    type="tel"
-                    onChange={(e) => setRegMobile(e.target.value)}
-                    placeholder="08X XXX XXXX"
-                    className="w-full pl-12 pr-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-olive outline-none"
-                  />
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Mobile <span className="normal-case text-gray-400 font-normal">(optional)</span></label>
+                <div className="flex gap-2">
+                  <select
+                    value={regCountryCode}
+                    onChange={(e) => setRegCountryCode(e.target.value)}
+                    className="w-28 px-2 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-olive outline-none text-sm font-mono"
+                  >
+                    <option value="+66">🇹🇭 +66</option>
+                    <option value="+1">🇺🇸 +1</option>
+                    <option value="+44">🇬🇧 +44</option>
+                    <option value="+61">🇦🇺 +61</option>
+                    <option value="+49">🇩🇪 +49</option>
+                    <option value="+33">🇫🇷 +33</option>
+                    <option value="+81">🇯🇵 +81</option>
+                    <option value="+82">🇰🇷 +82</option>
+                    <option value="+86">🇨🇳 +86</option>
+                    <option value="+91">🇮🇳 +91</option>
+                    <option value="+65">🇸🇬 +65</option>
+                    <option value="+60">🇲🇾 +60</option>
+                    <option value="+852">🇭🇰 +852</option>
+                    <option value="+7">🇷🇺 +7</option>
+                    <option value="+971">🇦🇪 +971</option>
+                    <option value="+966">🇸🇦 +966</option>
+                    <option value="+31">🇳🇱 +31</option>
+                    <option value="+46">🇸🇪 +46</option>
+                    <option value="+47">🇳🇴 +47</option>
+                    <option value="+45">🇩🇰 +45</option>
+                    <option value="+358">🇫🇮 +358</option>
+                    <option value="+41">🇨🇭 +41</option>
+                    <option value="+43">🇦🇹 +43</option>
+                    <option value="+32">🇧🇪 +32</option>
+                    <option value="+351">🇵🇹 +351</option>
+                    <option value="+34">🇪🇸 +34</option>
+                    <option value="+39">🇮🇹 +39</option>
+                    <option value="+55">🇧🇷 +55</option>
+                  </select>
+                  <div className="relative flex-1">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input 
+                      value={regMobile}
+                      type="tel"
+                      onChange={(e) => setRegMobile(e.target.value)}
+                      placeholder="8X XXX XXXX"
+                      className="w-full pl-12 pr-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-olive outline-none"
+                    />
+                  </div>
                 </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Email <span className="normal-case text-gray-400 font-normal">(optional)</span></label>
+                <input 
+                  type="email"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  placeholder="john@example.com"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-olive outline-none"
+                />
               </div>
               <button 
                 type="submit"
