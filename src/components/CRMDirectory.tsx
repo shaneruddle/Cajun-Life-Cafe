@@ -129,22 +129,27 @@ export default function CRMDirectory() {
 
     try {
       if (selectedCustomerId) {
-        // Update
+        // Update — exclude lineUserId from crm_customers, it lives in loyalty_customers
+        const { lineUserId, ...crmFields } = formData;
         const customerRef = doc(db, 'crm_customers', selectedCustomerId);
         await updateDoc(customerRef, {
-          ...formData,
+          ...crmFields,
           updatedAt: new Date().toISOString()
         });
 
-        // Also sync lineUserId to loyalty_customers if linked
-        if (formData.lineUserId !== undefined) {
-          const loyaltyQ = query(collection(db, 'loyalty_customers'), where('mobile', '==', formData.mobile), limit(1));
-          const loyaltySnap = await getDocs(loyaltyQ);
-          if (!loyaltySnap.empty) {
-            await updateDoc(doc(db, 'loyalty_customers', loyaltySnap.docs[0].id), {
-              lineUserId: formData.lineUserId,
-              updatedAt: new Date().toISOString()
-            });
+        // Sync lineUserId to loyalty_customers
+        if (lineUserId !== undefined) {
+          try {
+            const loyaltyQ = query(collection(db, 'loyalty_customers'), where('mobile', '==', formData.mobile), limit(1));
+            const loyaltySnap = await getDocs(loyaltyQ);
+            if (!loyaltySnap.empty) {
+              await updateDoc(doc(db, 'loyalty_customers', loyaltySnap.docs[0].id), {
+                lineUserId: lineUserId,
+                updatedAt: new Date().toISOString()
+              });
+            }
+          } catch (loyaltyErr) {
+            console.error('Failed to sync LINE ID to loyalty:', loyaltyErr);
           }
         }
         await logCRMAction('Customer Updated', `Updated customer: ${formData.firstName} ${formData.lastName} (${formData.email})`);
