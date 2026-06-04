@@ -227,33 +227,35 @@ export default function CRMDirectory() {
 
   const handleManualLoyaltyEnroll = async (customer: CRMCustomer) => {
     try {
-      // Check if already exists — try both raw and digits-only match
-      const customerDigits = normaliseMobile(customer.mobile);
+      // Check if already enrolled — match by name since mobile may be missing/mismatched
       const allLoyalty = await getDocs(collection(db, 'loyalty_customers'));
+      const customerLast9 = normaliseMobile(customer.mobile || '').slice(-9);
       const alreadyEnrolled = allLoyalty.docs.some(doc => {
-        const m = doc.data().mobile || '';
-        return m === customer.mobile || normaliseMobile(m) === customerDigits;
+        const d = doc.data();
+        const loyaltyLast9 = normaliseMobile(d.mobile || '').slice(-9);
+        // Match by mobile (last 9 digits) if available, or by exact name
+        if (customerLast9 && loyaltyLast9 && customerLast9 === loyaltyLast9) return true;
+        return d.firstName === customer.firstName && d.lastName === customer.lastName;
       });
       if (alreadyEnrolled) {
-        toast.error('Customer already in loyalty program');
+        toast.error('Customer is already in the loyalty program');
         return;
       }
 
       await addDoc(collection(db, 'loyalty_customers'), {
         firstName: customer.firstName,
         lastName: customer.lastName,
-        email: customer.email,
-        mobile: customer.mobile,
-        balance: 50, // Starting bonus?
-        tier: 'bronze',
+        ...(customer.email && { email: customer.email }),
+        ...(customer.mobile && { mobile: customer.mobile }),
+        balance: 0,
         isVerified: true,
         uid: adminUid,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
 
-      await logCRMAction('Manual Loyalty Enrollment', `Manually enrolled ${customer.firstName} ${customer.lastName} into loyalty program`);
-      toast.success('Customer enrolled in loyalty program');
+      await logCRMAction('Loyalty Enrollment', `Enrolled ${customer.firstName} ${customer.lastName} into loyalty program`, 'loyalty');
+      toast.success(`${customer.firstName} enrolled in loyalty program!`);
     } catch (err) {
       console.error('Loyalty enrollment error:', err);
       toast.error('Failed to enroll customer');
@@ -681,7 +683,11 @@ export default function CRMDirectory() {
                     </div>
                     <div className="space-y-2">
                       <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Loyalty Scheme</label>
-                      {(loyaltyMembers[formData.mobile] || loyaltyMembers[formData.mobile?.replace(/\D/g, '')]) ? (
+                      {(() => {
+                        const last9 = (formData.mobile || '').replace(/\D/g, '').slice(-9);
+                        const isEnrolled = !!(loyaltyMembers[formData.mobile] || (last9 && loyaltyMembers[last9]));
+                        return isEnrolled;
+                      })() ? (
                         <div className="w-full px-5 py-4 rounded-2xl bg-green-50 border border-green-100 text-green-700 font-bold flex items-center gap-2">
                           <CheckCircle2 size={18} /> Enrolled Member
                         </div>
