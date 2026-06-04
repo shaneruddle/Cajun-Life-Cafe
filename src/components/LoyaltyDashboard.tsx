@@ -334,7 +334,7 @@ export default function LoyaltyDashboard() {
       if (customer.lineUserId) {
         await sendLinePush(
           customer.lineUserId,
-          `🌶️ Cajun Life Cafe\n\nWallet topped up: +฿${totalAdd.toLocaleString()} (incl. ฿${bonus.toLocaleString()} bonus)\nNew balance: ฿${newBalance.toLocaleString()}`
+          `Cajun Life Cafe\n\n💰 Wallet topped up: +฿${totalAdd.toLocaleString()} (incl. ฿${bonus.toLocaleString()} bonus)\nNew balance: ฿${newBalance.toLocaleString()}`
         );
       }
 
@@ -388,7 +388,7 @@ export default function LoyaltyDashboard() {
       if (customer.lineUserId) {
         await sendLinePush(
           customer.lineUserId,
-          `🌶️ Cajun Life Cafe\n\nWallet topped up: +฿${totalPoints.toLocaleString()} (incl. ฿${bonus.toLocaleString()} bonus)\nNew balance: ฿${newBalance.toLocaleString()}`
+          `Cajun Life Cafe\n\n💰 Wallet topped up: +฿${totalPoints.toLocaleString()} (incl. ฿${bonus.toLocaleString()} bonus)\nNew balance: ฿${newBalance.toLocaleString()}`
         );
       }
 
@@ -485,7 +485,7 @@ export default function LoyaltyDashboard() {
       if (customer.lineUserId) {
         await sendLinePush(
           customer.lineUserId,
-          `🌶️ Cajun Life Cafe\n\nPayment received: ฿${amount.toLocaleString()}\nRemaining balance: ฿${newBalance.toLocaleString()}\n\nThank you! 🙏`
+          `Cajun Life Cafe\n\n💰 Payment received: ฿${amount.toLocaleString()}\nRemaining balance: ฿${newBalance.toLocaleString()}\n\nThank you! 🙏`
         );
       }
 
