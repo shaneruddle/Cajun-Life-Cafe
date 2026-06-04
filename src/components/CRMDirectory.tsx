@@ -172,8 +172,24 @@ export default function CRMDirectory() {
         };
 
         const docRef = await addDoc(collection(db, 'crm_customers'), newCustomer);
+
+        // Generate LINE activation token and store it
+        const activationToken = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+        await addDoc(collection(db, 'activation_tokens'), {
+          token: activationToken,
+          crmCustomerId: docRef.id,
+          loyaltyCustomerId: null,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          mobile: formData.mobile,
+          used: false,
+          createdAt: new Date().toISOString()
+        });
+        const activationLink = `https://cajunlifecafe.com/activate/${activationToken}`;
+        navigator.clipboard.writeText(activationLink).catch(() => {});
+
         await logCRMAction('Customer Added', `Added new customer: ${formData.firstName} ${formData.lastName} (${formData.email})`);
-        toast.success('Customer added successfully');
+        toast.success(`Customer added! Link copied: ${activationLink}`, { duration: 8000 });
       }
       
       setShowAddModal(false);
