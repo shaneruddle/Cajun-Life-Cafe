@@ -292,7 +292,13 @@ Rules:
           const { getFirestore } = await import("firebase-admin/firestore");
 
           if (!getApps().length) {
-            initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || "{}")) });
+            const { applicationDefault } = await import("firebase-admin/app");
+            initializeApp({ 
+              credential: process.env.FIREBASE_SERVICE_ACCOUNT 
+                ? cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
+                : applicationDefault(),
+              databaseURL: "https://cajun-life-cafe.firebaseio.com"
+            });
           }
           const db = getFirestore();
 
