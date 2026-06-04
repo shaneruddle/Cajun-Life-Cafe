@@ -82,6 +82,14 @@ export default function LoyaltyDashboard() {
   const [isProcessingWallet, setIsProcessingWallet] = useState(false);
   const [isProcessingTopUp, setIsProcessingTopUp] = useState(false);
 
+  // Scan & Pay State
+  const [isScanningReceipt, setIsScanningReceipt] = useState(false);
+  const [scannedAmount, setScannedAmount] = useState<number | null>(null);
+  const [scannedImageBase64, setScannedImageBase64] = useState<string | null>(null);
+  const [scannedImageFile, setScannedImageFile] = useState<File | null>(null);
+  const [isProcessingRedemption, setIsProcessingRedemption] = useState(false);
+  const [showScanConfirm, setShowScanConfirm] = useState(false);
+
   // OTP State
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -391,6 +399,103 @@ export default function LoyaltyDashboard() {
     m.lastName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Handle receipt scan via OCR
+  const handleScanReceipt = async (file: File) => {
+    setIsScanningReceipt(true);
+    setScannedAmount(null);
+    setShowScanConfirm(false);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = (e.target?.result as string).split(',')[1];
+        setScannedImageBase64(base64);
+        setScannedImageFile(file);
+
+        const resp = await fetch('/api/ocr-receipt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: base64, mimeType: file.type })
+        });
+        const data = await resp.json();
+        if (data.success && data.data?.total) {
+          setScannedAmount(parseFloat(data.data.total));
+          setShowScanConfirm(true);
+        } else {
+          toast.error('Could not read receipt total. Please try again.');
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      toast.error('Failed to scan receipt.');
+    } finally {
+      setIsScanningReceipt(false);
+    }
+  };
+
+  // Confirm redemption after scan
+  const handleConfirmRedemption = async () => {
+    if (!customer || scannedAmount === null || !scannedImageFile) return;
+
+    const amount = scannedAmount;
+    const newBalance = customer.balance - amount;
+
+    if (newBalance < 0) {
+      toast.error(`Insufficient balance. Customer has ฿${customer.balance.toLocaleString()} but receipt total is ฿${amount.toLocaleString()}.`);
+      return;
+    }
+
+    setIsProcessingRedemption(true);
+    try {
+      // Upload receipt image to Firebase Storage (30-day path)
+      const dateStr = new Date().toISOString().split('T')[0];
+      const fileName = `receipts/${dateStr}/${customer.mobile}_${Date.now()}.jpg`;
+      const storageRef = ref(storage, fileName);
+      await uploadBytes(storageRef, scannedImageFile);
+      const receiptUrl = await getDownloadURL(storageRef);
+
+      // Update customer balance
+      const customerRef = doc(db, 'loyalty_customers', customer.id!);
+      await updateDoc(customerRef, {
+        balance: newBalance,
+        updatedAt: new Date().toISOString()
+      });
+
+      // Save REDEEM transaction
+      await addDoc(collection(db, 'loyalty_customers', customer.id!, 'transactions'), {
+        type: 'REDEEM',
+        amount: amount,
+        memo: `Receipt payment ฿${amount.toLocaleString()}`,
+        receiptUrl,
+        balanceAfter: newBalance,
+        timestamp: serverTimestamp(),
+        processedBy: adminEmail
+      });
+
+      await logLoyaltyAction('Receipt Redemption', `Redeemed ฿${amount} from ${customer.mobile}`, customer.mobile);
+
+      // Send LINE notification
+      if (customer.lineUserId) {
+        await sendLinePush(
+          customer.lineUserId,
+          `🌶️ Cajun Life Cafe\n\nPayment received: ฿${amount.toLocaleString()}\nRemaining balance: ฿${newBalance.toLocaleString()}\n\nThank you! 🙏`
+        );
+      }
+
+      // Update local state
+      setCustomer({ ...customer, balance: newBalance });
+      setScannedAmount(null);
+      setScannedImageBase64(null);
+      setScannedImageFile(null);
+      setShowScanConfirm(false);
+      toast.success(`฿${amount.toLocaleString()} deducted. New balance: ฿${newBalance.toLocaleString()}`);
+    } catch (err) {
+      console.error('Redemption error:', err);
+      toast.error('Failed to process redemption.');
+    } finally {
+      setIsProcessingRedemption(false);
+    }
+  };
+
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-100 pb-6">
@@ -629,6 +734,70 @@ export default function LoyaltyDashboard() {
                   >
                     {isProcessingTopUp ? <Loader2 className="animate-spin" /> : <><ArrowUpCircle size={20} /> Add to Wallet</>}
                   </button>
+                </div>
+              </div>
+
+              {/* Scan & Pay Card */}
+              <div className="bg-terracotta p-8 rounded-[32px] text-white shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <Camera size={100} />
+                </div>
+                <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <Camera size={20} /> Scan & Pay
+                </h3>
+                <div className="space-y-4 relative z-10">
+                  <p className="text-white/60 text-sm">Scan customer receipt to deduct from wallet balance.</p>
+
+                  {!showScanConfirm ? (
+                    <label className="block w-full cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleScanReceipt(file);
+                          e.target.value = '';
+                        }}
+                      />
+                      <div className="w-full py-4 bg-white text-terracotta rounded-2xl font-bold shadow-lg hover:bg-cream transition-all flex justify-center items-center gap-2">
+                        {isScanningReceipt ? (
+                          <><Loader2 className="animate-spin" size={20} /> Reading receipt...</>
+                        ) : (
+                          <><Camera size={20} /> Scan Receipt</>
+                        )}
+                      </div>
+                    </label>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="bg-white/10 rounded-2xl p-4 border border-white/20">
+                        <p className="text-white/60 text-xs uppercase tracking-widest font-bold mb-1">Receipt Total</p>
+                        <p className="text-3xl font-display font-bold">฿{scannedAmount?.toLocaleString()}</p>
+                        {customer.balance - (scannedAmount || 0) < 0 && (
+                          <p className="text-red-300 text-xs mt-2 font-bold">⚠️ Insufficient balance (฿{customer.balance.toLocaleString()} available)</p>
+                        )}
+                        {customer.balance - (scannedAmount || 0) >= 0 && (
+                          <p className="text-white/60 text-xs mt-2">Balance after: ฿{(customer.balance - (scannedAmount || 0)).toLocaleString()}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => { setShowScanConfirm(false); setScannedAmount(null); }}
+                          className="flex-1 py-3 bg-white/10 text-white rounded-2xl font-bold border border-white/20 hover:bg-white/20 transition-all"
+                        >
+                          Rescan
+                        </button>
+                        <button
+                          onClick={handleConfirmRedemption}
+                          disabled={isProcessingRedemption || (customer.balance - (scannedAmount || 0)) < 0}
+                          className="flex-1 py-3 bg-white text-terracotta rounded-2xl font-bold hover:bg-cream transition-all flex justify-center items-center gap-2 disabled:opacity-50"
+                        >
+                          {isProcessingRedemption ? <Loader2 className="animate-spin" size={20} /> : 'Confirm Payment'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
