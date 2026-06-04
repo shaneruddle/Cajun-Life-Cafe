@@ -315,8 +315,8 @@ Rules:
     }
 
     try {
-      // Get channel access token
-      const tokenResp = await fetch("https://api.line.me/v2/oauth/accessToken", {
+      // Get channel access token via v2.1
+      const tokenResp = await fetch("https://api.line.me/oauth2/v2.1/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -326,11 +326,12 @@ Rules:
         })
       });
       const tokenData = await tokenResp.json() as any;
+      console.log("LINE token response:", JSON.stringify(tokenData).substring(0, 200));
       const accessToken = tokenData.access_token;
 
       if (!accessToken) {
-        console.error("LINE token error:", tokenData);
-        return res.status(500).json({ success: false, error: "Failed to get LINE access token" });
+        console.error("LINE token error:", JSON.stringify(tokenData));
+        return res.status(500).json({ success: false, error: "Failed to get LINE access token", detail: tokenData });
       }
 
       // Send push message
