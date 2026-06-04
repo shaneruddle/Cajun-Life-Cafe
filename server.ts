@@ -357,12 +357,13 @@ Rules:
       });
 
       const pushData = await pushResp.json() as any;
+      console.log(`LINE push response: HTTP ${pushResp.status}`, JSON.stringify(pushData));
       if (pushResp.ok) {
         console.log(`LINE push sent to ${lineUserId}`);
         return res.json({ success: true });
       } else {
-        console.error("LINE push error:", JSON.stringify(pushData));
-        return res.status(500).json({ success: false, error: pushData.message, detail: pushData });
+        console.error("LINE push error:", pushResp.status, JSON.stringify(pushData));
+        return res.status(500).json({ success: false, httpStatus: pushResp.status, error: pushData.message, detail: pushData });
       }
     } catch (error) {
       console.error("LINE push exception:", error);
