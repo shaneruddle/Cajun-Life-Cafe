@@ -279,6 +279,116 @@ Rules:
   });
 
 
+
+  // ── LINE Login Activation ─────────────────────────────────────────
+  const LINE_LOGIN_CHANNEL_ID = process.env.LINE_LOGIN_CHANNEL_ID || "";
+  const LINE_LOGIN_CHANNEL_SECRET = process.env.LINE_LOGIN_CHANNEL_SECRET || "";
+  const ACTIVATION_BASE_URL = "https://cajunlifecafe.com";
+
+  // Get activation token info (for the activation page)
+  app.get("/api/activate/:token", async (req, res) => {
+    const { token } = req.params;
+    try {
+      const { initializeApp, getApps, applicationDefault } = await import("firebase-admin/app");
+      const { getFirestore } = await import("firebase-admin/firestore");
+      if (!getApps().length) {
+        initializeApp({ credential: applicationDefault() });
+      }
+      const db = getFirestore(undefined, 'ai-studio-88dfc183-b7e7-45b8-b831-62b1a7bbdb29');
+      const snap = await db.collection("activation_tokens").doc(token).get();
+      if (!snap.exists) return res.status(404).json({ error: "Invalid or expired link" });
+      const data = snap.data()!;
+      if (data.used) return res.status(400).json({ error: "This link has already been used" });
+      return res.json({ 
+        valid: true, 
+        firstName: data.firstName,
+        lastName: data.lastName
+      });
+    } catch (err) {
+      console.error("Activation token lookup error:", err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  // Initiate LINE Login OAuth
+  app.get("/api/activate/:token/line-login", (req, res) => {
+    const { token } = req.params;
+    const state = token;
+    const callbackUrl = `${ACTIVATION_BASE_URL}/activate/callback`;
+    const lineLoginUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${LINE_LOGIN_CHANNEL_ID}&redirect_uri=${encodeURIComponent(callbackUrl)}&state=${state}&scope=profile`;
+    res.redirect(lineLoginUrl);
+  });
+
+  // LINE Login callback — saves lineUserId to loyalty_customers
+  app.get("/activate/callback", async (req, res) => {
+    const { code, state: activationToken } = req.query as { code: string; state: string };
+    if (!code || !activationToken) {
+      return res.redirect(`/activate/error?msg=Missing+parameters`);
+    }
+    try {
+      // Exchange code for access token
+      const tokenResp = await fetch("https://api.line.me/oauth2/v2.1/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: `${ACTIVATION_BASE_URL}/activate/callback`,
+          client_id: LINE_LOGIN_CHANNEL_ID,
+          client_secret: LINE_LOGIN_CHANNEL_SECRET
+        })
+      });
+      const tokenData = await tokenResp.json() as any;
+      if (!tokenData.access_token) {
+        console.error("LINE Login token error:", tokenData);
+        return res.redirect(`/activate/error?msg=LINE+login+failed`);
+      }
+
+      // Get LINE profile (User ID)
+      const profileResp = await fetch("https://api.line.me/v2/profile", {
+        headers: { "Authorization": `Bearer ${tokenData.access_token}` }
+      });
+      const profile = await profileResp.json() as any;
+      const lineUserId = profile.userId;
+
+      if (!lineUserId) return res.redirect(`/activate/error?msg=Could+not+get+LINE+ID`);
+
+      // Look up activation token and save lineUserId
+      const { initializeApp, getApps, applicationDefault } = await import("firebase-admin/app");
+      const { getFirestore } = await import("firebase-admin/firestore");
+      if (!getApps().length) {
+        initializeApp({ credential: applicationDefault() });
+      }
+      const db = getFirestore(undefined, 'ai-studio-88dfc183-b7e7-45b8-b831-62b1a7bbdb29');
+      
+      const tokenDoc = await db.collection("activation_tokens").doc(activationToken).get();
+      if (!tokenDoc.exists || tokenDoc.data()!.used) {
+        return res.redirect(`/activate/error?msg=Link+already+used`);
+      }
+
+      const { loyaltyCustomerId } = tokenDoc.data()!;
+
+      // Save lineUserId to loyalty_customers
+      await db.collection("loyalty_customers").doc(loyaltyCustomerId).update({
+        lineUserId,
+        updatedAt: new Date().toISOString()
+      });
+
+      // Mark token as used
+      await db.collection("activation_tokens").doc(activationToken).update({
+        used: true,
+        usedAt: new Date().toISOString(),
+        lineUserId
+      });
+
+      console.log(`LINE Login: linked ${lineUserId} to loyalty customer ${loyaltyCustomerId}`);
+      return res.redirect(`/activate/success`);
+    } catch (err) {
+      console.error("LINE Login callback error:", err);
+      return res.redirect(`/activate/error?msg=Server+error`);
+    }
+  });
+
   // ── LINE Push Message ─────────────────────────────────────────────
   // Sends an outbound push message to a customer's LINE account
   app.post("/api/line-push", async (req, res) => {
