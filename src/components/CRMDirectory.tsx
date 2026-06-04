@@ -56,6 +56,7 @@ export default function CRMDirectory() {
     lastName: '',
     email: '',
     mobile: '',
+    countryCode: '+66',
     notes: '',
     status: 'active' as 'active' | 'inactive',
     lineUserId: ''
@@ -131,10 +132,12 @@ export default function CRMDirectory() {
     try {
       if (selectedCustomerId) {
         // Update — exclude lineUserId from crm_customers, it lives in loyalty_customers
-        const { lineUserId, ...crmFields } = formData;
+        const { lineUserId, countryCode, mobile, ...crmFields } = formData;
+        const fullMobile = mobile ? `${countryCode}${mobile.replace(/^0/, '')}` : '';
         const customerRef = doc(db, 'crm_customers', selectedCustomerId);
         await updateDoc(customerRef, {
           ...crmFields,
+          mobile: fullMobile || mobile,
           updatedAt: new Date().toISOString()
         });
 
@@ -172,7 +175,7 @@ export default function CRMDirectory() {
       
       setShowAddModal(false);
       setSelectedCustomerId(null);
-      setFormData({ firstName: '', lastName: '', email: '', mobile: '', notes: '', status: 'active', lineUserId: '' });
+      setFormData({ firstName: '', lastName: '', email: '', mobile: '', countryCode: '+66', notes: '', status: 'active', lineUserId: '' });
     } catch (err) {
       console.error('Error saving customer:', err);
       toast.error('Failed to save customer');
@@ -308,7 +311,7 @@ export default function CRMDirectory() {
         <button 
           onClick={() => {
             setSelectedCustomerId(null);
-            setFormData({ firstName: '', lastName: '', email: '', mobile: '', notes: '', status: 'active', lineUserId: '' });
+            setFormData({ firstName: '', lastName: '', email: '', mobile: '', countryCode: '+66', notes: '', status: 'active', lineUserId: '' });
             setShowAddModal(true);
           }}
           className="bg-ink text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg hover:bg-black transition-all"
@@ -537,9 +540,8 @@ export default function CRMDirectory() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Last Name</label>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Last Name <span className="normal-case font-normal text-gray-300">(optional)</span></label>
                       <input 
-                        required
                         type="text"
                         value={formData.lastName}
                         onChange={(e) => setFormData({...formData, lastName: e.target.value})}
@@ -551,11 +553,10 @@ export default function CRMDirectory() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Email Address</label>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Email Address <span className="normal-case font-normal text-gray-300">(optional)</span></label>
                       <div className="relative">
                         <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         <input 
-                          required
                           type="email"
                           value={formData.email}
                           onChange={(e) => setFormData({...formData, email: e.target.value})}
@@ -565,17 +566,48 @@ export default function CRMDirectory() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Mobile Phone</label>
-                      <div className="relative">
-                        <Phone className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input 
-                          required
-                          type="tel"
-                          value={formData.mobile}
-                          onChange={(e) => setFormData({...formData, mobile: e.target.value})}
-                          placeholder="+66 12 345 6789"
-                          className="w-full pl-14 pr-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-terracotta outline-none transition-all font-medium"
-                        />
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Mobile Phone <span className="normal-case font-normal text-gray-300">(optional)</span></label>
+                      <div className="flex gap-2">
+                        <select
+                          value={formData.countryCode}
+                          onChange={(e) => setFormData({...formData, countryCode: e.target.value})}
+                          className="w-24 px-2 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-terracotta outline-none font-mono text-sm"
+                        >
+                          <option value="+66">🇹🇭 +66</option>
+                          <option value="+1">🇺🇸 +1</option>
+                          <option value="+44">🇬🇧 +44</option>
+                          <option value="+61">🇦🇺 +61</option>
+                          <option value="+49">🇩🇪 +49</option>
+                          <option value="+33">🇫🇷 +33</option>
+                          <option value="+81">🇯🇵 +81</option>
+                          <option value="+82">🇰🇷 +82</option>
+                          <option value="+86">🇨🇳 +86</option>
+                          <option value="+91">🇮🇳 +91</option>
+                          <option value="+65">🇸🇬 +65</option>
+                          <option value="+60">🇲🇾 +60</option>
+                          <option value="+852">🇭🇰 +852</option>
+                          <option value="+7">🇷🇺 +7</option>
+                          <option value="+971">🇦🇪 +971</option>
+                          <option value="+966">🇸🇦 +966</option>
+                          <option value="+31">🇳🇱 +31</option>
+                          <option value="+46">🇸🇪 +46</option>
+                          <option value="+47">🇳🇴 +47</option>
+                          <option value="+45">🇩🇰 +45</option>
+                          <option value="+55">🇧🇷 +55</option>
+                          <option value="+41">🇨🇭 +41</option>
+                          <option value="+34">🇪🇸 +34</option>
+                          <option value="+39">🇮🇹 +39</option>
+                        </select>
+                        <div className="relative flex-1">
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                          <input 
+                            type="tel"
+                            value={formData.mobile}
+                            onChange={(e) => setFormData({...formData, mobile: e.target.value})}
+                            placeholder="812 345 6789"
+                            className="w-full pl-12 pr-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-terracotta outline-none transition-all font-medium"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
