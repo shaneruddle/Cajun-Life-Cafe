@@ -3,14 +3,16 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import fs from "fs";
-import { initializeApp, getApps, applicationDefault } from "firebase-admin/app";
+import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
 dotenv.config();
 
 // ── Firebase Admin — initialise once at startup ───────────────────────────
-const adminApp = getApps().length ? getApps()[0] : initializeApp({ credential: applicationDefault() });
-const adminDb = getFirestore(adminApp, 'ai-studio-88dfc183-b7e7-45b8-b831-62b1a7bbdb29');
+if (!getApps().length) {
+  initializeApp({ credential: applicationDefault() });
+}
+const adminDb = getFirestore(undefined, 'ai-studio-88dfc183-b7e7-45b8-b831-62b1a7bbdb29');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -308,9 +310,9 @@ Rules:
         firstName: data.firstName,
         lastName: data.lastName
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Activation token lookup error:", err);
-      return res.status(500).json({ error: "Server error" });
+      return res.status(500).json({ error: "Server error", detail: err?.message || String(err), code: err?.code });
     }
   });
 
