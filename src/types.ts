@@ -159,6 +159,7 @@ export interface LoyaltyCustomer {
   createdAt: any;
   updatedAt: any;
   isVerified: boolean;
+  lineUserId?: string;
 }
 
 export interface LoyaltyTransactionItem {
