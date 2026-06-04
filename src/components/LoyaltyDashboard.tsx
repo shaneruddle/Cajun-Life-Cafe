@@ -16,7 +16,6 @@ import {
 import { db, auth, storage } from '../firebase';
 import { sendBalanceUpdate, sendReceiptSMS, sendTopUpSMS } from '../services/twilioSMS';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { 
   Search, 
   UserPlus, 
@@ -334,7 +333,10 @@ export default function LoyaltyDashboard() {
       if (customer.lineUserId) {
         await sendLinePush(
           customer.lineUserId,
-          `Cajun Life Cafe\n\n💰 Wallet topped up: +฿${totalAdd.toLocaleString()} (incl. ฿${bonus.toLocaleString()} bonus)\nNew balance: ฿${newBalance.toLocaleString()}`
+          `Cajun Life Cafe
+
+💰 Wallet topped up: +฿${totalAdd.toLocaleString()} (incl. ฿${bonus.toLocaleString()} bonus)
+New balance: ฿${newBalance.toLocaleString()}`
         );
       }
 
@@ -388,7 +390,10 @@ export default function LoyaltyDashboard() {
       if (customer.lineUserId) {
         await sendLinePush(
           customer.lineUserId,
-          `Cajun Life Cafe\n\n💰 Wallet topped up: +฿${totalPoints.toLocaleString()} (incl. ฿${bonus.toLocaleString()} bonus)\nNew balance: ฿${newBalance.toLocaleString()}`
+          `Cajun Life Cafe
+
+💰 Wallet topped up: +฿${totalPoints.toLocaleString()} (incl. ฿${bonus.toLocaleString()} bonus)
+New balance: ฿${newBalance.toLocaleString()}`
         );
       }
 
@@ -485,7 +490,12 @@ export default function LoyaltyDashboard() {
       if (customer.lineUserId) {
         await sendLinePush(
           customer.lineUserId,
-          `Cajun Life Cafe\n\n💰 Payment received: ฿${amount.toLocaleString()}\nRemaining balance: ฿${newBalance.toLocaleString()}\n\nThank you! 🙏`
+          `Cajun Life Cafe
+
+💰 Payment received: ฿${amount.toLocaleString()}
+Remaining balance: ฿${newBalance.toLocaleString()}
+
+Thank you! 🙏`
         );
       }
 
