@@ -268,34 +268,33 @@ Rules:
   });
 
   // Main webhook — receives messages from LINE
-  app.post("/api/line-webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  // Note: body already parsed by global express.json() middleware
+  // Signature verification uses JSON.stringify of parsed body
+  app.post("/api/line-webhook", async (req, res) => {
     const signature = req.headers["x-line-signature"] as string;
-    const rawBody = req.body.toString();
+    const body = req.body;
 
-    if (!verifyLineSignature(rawBody, signature)) {
+    // Verify signature using re-stringified body
+    const rawBody = JSON.stringify(body);
+    if (LINE_CHANNEL_SECRET && !verifyLineSignature(rawBody, signature)) {
       console.error("LINE: invalid signature");
       return res.status(403).json({ error: "Invalid signature" });
     }
 
-    let body: any;
-    try { body = JSON.parse(rawBody); } catch { return res.status(400).json({ error: "Bad JSON" }); }
-
     res.status(200).json({ status: "ok" }); // Respond to LINE immediately
 
-    for (const event of body.events || []) {
+    for (const event of (body.events || [])) {
+      console.log("LINE event:", event.type, event.message?.type);
       if (event.type === "message" && event.message.type === "text") {
-        const userText = event.message.text.toLowerCase().trim();
+        const userText = (event.message.text as string).toLowerCase().trim();
         const replyToken = event.replyToken;
 
         if (userText.includes("point") || userText.includes("แต้ม") || userText.includes("คะแนน")) {
           await replyLineMessage(replyToken,
             "🌶️ Cajun Life Cafe\n\nTo check your loyalty points, please visit us or ask a team member to look up your account.\n\nThank you for being a valued customer! 🙏"
           );
-        } else {
-          await replyLineMessage(replyToken,
-            "🌶️ Welcome to Cajun Life Cafe!\n\nText 'points' to check your loyalty balance.\n\nSee you soon! 🍽️"
-          );
         }
+        // Ignore all other messages — don't interfere with delivery conversations
       }
     }
   });
@@ -314,4 +313,5 @@ Rules:
 }
 
 startServer().catch(console.error);
+
 
