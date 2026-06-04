@@ -457,6 +457,65 @@ Rules:
     }
   });
 
+
+  // ── Nightly Loyalty Digest Email ─────────────────────────────────
+  async function sendLoyaltyDigest(): Promise<{ sent: boolean; entries: number; error?: string }> {
+    const smtpHost = process.env.SMTP_HOST || "";
+    const smtpPort = parseInt(process.env.SMTP_PORT || "587");
+    const smtpUser = process.env.SMTP_USER || "";
+    const smtpPass = process.env.SMTP_PASS || "";
+    if (!smtpHost || !smtpUser || !smtpPass) return { sent: false, entries: 0, error: "SMTP not configured" };
+
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const logsSnap = await adminDb.collection("system_logs")
+      .where("category", "==", "loyalty")
+      .where("timestamp", ">=", since)
+      .orderBy("timestamp", "asc")
+      .get();
+    const logs = logsSnap.docs.map(d => d.data());
+    const dateStr = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Bangkok", day: "2-digit", month: "long", year: "numeric" });
+
+    let rows = "";
+    if (logs.length === 0) {
+      rows = `<tr><td colspan="4" style="text-align:center;color:#999;padding:20px;">No loyalty activity in the past 24 hours</td></tr>`;
+    } else {
+      for (const log of logs) {
+        const t = new Date(log.timestamp).toLocaleTimeString("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" });
+        const c = log.action === "Receipt Redemption" ? "#e53e3e" : (log.action === "Balance Loaded" || log.action === "Wallet Top Up") ? "#276749" : "#2b6cb0";
+        rows += `<tr style="border-bottom:1px solid #eee"><td style="padding:10px;color:#666">${t}</td><td style="padding:10px;font-weight:600;color:${c}">${log.action}</td><td style="padding:10px;color:#333;font-size:13px">${log.details}</td><td style="padding:10px;color:#999;font-size:12px">${log.userEmail || ""}</td></tr>`;
+      }
+    }
+
+    const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f7f7f7;padding:30px"><div style="max-width:700px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08)"><div style="background:#1a1a1a;padding:24px 32px;border-radius:12px 12px 0 0"><p style="margin:0;color:#fff;font-size:20px;font-weight:700">Cajun Life Cafe</p><p style="margin:4px 0 0;color:#aaa;font-size:13px">Loyalty Activity Digest — ${dateStr}</p></div><div style="padding:24px 32px"><p style="color:#333"><strong>${logs.length} loyalty event${logs.length !== 1 ? "s" : ""}</strong> in the past 24 hours.</p><table width="100%" style="border-collapse:collapse;border:1px solid #eee"><thead><tr style="background:#f9f9f9"><th style="padding:10px;text-align:left;color:#666;font-size:12px">Time</th><th style="padding:10px;text-align:left;color:#666;font-size:12px">Action</th><th style="padding:10px;text-align:left;color:#666;font-size:12px">Details</th><th style="padding:10px;text-align:left;color:#666;font-size:12px">Staff</th></tr></thead><tbody>${rows}</tbody></table></div><div style="padding:16px 32px 24px;border-top:1px solid #eee"><p style="color:#aaa;font-size:12px;margin:0">Auto-generated nightly at midnight ICT.</p></div></div></body></html>`;
+
+    try {
+      const nodemailer = require("nodemailer");
+      const transporter = nodemailer.createTransport({ host: smtpHost, port: smtpPort, secure: false, auth: { user: smtpUser, pass: smtpPass } });
+      await transporter.sendMail({
+        from: `"Cajun Life Cafe" <${smtpUser}>`,
+        to: "info@cajunlifecafe.com",
+        subject: `Loyalty Digest — ${dateStr} (${logs.length} event${logs.length !== 1 ? "s" : ""})`,
+        html
+      });
+      console.log(`Loyalty digest sent: ${logs.length} entries`);
+      return { sent: true, entries: logs.length };
+    } catch (err: any) {
+      console.error("Loyalty digest error:", err);
+      return { sent: false, entries: logs.length, error: err?.message };
+    }
+  }
+
+  app.post("/api/loyalty-digest", async (_req, res) => {
+    try { return res.json(await sendLoyaltyDigest()); }
+    catch (err: any) { return res.status(500).json({ sent: false, error: err?.message }); }
+  });
+
+  app.get("/api/loyalty-digest-scheduled", async (_req, res) => {
+    res.status(200).json({ status: "triggered" });
+    await sendLoyaltyDigest();
+  });
+
+
   // ── Serve React app (production) ──────────────────────────────────
   if (fs.existsSync(distDir)) {
     app.use(express.static(distDir));
