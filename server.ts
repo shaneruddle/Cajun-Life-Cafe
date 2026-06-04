@@ -371,31 +371,15 @@ Rules:
       }
 
       const tokenDocRef = tokenSnap.docs[0].ref;
-      let { loyaltyCustomerId, mobile } = tokenSnap.docs[0].data();
+      const { crmCustomerId } = tokenSnap.docs[0].data();
 
-      // If loyaltyCustomerId is null (new customer not yet in loyalty system),
-      // try to find them by mobile number (handling +66 / 0 format differences)
-      if (!loyaltyCustomerId && mobile) {
-        const mobileVariants = [mobile, mobile.replace(/^\+66/, '0'), mobile.replace(/^0/, '+66')];
-        for (const m of mobileVariants) {
-          const loyaltySnap = await adminDb.collection("loyalty_customers")
-            .where("mobile", "==", m)
-            .limit(1)
-            .get();
-          if (!loyaltySnap.empty) {
-            loyaltyCustomerId = loyaltySnap.docs[0].id;
-            break;
-          }
-        }
+      if (!crmCustomerId) {
+        console.error(`LINE Login: no crmCustomerId on token ${activationToken}`);
+        return res.redirect(`/activate/error?msg=Invalid+activation+token`);
       }
 
-      if (!loyaltyCustomerId) {
-        console.error(`LINE Login: no loyalty customer found for token ${activationToken}`);
-        return res.redirect(`/activate/error?msg=Customer+not+yet+registered+in+loyalty+system`);
-      }
-
-      // Save lineUserId to loyalty_customers
-      await adminDb.collection("loyalty_customers").doc(loyaltyCustomerId).update({
+      // Save lineUserId directly to crm_customers (single source of truth)
+      await adminDb.collection("crm_customers").doc(crmCustomerId).update({
         lineUserId,
         updatedAt: new Date().toISOString()
       });
@@ -404,11 +388,10 @@ Rules:
       await tokenDocRef.update({
         used: true,
         usedAt: new Date().toISOString(),
-        lineUserId,
-        loyaltyCustomerId  // backfill in case it was null
+        lineUserId
       });
 
-      console.log(`LINE Login: linked ${lineUserId} to loyalty customer ${loyaltyCustomerId}`);
+      console.log(`LINE Login: linked ${lineUserId} to CRM customer ${crmCustomerId}`);
       return res.redirect(`/activate/success`);
     } catch (err) {
       console.error("LINE Login callback error:", err);

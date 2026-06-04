@@ -133,6 +133,8 @@ export interface SystemLog {
   category: 'menu' | 'category' | 'custom_meal' | 'finance' | 'user' | 'system' | 'image' | 'crm' | 'loyalty';
 }
 
+// Single unified customer record — lives in crm_customers collection.
+// Loyalty fields are optional; they become populated when staff clicks "Enroll".
 export interface CRMCustomer {
   id?: string;
   firstName: string;
@@ -142,24 +144,15 @@ export interface CRMCustomer {
   notes?: string;
   lastVisit?: string;
   totalSpend: number;
-  loyaltyId?: string; // Links to loyalty_customers
   status: 'active' | 'inactive';
   uid: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface LoyaltyCustomer {
-  id?: string;
-  firstName?: string;
-  lastName?: string;
-  name?: string;
-  mobile: string;
-  balance: number;
-  createdAt: any;
-  updatedAt: any;
-  isVerified: boolean;
+  // Loyalty fields — present once enrolled
+  loyaltyEnabled?: boolean;
+  balance?: number;
   lineUserId?: string;
+  isVerified?: boolean;
 }
 
 export interface LoyaltyTransactionItem {
