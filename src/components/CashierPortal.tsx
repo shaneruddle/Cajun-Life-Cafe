@@ -15,7 +15,8 @@ import { logActivity } from '../utils/logger';
 import {
   LogIn, LogOut, Camera, Loader2, Search, User, UserPlus,
   Wallet, ArrowUpCircle, ArrowDownCircle, History, Star,
-  Phone, Mail, FileText, X, Check, ChevronLeft
+  Phone, Mail, FileText, X, Check, ChevronLeft,
+  Receipt, ClipboardList, Plus, Trash2, Pencil, ChevronDown, Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CRMCustomer, LoyaltyTransaction } from '../types';
@@ -917,11 +918,286 @@ function CRMTab({ user }: { user: any }) {
   );
 }
 
+// ── Expenses ──────────────────────────────────────────────────────────────────
+const EXPENSE_CATEGORIES = [
+  { id: 'food',      name: 'Food & Ingredients' },
+  { id: 'drinks',    name: 'Drinks & Beverages' },
+  { id: 'packaging', name: 'Packaging' },
+  { id: 'utilities', name: 'Utilities' },
+  { id: 'staff',     name: 'Staff' },
+  { id: 'equipment', name: 'Equipment' },
+  { id: 'rent',      name: 'Rent' },
+  { id: 'other',     name: 'Other' },
+];
+
+function TodaySummary({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [editingExpense, setEditingExpense] = useState<any>(null);
+  const [editTotal, setEditTotal] = useState('');
+  const [editSupplier, setEditSupplier] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const q = query(collection(db, 'finance_expenses'), where('date', '==', today), orderBy('created_at', 'desc'));
+    const unsub = onSnapshot(q, snap => setExpenses(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    return unsub;
+  }, [open]);
+
+  const total = expenses.reduce((s, e) => s + (e.total || 0), 0);
+  const fmt = (n: number) => `฿${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Delete this expense?')) return;
+    try {
+      const { deleteDoc, doc: firestoreDoc } = await import('firebase/firestore');
+      await deleteDoc(firestoreDoc(db, 'finance_expenses', id));
+      toast.success('Expense deleted');
+    } catch { toast.error('Failed to delete'); }
+  };
+
+  const handleEditSave = async () => {
+    if (!editingExpense) return;
+    try {
+      const { updateDoc: ud, doc: fd } = await import('firebase/firestore');
+      await ud(fd(db, 'finance_expenses', editingExpense.id), {
+        total: parseFloat(editTotal) || 0,
+        supplier: editSupplier,
+        notes: editNotes,
+      });
+      toast.success('Expense updated');
+      setEditingExpense(null);
+    } catch { toast.error('Failed to update'); }
+  };
+
+  const byCategory: Record<string, number> = {};
+  expenses.forEach(e => { byCategory[e.category_name] = (byCategory[e.category_name] || 0) + (e.total || 0); });
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
+      <div className="mt-auto bg-white rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Today's Expenses</h2>
+            <p className="text-xs text-gray-400">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X size={20} className="text-gray-500" /></button>
+        </div>
+        <div className="overflow-y-auto flex-1 px-6 py-4 space-y-3">
+          {expenses.length === 0 ? (
+            <div className="text-center py-12"><ClipboardList size={40} className="text-gray-200 mx-auto mb-3" /><p className="text-gray-400 text-sm">No expenses logged today.</p></div>
+          ) : expenses.map(e => (
+            <div key={e.id} className="bg-gray-50 rounded-2xl px-4 py-3">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-terracotta bg-terracotta/10 px-2 py-0.5 rounded-full">{e.category_name}</span>
+                  <p className="font-semibold text-gray-900 mt-1 truncate">{e.supplier || 'No supplier'}</p>
+                  <p className="text-xs text-gray-400">by {e.logged_by} · {e.created_at ? new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''}</p>
+                </div>
+                <div className="flex items-center gap-2 ml-4 shrink-0">
+                  <p className="font-bold text-gray-900 text-lg">{fmt(e.total || 0)}</p>
+                  <button onClick={() => { setEditingExpense(e); setEditTotal(String(e.total || '')); setEditSupplier(e.supplier || ''); setEditNotes(e.notes || ''); }} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500"><Pencil size={15} /></button>
+                  <button onClick={() => handleDelete(e.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400"><Trash2 size={15} /></button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {expenses.length > 0 && (
+          <div className="px-6 py-4 border-t border-gray-100 space-y-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">By Category</p>
+            {Object.entries(byCategory).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => (
+              <div key={cat} className="flex justify-between text-sm"><span className="text-gray-600">{cat}</span><span className="font-semibold text-gray-900">{fmt(amt as number)}</span></div>
+            ))}
+          </div>
+        )}
+        {editingExpense && (
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center" onClick={() => setEditingExpense(null)}>
+            <div className="bg-white w-full max-w-lg rounded-t-3xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
+              <h3 className="font-bold text-lg">Edit Expense</h3>
+              <div><label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</label><input value={editSupplier} onChange={e => setEditSupplier(e.target.value)} className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-terracotta" /></div>
+              <div><label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total (฿)</label><input type="number" value={editTotal} onChange={e => setEditTotal(e.target.value)} className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-terracotta" /></div>
+              <div><label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Notes</label><input value={editNotes} onChange={e => setEditNotes(e.target.value)} className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-terracotta" /></div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setEditingExpense(null)} className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm">Cancel</button>
+                <button onClick={handleEditSave} className="flex-1 py-3 rounded-xl bg-terracotta text-white font-semibold text-sm">Save</button>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="px-6 py-5 bg-gray-900">
+          <div className="flex justify-between items-center">
+            <div><p className="text-xs text-gray-400 uppercase tracking-wider">Total today</p><p className="text-xs text-gray-500 mt-0.5">{expenses.length} receipt{expenses.length !== 1 ? 's' : ''}</p></div>
+            <p className="text-3xl font-bold text-white">{fmt(total)}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExpenseTab({ user }: { user: any }) {
+  const [step, setStep] = useState<'capture' | 'review' | 'saving' | 'done'>('capture');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [lightbox, setLightbox] = useState(false);
+  const [todayCount, setTodayCount] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().slice(0, 10),
+    supplier: '',
+    category_id: 'food',
+    category_name: 'Food & Ingredients',
+    total: '',
+    notes: '',
+  });
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const q = query(collection(db, 'finance_expenses'), where('date', '==', today));
+    return onSnapshot(q, snap => setTodayCount(snap.size));
+  }, []);
+
+  const reset = () => {
+    setStep('capture'); setImageFile(null); setImagePreview(null);
+    setFormData({ date: new Date().toISOString().slice(0, 10), supplier: '', category_id: 'food', category_name: 'Food & Ingredients', total: '', notes: '' });
+  };
+
+  const handleImageSelected = async (file: File) => {
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = e => setImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+    setStep('review');
+    setScanning(true);
+    try {
+      const base64 = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res((r.result as string).split(',')[1]); r.onerror = rej; r.readAsDataURL(file); });
+      const response = await fetch('/api/ocr-receipt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: base64, mimeType: file.type }) });
+      const result = await response.json();
+      if (result.success && result.data) {
+        const d = result.data;
+        setFormData(prev => ({ ...prev, supplier: d.supplier || prev.supplier, date: d.date || prev.date, total: d.total ? String(d.total) : prev.total }));
+        toast.success('Receipt scanned ✓');
+      } else { toast.error('Could not read receipt — fill in manually'); }
+    } catch { toast.error('Scan failed — fill in manually'); }
+    finally { setScanning(false); }
+  };
+
+  const handleSave = async () => {
+    if (!formData.total || !formData.date) { toast.error('Fill in date and total amount'); return; }
+    setStep('saving');
+    try {
+      let receipt_url = '';
+      if (imageFile) {
+        const storageRef = ref(storage, `receipts/${Date.now()}_${imageFile.name}`);
+        await uploadBytes(storageRef, imageFile);
+        receipt_url = await getDownloadURL(storageRef);
+      }
+      await addDoc(collection(db, 'finance_expenses'), {
+        date: formData.date, supplier: formData.supplier, category_id: formData.category_id,
+        category_name: formData.category_name, total: parseFloat(formData.total), currency: 'THB',
+        receipt_url, notes: formData.notes, logged_by: user?.email || 'unknown', created_at: new Date().toISOString(),
+      });
+      await logActivity('Expense Logged', `฿${parseFloat(formData.total).toLocaleString()} · ${formData.category_name} · ${formData.supplier || 'no supplier'} · ${formData.date}`, 'finance');
+      setStep('done');
+    } catch { toast.error('Failed to save'); setStep('review'); }
+  };
+
+  if (step === 'done') return (
+    <div className="flex flex-col items-center justify-center h-full p-6 text-center gap-6">
+      <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center"><Check size={40} className="text-green-600" /></div>
+      <div><h2 className="text-2xl font-bold text-gray-900">Expense Saved!</h2><p className="text-gray-500 mt-1">฿{parseFloat(formData.total || '0').toLocaleString()} logged.</p></div>
+      <button onClick={reset} className="w-full max-w-xs py-4 bg-terracotta text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg"><Plus size={20} /> Log Another</button>
+      <button onClick={() => setShowSummary(true)} className="w-full max-w-xs py-4 border-2 border-gray-200 text-gray-700 rounded-2xl font-bold text-lg flex items-center justify-center gap-2"><ClipboardList size={20} /> Today's Summary</button>
+      <TodaySummary open={showSummary} onClose={() => setShowSummary(false)} />
+    </div>
+  );
+
+  if (step === 'capture') return (
+    <div className="flex flex-col h-full">
+      <div className="bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between sticky top-0 z-10">
+        <div><h2 className="font-bold text-lg text-ink">Log Expense</h2><p className="text-xs text-gray-400">Hi {user?.displayName || user?.email?.split('@')[0]}</p></div>
+        <button onClick={() => setShowSummary(true)} className="relative p-2 rounded-full bg-gray-100 hover:bg-gray-200">
+          <ClipboardList size={20} className="text-gray-600" />
+          {todayCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-terracotta text-white text-xs font-bold flex items-center justify-center">{todayCount}</span>}
+        </button>
+      </div>
+      <div className="flex-1 p-5 flex flex-col gap-4 max-w-md mx-auto w-full">
+        <button onClick={() => cameraInputRef.current?.click()} className="w-full flex items-center justify-center gap-3 py-7 bg-terracotta text-white rounded-3xl text-xl font-bold hover:bg-terracotta/90 shadow-xl">
+          <Camera size={28} /> Take Photo
+        </button>
+        <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-3 py-5 border-2 border-gray-200 text-gray-700 rounded-3xl text-lg font-semibold hover:bg-gray-50">
+          <Upload size={22} /> Upload from Gallery
+        </button>
+        <button onClick={() => setStep('review')} className="w-full py-4 border border-dashed border-gray-300 rounded-2xl text-gray-400 text-sm hover:border-terracotta hover:text-terracotta transition-all">
+          Enter manually (no receipt)
+        </button>
+      </div>
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => e.target.files?.[0] && handleImageSelected(e.target.files[0])} />
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleImageSelected(e.target.files[0])} />
+      <TodaySummary open={showSummary} onClose={() => setShowSummary(false)} />
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between sticky top-0 z-10">
+        <button onClick={reset} className="text-terracotta font-semibold text-sm flex items-center gap-1 px-3 py-3 -ml-3 rounded-xl">← Back</button>
+        <h2 className="font-bold text-gray-900">Review Expense</h2>
+        {scanning ? <span className="text-xs text-terracotta flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Scanning…</span> : <div className="w-16" />}
+      </div>
+      <div className="flex-1 overflow-y-auto p-5 max-w-md mx-auto w-full pb-32 space-y-4">
+        {imagePreview && (
+          <div className="relative">
+            <img src={imagePreview} alt="Receipt" onClick={() => setLightbox(true)} className="w-full max-h-44 object-contain rounded-2xl border border-gray-200 bg-gray-50 cursor-zoom-in" />
+            {scanning && <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center"><div className="bg-white rounded-2xl px-4 py-3 flex items-center gap-2 text-sm font-semibold text-terracotta"><Loader2 size={16} className="animate-spin" /> Reading…</div></div>}
+          </div>
+        )}
+        {lightbox && imagePreview && (
+          <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightbox(false)}>
+            <img src={imagePreview} alt="Receipt" className="max-w-full max-h-full rounded-xl object-contain" />
+            <button onClick={() => setLightbox(false)} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white"><X size={20} /></button>
+          </div>
+        )}
+        <div><label className="block text-sm font-semibold text-gray-700 mb-1.5">Date</label><input type="date" value={formData.date} onChange={e => setFormData(p => ({ ...p, date: e.target.value }))} className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta" /></div>
+        <div><label className="block text-sm font-semibold text-gray-700 mb-1.5">Supplier / Shop</label><input type="text" value={formData.supplier} onChange={e => setFormData(p => ({ ...p, supplier: e.target.value }))} placeholder="e.g. Makro" className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta" /></div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Category</label>
+          <div className="relative">
+            <select value={formData.category_id} onChange={e => { const cat = EXPENSE_CATEGORIES.find(c => c.id === e.target.value); setFormData(p => ({ ...p, category_id: e.target.value, category_name: cat?.name || e.target.value })); }} className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta appearance-none pr-10">
+              {EXPENSE_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Total Amount (฿)</label>
+          <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-400">฿</span><input type="number" inputMode="decimal" value={formData.total} onChange={e => setFormData(p => ({ ...p, total: e.target.value }))} placeholder="0.00" className="w-full border-2 border-gray-200 rounded-2xl pl-10 pr-4 py-4 text-3xl font-bold focus:outline-none focus:ring-2 focus:ring-terracotta" /></div>
+        </div>
+        <div><label className="block text-sm font-semibold text-gray-700 mb-1.5">Notes (optional)</label><input type="text" value={formData.notes} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} placeholder="Any extra details" className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta" /></div>
+      </div>
+      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-100 p-4 max-w-lg mx-auto">
+        <button onClick={handleSave} disabled={step === 'saving' || scanning} className="w-full py-4 bg-terracotta text-white rounded-2xl font-bold text-lg disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg">
+          {step === 'saving' ? <><Loader2 size={20} className="animate-spin" /> Saving…</> : <><Check size={20} /> Save Expense</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main portal ────────────────────────────────────────────────────────────────
 export default function CashierPortal() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'loyalty' | 'crm'>('loyalty');
+  const [activeTab, setActiveTab] = useState<'loyalty' | 'crm' | 'expenses'>('loyalty');
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -978,7 +1254,7 @@ export default function CashierPortal() {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'loyalty' ? <LoyaltyTab user={user} /> : <CRMTab user={user} />}
+        {activeTab === 'loyalty' ? <LoyaltyTab user={user} /> : activeTab === 'crm' ? <CRMTab user={user} /> : <ExpenseTab user={user} />}
       </div>
 
       {/* Bottom nav */}
@@ -1000,6 +1276,15 @@ export default function CashierPortal() {
         >
           <User size={22} />
           <span className="text-[10px] font-bold uppercase tracking-widest">CRM</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('expenses')}
+          className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-all ${
+            activeTab === 'expenses' ? 'text-terracotta' : 'text-gray-400'
+          }`}
+        >
+          <Receipt size={22} />
+          <span className="text-[10px] font-bold uppercase tracking-widest">Expenses</span>
         </button>
       </div>
     </div>
