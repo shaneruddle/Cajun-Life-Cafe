@@ -300,7 +300,7 @@ Rules:
               databaseURL: "https://cajun-life-cafe.firebaseio.com"
             });
           }
-          const db = getFirestore();
+          const db = getFirestore(undefined, 'ai-studio-88dfc183-b7e7-45b8-b831-62b1a7bbdb29');
 
           const snap = await db.collection("loyalty_customers")
             .where("lineUserId", "==", lineUserId)
