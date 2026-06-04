@@ -3,16 +3,14 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import fs from "fs";
-import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
+import { initializeApp, getApps, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
 dotenv.config();
 
 // ── Firebase Admin — initialise once at startup ───────────────────────────
-if (!getApps().length) {
-  initializeApp({ credential: applicationDefault() });
-}
-const adminDb = getFirestore(undefined, 'ai-studio-88dfc183-b7e7-45b8-b831-62b1a7bbdb29');
+const adminApp = getApps().length ? getApps()[0] : initializeApp({ credential: applicationDefault() });
+const adminDb = getFirestore(adminApp, 'ai-studio-88dfc183-b7e7-45b8-b831-62b1a7bbdb29');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
