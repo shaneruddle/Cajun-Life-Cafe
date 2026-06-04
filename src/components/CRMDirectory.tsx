@@ -85,7 +85,10 @@ export default function CRMDirectory() {
       snapshot.docs.forEach(doc => {
         const data = doc.data();
         if (data.mobile) {
-          members[data.mobile] = true;
+          // Store normalised (digits only) so we can match regardless of format
+          const digits = data.mobile.replace(/\D/g, '');
+          members[digits] = true;
+          members[data.mobile] = true; // also store raw
         }
       });
       setLoyaltyMembers(members);
@@ -202,12 +205,19 @@ export default function CRMDirectory() {
     }
   };
 
+  // Normalise mobile to digits only for comparison
+  const normaliseMobile = (mobile: string) => mobile.replace(/\D/g, '');
+
   const handleManualLoyaltyEnroll = async (customer: CRMCustomer) => {
     try {
-      // Check if already exists
-      const q = query(collection(db, 'loyalty_customers'), where('mobile', '==', customer.mobile), limit(1));
-      const snip = await getDocs(q);
-      if (!snip.empty) {
+      // Check if already exists — try both raw and digits-only match
+      const customerDigits = normaliseMobile(customer.mobile);
+      const allLoyalty = await getDocs(collection(db, 'loyalty_customers'));
+      const alreadyEnrolled = allLoyalty.docs.some(doc => {
+        const m = doc.data().mobile || '';
+        return m === customer.mobile || normaliseMobile(m) === customerDigits;
+      });
+      if (alreadyEnrolled) {
         toast.error('Customer already in loyalty program');
         return;
       }
@@ -371,7 +381,7 @@ export default function CRMDirectory() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filteredCustomers.map((customer) => {
-                const isLoyalty = loyaltyMembers[customer.mobile];
+                const isLoyalty = loyaltyMembers[customer.mobile] || loyaltyMembers[customer.mobile?.replace(/\D/g, '')];
                 const isInactive = customer.status === 'inactive';
                 return (
                   <tr 
@@ -626,7 +636,7 @@ export default function CRMDirectory() {
                     </div>
                     <div className="space-y-2">
                       <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Loyalty Scheme</label>
-                      {loyaltyMembers[formData.mobile] ? (
+                      {(loyaltyMembers[formData.mobile] || loyaltyMembers[formData.mobile?.replace(/\D/g, '')]) ? (
                         <div className="w-full px-5 py-4 rounded-2xl bg-green-50 border border-green-100 text-green-700 font-bold flex items-center gap-2">
                           <CheckCircle2 size={18} /> Enrolled Member
                         </div>
