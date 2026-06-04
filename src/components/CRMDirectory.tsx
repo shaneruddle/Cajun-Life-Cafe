@@ -230,8 +230,19 @@ export default function CRMDirectory() {
     }
   };
 
-  const openEditModal = (customer: CRMCustomer) => {
+  const openEditModal = async (customer: CRMCustomer) => {
     setSelectedCustomerId(customer.id || null);
+    // Fetch lineUserId from loyalty_customers (source of truth)
+    let lineUserId = '';
+    try {
+      const loyaltyQ = query(collection(db, 'loyalty_customers'), where('mobile', '==', customer.mobile), limit(1));
+      const loyaltySnap = await getDocs(loyaltyQ);
+      if (!loyaltySnap.empty) {
+        lineUserId = loyaltySnap.docs[0].data().lineUserId || '';
+      }
+    } catch (err) {
+      console.error('Failed to fetch lineUserId:', err);
+    }
     setFormData({
       firstName: customer.firstName,
       lastName: customer.lastName,
@@ -239,7 +250,7 @@ export default function CRMDirectory() {
       mobile: customer.mobile,
       notes: customer.notes || '',
       status: customer.status || 'active',
-      lineUserId: (customer as any).lineUserId || ''
+      lineUserId
     });
     setShowAddModal(true);
   };
