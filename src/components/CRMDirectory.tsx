@@ -259,6 +259,33 @@ export default function CRMDirectory() {
     }
   };
 
+  const generateActivationLink = async (customer: CRMCustomer) => {
+    try {
+      const activationToken = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+      // Find linked loyalty customer
+      const loyaltyQ = query(collection(db, 'loyalty_customers'), where('mobile', '==', customer.mobile), limit(1));
+      const loyaltySnap = await getDocs(loyaltyQ);
+      const loyaltyCustomerId = loyaltySnap.empty ? null : loyaltySnap.docs[0].id;
+
+      await addDoc(collection(db, 'activation_tokens'), {
+        token: activationToken,
+        crmCustomerId: customer.id || null,
+        loyaltyCustomerId,
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        mobile: customer.mobile,
+        used: false,
+        createdAt: new Date().toISOString()
+      });
+      const activationLink = `https://cajunlifecafe.com/activate/${activationToken}`;
+      await navigator.clipboard.writeText(activationLink);
+      toast.success('Activation link copied to clipboard!', { duration: 5000 });
+    } catch (err) {
+      console.error('Failed to generate activation link:', err);
+      toast.error('Failed to generate link');
+    }
+  };
+
   const openEditModal = async (customer: CRMCustomer) => {
     setSelectedCustomerId(customer.id || null);
     // Fetch lineUserId from loyalty_customers (source of truth)
