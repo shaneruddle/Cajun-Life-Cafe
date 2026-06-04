@@ -50,6 +50,19 @@ const triggerSMSText = (mobile: string, message: string) => {
   // In the future, integrate Twilio or SMS-Poh here
 };
 
+// LINE Push Helper
+const sendLinePush = async (lineUserId: string, message: string) => {
+  try {
+    await fetch('/api/line-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lineUserId, message })
+    });
+  } catch (err) {
+    console.error('[LINE PUSH] Failed:', err);
+  }
+};
+
 export default function LoyaltyDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [customer, setCustomer] = useState<LoyaltyCustomer | null>(null);
@@ -301,6 +314,14 @@ export default function LoyaltyDashboard() {
         console.error('Failed to send balance update SMS:', smsErr);
       }
 
+      // Send LINE notification if customer has LINE linked
+      if (customer.lineUserId) {
+        await sendLinePush(
+          customer.lineUserId,
+          `🌶️ Cajun Life Cafe\n\nWallet topped up: +฿${totalAdd.toLocaleString()} (incl. ฿${bonus.toLocaleString()} bonus)\nNew balance: ฿${newBalance.toLocaleString()}`
+        );
+      }
+
       toast.success(`฿${totalAdd} added to wallet!`);
     } catch (error) {
       toast.error('Top-up failed');
@@ -345,6 +366,14 @@ export default function LoyaltyDashboard() {
         await sendTopUpSMS(customer.id, cash, totalPoints, bonus, newBalance);
       } catch (smsErr) {
         console.error('Failed to send top up SMS:', smsErr);
+      }
+
+      // Send LINE notification if customer has LINE linked
+      if (customer.lineUserId) {
+        await sendLinePush(
+          customer.lineUserId,
+          `🌶️ Cajun Life Cafe\n\nWallet topped up: +฿${totalPoints.toLocaleString()} (incl. ฿${bonus.toLocaleString()} bonus)\nNew balance: ฿${newBalance.toLocaleString()}`
+        );
       }
 
       toast.success(`฿${totalPoints} added to wallet!`);
