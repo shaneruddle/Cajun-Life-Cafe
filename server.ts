@@ -218,6 +218,88 @@ Rules:
     }
   });
 
+
+  // ── LINE Messaging API Webhook ────────────────────────────────────
+  // Uses stateless channel access tokens — no manual token needed
+  const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET || "";
+  const LINE_CHANNEL_ID = process.env.LINE_CHANNEL_ID || "";
+
+  async function getLineAccessToken(): Promise<string> {
+    const resp = await fetch("https://api.line.me/v2/oauth/accessToken", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: LINE_CHANNEL_ID,
+        client_secret: LINE_CHANNEL_SECRET
+      })
+    });
+    const data = await resp.json() as any;
+    return data.access_token || "";
+  }
+
+  async function replyLineMessage(replyToken: string, text: string): Promise<void> {
+    const token = await getLineAccessToken();
+    await fetch("https://api.line.me/v2/bot/message/reply", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        replyToken,
+        messages: [{ type: "text", text }]
+      })
+    });
+  }
+
+  function verifyLineSignature(body: string, signature: string): boolean {
+    if (!LINE_CHANNEL_SECRET) return false;
+    const hmacLib = require("crypto");
+    const hmac = hmacLib.createHmac("sha256", LINE_CHANNEL_SECRET);
+    hmac.update(body);
+    const expected = hmac.digest("base64");
+    return expected === signature;
+  }
+
+  // Verify endpoint (LINE sends GET to check webhook)
+  app.get("/api/line-webhook", (_req, res) => {
+    res.status(200).send("OK");
+  });
+
+  // Main webhook — receives messages from LINE
+  app.post("/api/line-webhook", express.raw({ type: "application/json" }), async (req, res) => {
+    const signature = req.headers["x-line-signature"] as string;
+    const rawBody = req.body.toString();
+
+    if (!verifyLineSignature(rawBody, signature)) {
+      console.error("LINE: invalid signature");
+      return res.status(403).json({ error: "Invalid signature" });
+    }
+
+    let body: any;
+    try { body = JSON.parse(rawBody); } catch { return res.status(400).json({ error: "Bad JSON" }); }
+
+    res.status(200).json({ status: "ok" }); // Respond to LINE immediately
+
+    for (const event of body.events || []) {
+      if (event.type === "message" && event.message.type === "text") {
+        const userText = event.message.text.toLowerCase().trim();
+        const replyToken = event.replyToken;
+
+        if (userText.includes("point") || userText.includes("แต้ม") || userText.includes("คะแนน")) {
+          await replyLineMessage(replyToken,
+            "🌶️ Cajun Life Cafe\n\nTo check your loyalty points, please visit us or ask a team member to look up your account.\n\nThank you for being a valued customer! 🙏"
+          );
+        } else {
+          await replyLineMessage(replyToken,
+            "🌶️ Welcome to Cajun Life Cafe!\n\nText 'points' to check your loyalty balance.\n\nSee you soon! 🍽️"
+          );
+        }
+      }
+    }
+  });
+
   // ── Serve React app (production) ──────────────────────────────────
   if (fs.existsSync(distDir)) {
     app.use(express.static(distDir));
@@ -232,3 +314,4 @@ Rules:
 }
 
 startServer().catch(console.error);
+
