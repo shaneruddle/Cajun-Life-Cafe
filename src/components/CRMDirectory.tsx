@@ -727,6 +727,19 @@ export default function CRMDirectory() {
                     <p className="text-[10px] text-gray-400 px-1">Find in LINE OA Manager → Chats → customer profile. Enables wallet notifications via LINE.</p>
                   </div>
 
+                  {selectedCustomerId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cust = customers.find(c => c.id === selectedCustomerId);
+                        if (cust) generateActivationLink(cust);
+                      }}
+                      className="w-full py-3 rounded-2xl font-bold border-2 border-green-500 text-green-600 hover:bg-green-50 transition-all flex items-center justify-center gap-2"
+                    >
+                      🔗 Generate LINE Activation Link
+                    </button>
+                  )}
+
                   <div className="pt-4 flex gap-4">
                     {selectedCustomerId && (
                       <button 
