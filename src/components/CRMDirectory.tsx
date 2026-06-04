@@ -86,10 +86,15 @@ export default function CRMDirectory() {
         const data = doc.data();
         if (data.mobile) {
           const digits = data.mobile.replace(/\D/g, '');
-          const last9 = digits.slice(-9); // last 9 digits — works regardless of +66 / 0 prefix
-          members[data.mobile] = true;  // raw
-          members[digits] = true;       // digits only
-          members[last9] = true;        // last 9 — the universal key
+          const last9 = digits.slice(-9);
+          members[data.mobile] = true;
+          members[digits] = true;
+          members[last9] = true;
+        }
+        // Also index by name so customers without mobile still match
+        if (data.firstName) {
+          const nameKey = `${data.firstName}|${data.lastName || ''}`.toLowerCase().trim();
+          members[nameKey] = true;
         }
       });
       setLoyaltyMembers(members);
@@ -685,7 +690,8 @@ export default function CRMDirectory() {
                       <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Loyalty Scheme</label>
                       {(() => {
                         const last9 = (formData.mobile || '').replace(/\D/g, '').slice(-9);
-                        const isEnrolled = !!(loyaltyMembers[formData.mobile] || (last9 && loyaltyMembers[last9]));
+                        const nameKey = `${formData.firstName}|${formData.lastName || ''}`.toLowerCase().trim();
+                        const isEnrolled = !!(loyaltyMembers[formData.mobile] || (last9 && loyaltyMembers[last9]) || loyaltyMembers[nameKey]);
                         return isEnrolled;
                       })() ? (
                         <div className="w-full px-5 py-4 rounded-2xl bg-green-50 border border-green-100 text-green-700 font-bold flex items-center gap-2">
