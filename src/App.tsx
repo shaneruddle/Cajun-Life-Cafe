@@ -485,6 +485,7 @@ function AppContent({ user, setUser }: any) {
   const location = useLocation();
   const isDigitalMenu = location.pathname === "/menu" || location.pathname === "/digital-menu";
   const isDashboard = location.pathname.startsWith("/dashboard") || location.pathname === "/import" || location.pathname === "/import-custom-meals";
+  const isActivate = location.pathname.startsWith("/activate");
 
   const isAdmin = useMemo(() => {
     if (!user) return false;
@@ -510,7 +511,7 @@ function AppContent({ user, setUser }: any) {
           </button>
         </div>
       )}
-      {!isDigitalMenu && !isDashboard && !isEmployee && <Navbar canAccessDashboard={isMarketing} setUser={setUser} />}
+      {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && <Navbar canAccessDashboard={isMarketing} setUser={setUser} />}
       <Routes>
         <Route path="/" element={<MainSite isAdmin={isAdmin} />} />
         <Route path="/menu" element={<DigitalMenuDisplay />} />
@@ -533,7 +534,7 @@ function AppContent({ user, setUser }: any) {
         <Route path="/activate/success" element={<ActivateSuccess />} />
         <Route path="/activate/error" element={<ActivateError />} />
       </Routes>
-      {!isDigitalMenu && !isDashboard && !user && (
+      {!isDigitalMenu && !isDashboard && !isActivate && !user && (
         <div className="fixed bottom-4 right-4 z-[60]"><Auth onUserChange={setUser} /></div>
       )}
     </div>
