@@ -5,6 +5,7 @@ import {
   onSnapshot, 
   addDoc, 
   updateDoc, 
+  deleteDoc,
   doc, 
   orderBy,
 } from 'firebase/firestore';
@@ -209,14 +210,13 @@ export default function CRMDirectory() {
     if (!customer.id) return;
     if (!window.confirm(`Delete ${customer.firstName} ${customer.lastName}? This cannot be undone.`)) return;
     try {
-      await updateDoc(doc(db, 'crm_customers', customer.id), {
-        status: 'inactive',
-        updatedAt: new Date().toISOString(),
-      });
+      await deleteDoc(doc(db, 'crm_customers', customer.id));
       await logActivity('Customer Deleted', `Deleted: ${customer.firstName} ${customer.lastName}`, 'crm');
       toast.success('Customer deleted');
       setShowAddModal(false);
+      setSelectedCustomerId(null);
     } catch (err) {
+      console.error('Delete error:', err);
       toast.error('Failed to delete customer');
     }
   };
