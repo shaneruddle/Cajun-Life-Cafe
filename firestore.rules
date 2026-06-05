@@ -78,6 +78,20 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // CRM — cashiers can read/write customers and their transaction subcollection
+    match /crm_customers/{id} {
+      allow read, write: if isCashier();
+      match /transactions/{txId} {
+        allow read, write: if isCashier();
+      }
+    }
+
+    // Activation tokens — cashiers create them, server reads them
+    match /activation_tokens/{id} {
+      allow read, write: if isCashier();
+    }
+
+    // Legacy loyalty collections (kept for safety)
     match /loyalty_customers/{id} {
       allow read, write: if isCashier();
       match /transactions/{txId} {
@@ -85,9 +99,6 @@ service cloud.firestore {
       }
     }
     match /loyalty_transactions/{id} {
-      allow read, write: if isCashier();
-    }
-    match /crm_customers/{id} {
       allow read, write: if isCashier();
     }
 
