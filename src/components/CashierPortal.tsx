@@ -870,6 +870,24 @@ function CRMTab({ user }: { user: any }) {
     (c.email ?? '').toLowerCase().includes(query_.toLowerCase()))
   );
 
+  // Edit form state — must be declared before any conditional returns (Rules of Hooks)
+  const [editData, setEditData] = useState<Partial<CRMCustomer>>({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (selected) {
+      setEditData({
+        mobile: selected.mobile || '',
+        email: selected.email || '',
+        notes: selected.notes || '',
+        address: selected.address || '',
+        deliveryLat: selected.deliveryLat,
+        deliveryLng: selected.deliveryLng,
+        deliveryNotes: selected.deliveryNotes || '',
+      });
+    }
+  }, [selected?.id]);
+
   const handleEnroll = async (customer: CRMCustomer) => {
     if (!customer.id || customer.loyaltyEnabled) return;
     setEnrolling(true);
@@ -896,24 +914,6 @@ function CRMTab({ user }: { user: any }) {
       />
     );
   }
-
-  // Edit form state for selected customer
-  const [editData, setEditData] = useState<Partial<CRMCustomer>>({});
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (selected) {
-      setEditData({
-        mobile: selected.mobile || '',
-        email: selected.email || '',
-        notes: selected.notes || '',
-        address: selected.address || '',
-        deliveryLat: selected.deliveryLat,
-        deliveryLng: selected.deliveryLng,
-        deliveryNotes: selected.deliveryNotes || '',
-      });
-    }
-  }, [selected?.id]);
 
   const handleSaveEdit = async () => {
     if (!selected?.id) return;
