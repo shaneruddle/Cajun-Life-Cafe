@@ -11,7 +11,7 @@ import {
   onSnapshot,
   writeBatch
 } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { db, auth , menuDb} from '../firebase';
 import { Category } from '../types';
 import { handleFirestoreError } from '../utils/firestore';
 import { logActivity } from '../utils/logger';
@@ -150,7 +150,7 @@ export default function CategoriesDashboard() {
   );
 
   useEffect(() => {
-    const q = query(collection(db, 'categories'), orderBy('order', 'asc'));
+    const q = query(collection(menuDb, 'categories'), orderBy('order', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const cats = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -180,7 +180,7 @@ export default function CategoriesDashboard() {
         const batch = writeBatch(db);
         newCategories.forEach((c, index) => {
           if (c.id) {
-            const ref = doc(db, 'categories', c.id);
+            const ref = doc(menuDb, 'categories', c.id);
             batch.update(ref, { order: index });
           }
         });
@@ -201,14 +201,14 @@ export default function CategoriesDashboard() {
     setError(null);
     try {
       if (editingCategory?.id) {
-        await updateDoc(doc(db, 'categories', editingCategory.id), {
+        await updateDoc(doc(menuDb, 'categories', editingCategory.id), {
           name: newName,
           uid: auth.currentUser?.uid
         });
         await logActivity('Category Updated', `Updated category: ${newName}`, 'category');
         setSuccess('Category updated successfully!');
       } else {
-        await addDoc(collection(db, 'categories'), {
+        await addDoc(collection(menuDb, 'categories'), {
           name: newName,
           order: categories.length,
           uid: auth.currentUser?.uid
@@ -239,7 +239,7 @@ export default function CategoriesDashboard() {
     
     try {
       // 1. Firebase Integration: Use correct ref and doc ID
-      const categoryRef = doc(db, 'categories', id);
+      const categoryRef = doc(menuDb, 'categories', id);
       console.log("Deleting document:", categoryRef.path);
       await deleteDoc(categoryRef);
 
@@ -278,7 +278,7 @@ export default function CategoriesDashboard() {
     setSuccess(null);
     try {
       // 1. Get all menu items
-      const menuSnap = await getDocs(collection(db, 'menu'));
+      const menuSnap = await getDocs(collection(menuDb, 'menu'));
       const menuCategories = Array.from(new Set(menuSnap.docs.map(doc => doc.data().category as string)));
       
       // 2. Get existing categories
@@ -296,7 +296,7 @@ export default function CategoriesDashboard() {
       // 4. Add missing categories
       const batch = writeBatch(db);
       missing.forEach((name, index) => {
-        const newDocRef = doc(collection(db, 'categories'));
+        const newDocRef = doc(collection(menuDb, 'categories'));
         batch.set(newDocRef, {
           name,
           order: categories.length + index,

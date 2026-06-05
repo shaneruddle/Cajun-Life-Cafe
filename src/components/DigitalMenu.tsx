@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { db, auth } from "../firebase";
+import { db, auth , menuDb} from "../firebase";
 import { MenuItem, CustomMealItem, Category } from "../types";
 import { handleFirestoreError } from "../utils/firestore";
 import { normalizeImageUrl } from "../utils/images";
@@ -56,7 +56,7 @@ const DigitalMenu = () => {
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, "categories"), orderBy("order", "asc"));
+    const q = query(collection(menuDb, 'categories'), orderBy("order", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const cats = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -74,8 +74,8 @@ const DigitalMenu = () => {
     if (isPreview && authLoading) return;
 
     const q = isPreview 
-      ? query(collection(db, "menu"))
-      : query(collection(db, "menu"), where("published", "==", true));
+      ? query(collection(menuDb, 'menu'))
+      : query(collection(menuDb, 'menu'), where("published", "==", true));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const menuItems = snapshot.docs.map(doc => ({
@@ -111,7 +111,7 @@ const DigitalMenu = () => {
   }, [items, customMeals, categoryList, isLoading]);
 
   useEffect(() => {
-    const q = query(collection(db, "custom_meals"), orderBy("order", "asc"));
+    const q = query(collection(menuDb, 'custom_meals'), orderBy("order", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const mealItems = snapshot.docs.map(doc => ({
         id: doc.id,

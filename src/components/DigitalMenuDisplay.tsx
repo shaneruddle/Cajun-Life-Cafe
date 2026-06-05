@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { db, auth } from "../firebase";
+import { db, auth , menuDb} from "../firebase";
 import { MenuItem, CustomMealItem, Category } from "../types";
 import { handleFirestoreError } from "../utils/firestore";
 import { normalizeImageUrl } from "../utils/images";
@@ -55,7 +55,7 @@ const DigitalMenuDisplay = () => {
   const isLoading = loading.menu || loading.meals || (isPreview && authLoading);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(query(collection(db, "categories"), orderBy("order", "asc")), (snapshot) => {
+    const unsubscribe = onSnapshot(query(collection(menuDb, 'categories'), orderBy("order", "asc")), (snapshot) => {
       const cats = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -84,8 +84,8 @@ const DigitalMenuDisplay = () => {
     // If in preview mode, we MUST be an admin. If not logged in, we might get permission denied.
     // However, we'll try the query anyway as Firestore will handle the state.
     const q = isPreview 
-      ? query(collection(db, "menu"))
-      : query(collection(db, "menu"), where("published", "==", true));
+      ? query(collection(menuDb, 'menu'))
+      : query(collection(menuDb, 'menu'), where("published", "==", true));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       console.log("Menu snapshot received, docs:", snapshot.size);
@@ -122,7 +122,7 @@ const DigitalMenuDisplay = () => {
 
   useEffect(() => {
     console.log("Fetching custom meals");
-    const q = query(collection(db, "custom_meals"), orderBy("order", "asc"));
+    const q = query(collection(menuDb, 'custom_meals'), orderBy("order", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       console.log("Custom meals snapshot received, docs:", snapshot.size);
       const mealItems = snapshot.docs.map(doc => ({

@@ -14,8 +14,15 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Menu data lives in the AI Studio named database
-export const db = getFirestore(app); // default database — supports security rules
+// menuDb — named Enterprise database where menu/categories/custom_meals live
+// This is read-only for customers and managed by admin. No security rules needed
+// (Enterprise DB uses IAM; admin SDK on server handles writes).
+export const menuDb = getFirestore(app, "ai-studio-88dfc183-b7e7-45b8-b831-62b1a7bbdb29");
+
+// db — default Firestore database for CRM, loyalty, finance, logs, users
+// Supports Firebase security rules — cashiers and managers can access via Auth.
+export const db = getFirestore(app);
+
 export const auth = getAuth(app);
 export const storage = getStorage(app, firebaseConfig.storageBucket);
 

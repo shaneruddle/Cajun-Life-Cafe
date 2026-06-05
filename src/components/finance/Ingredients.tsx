@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { collection, addDoc, updateDoc, doc, onSnapshot, query, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db , menuDb} from '../../firebase';
 import { logActivity } from '../../utils/logger';
 import { Ingredient } from './types';
 import { MenuItem } from '../../types';
@@ -21,7 +21,7 @@ export default function Ingredients() {
     const unsub = onSnapshot(q, snap => setIngredients(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Ingredient[]));
 
     // Load menu items for linking
-    getDocs(query(collection(db, 'menu'), orderBy('name', 'asc'))).then(snap => {
+    getDocs(query(collection(menuDb, 'menu'), orderBy('name', 'asc'))).then(snap => {
       setMenuItems(snap.docs.map(d => ({ id: d.id, ...d.data() })) as MenuItem[]);
     });
 
