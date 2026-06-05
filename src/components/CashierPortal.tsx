@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   signInWithEmailAndPassword,
   signOut,
@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CRMCustomer, LoyaltyTransaction } from '../types';
-import DeliveryMap from './DeliveryMap';
+const DeliveryMap = React.lazy(() => import('./DeliveryMap'));
 
 // ── LINE push helper ───────────────────────────────────────────────────────────
 const sendLinePush = async (lineUserId: string, message: string) => {
@@ -1021,12 +1021,14 @@ function CRMTab({ user }: { user: any }) {
               <MapPin size={12} /> Delivery Location
             </label>
             <p className="text-xs text-gray-400 mb-2">Tap the map or drag the pin to mark drop-off point.</p>
-            <DeliveryMap
+            <React.Suspense fallback={<div style={{height:220,background:"#f3f4f6",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",color:"#9ca3af",fontSize:13}}>Loading map…</div>}>
+                    <DeliveryMap
               lat={editData.deliveryLat}
               lng={editData.deliveryLng}
               onChange={(lat, lng) => setEditData(d => ({ ...d, deliveryLat: lat, deliveryLng: lng }))}
             />
-            {editData.deliveryLat && (
+                    </React.Suspense>
+                    {editData.deliveryLat && (
               <p className="text-[10px] text-gray-400 font-mono mt-1">
                 {editData.deliveryLat.toFixed(6)}, {editData.deliveryLng?.toFixed(6)}
               </p>

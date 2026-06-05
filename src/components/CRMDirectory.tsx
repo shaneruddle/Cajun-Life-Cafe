@@ -32,7 +32,7 @@ import {
   Wallet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import DeliveryMap from './DeliveryMap';
+const DeliveryMap = React.lazy(() => import('./DeliveryMap'));
 import { toast } from 'sonner';
 
 export default function CRMDirectory({ user }: { user?: any }) {
@@ -582,11 +582,13 @@ export default function CRMDirectory({ user }: { user?: any }) {
                   <div className="space-y-2">
                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Delivery Location</label>
                     <p className="text-xs text-gray-400 px-1">Tap the map or drag the pin to mark delivery drop-off point.</p>
+                    <React.Suspense fallback={<div style={{height:220,background:"#f3f4f6",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",color:"#9ca3af",fontSize:13}}>Loading map…</div>}>
                     <DeliveryMap
                       lat={formData.deliveryLat}
                       lng={formData.deliveryLng}
                       onChange={(lat, lng) => setFormData(f => ({ ...f, deliveryLat: lat, deliveryLng: lng }))}
                     />
+                    </React.Suspense>
                     {formData.deliveryLat && (
                       <p className="text-[10px] text-gray-400 font-mono px-1">
                         {formData.deliveryLat.toFixed(6)}, {formData.deliveryLng?.toFixed(6)}
