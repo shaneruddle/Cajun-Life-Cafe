@@ -469,6 +469,28 @@ function CustomerWallet({
     }
   };
 
+  const generateActivationLink = async () => {
+    if (!liveCustomer.id) return;
+    try {
+      const token = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+      await addDoc(collection(db, 'activation_tokens'), {
+        token,
+        crmCustomerId: liveCustomer.id,
+        firstName: liveCustomer.firstName,
+        lastName: liveCustomer.lastName,
+        mobile: liveCustomer.mobile || '',
+        used: false,
+        createdAt: new Date().toISOString(),
+      });
+      const link = `https://cajunlifecafe.com/activate/${token}`;
+      await navigator.clipboard.writeText(link);
+      toast.success('LINE activation link copied! Send it to the customer via LINE or SMS.', { duration: 6000 });
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate link');
+    }
+  };
+
   const balance = liveCustomer.balance ?? 0;
   const cash = parseFloat(topUpAmount) || 0;
   const bonus = Math.round(cash * 0.1 * 100) / 100;
@@ -484,6 +506,18 @@ function CustomerWallet({
           <div className="flex-1 min-w-0">
             <h2 className="font-bold text-lg text-ink truncate">{liveCustomer.firstName} {liveCustomer.lastName}</h2>
             <p className="text-xs text-gray-400 font-mono">{liveCustomer.mobile}</p>
+            {liveCustomer.lineUserId ? (
+              <p className="text-[10px] text-green-600 font-bold flex items-center gap-1 mt-0.5">
+                <span>●</span> LINE linked
+              </p>
+            ) : (
+              <button
+                onClick={generateActivationLink}
+                className="text-[10px] text-amber-600 font-bold underline mt-0.5"
+              >
+                Link LINE →
+              </button>
+            )}
           </div>
           <div className="text-right">
             <p className="text-2xl font-display font-bold text-terracotta">฿{balance.toLocaleString()}</p>
