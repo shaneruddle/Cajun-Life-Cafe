@@ -76,9 +76,11 @@ type Language = "en" | "zh" | "ru" | "th";
 
 const Navbar = ({
   canAccessDashboard,
+  canAccessStaffPortal = false,
   setUser,
 }: {
   canAccessDashboard: boolean;
+  canAccessStaffPortal?: boolean;
   setUser: (user: any) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);

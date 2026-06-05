@@ -210,7 +210,7 @@ export default function CRMDirectory() {
     if (!window.confirm(`Delete ${customer.firstName} ${customer.lastName}? This cannot be undone.`)) return;
     try {
       await updateDoc(doc(db, 'crm_customers', customer.id), {
-        status: 'deleted',
+        status: 'inactive',
         updatedAt: new Date().toISOString(),
       });
       await logActivity('Customer Deleted', `Deleted: ${customer.firstName} ${customer.lastName}`, 'crm');
@@ -289,7 +289,7 @@ export default function CRMDirectory() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filteredCustomers.map((customer) => {
-                const isInactive = customer.status === 'inactive' || customer.status === 'deleted';
+                const isInactive = customer.status === 'inactive' || (customer.status as string) === 'deleted';
                 return (
                   <tr
                     key={customer.id}

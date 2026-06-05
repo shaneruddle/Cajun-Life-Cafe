@@ -758,7 +758,7 @@ function CRMTab({ user }: { user: any }) {
   }, []);
 
   const filtered = customers.filter(c =>
-    c.status !== 'deleted' &&
+    (c.status as string) !== 'deleted' &&
     (`${c.firstName} ${c.lastName}`.toLowerCase().includes(query_.toLowerCase()) ||
     (c.mobile ?? '').includes(query_) ||
     (c.email ?? '').toLowerCase().includes(query_.toLowerCase()))
