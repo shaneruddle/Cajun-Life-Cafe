@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, updateDoc, doc } from 'firebase/firestore';
 import { logActivity } from '../../utils/logger';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase';
@@ -147,7 +147,7 @@ export default function LogExpense({ user, financeRole = 'owner' }: { user: any;
       // Auto-update ingredient costs from line items
       if (formData.items && formData.items.length > 0) {
         try {
-          const { getDocs, query: q2, collection: col2, where, updateDoc: upDoc, doc: docRef, addDoc: aDoc } = await import('firebase/firestore');
+          const q2 = query, col2 = collection, upDoc = updateDoc, docRef = doc, aDoc = addDoc;
           const ingSnap = await getDocs(q2(col2(db, 'finance_ingredients')));
           const ingList = ingSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
           for (const item of formData.items) {

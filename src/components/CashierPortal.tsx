@@ -7,7 +7,7 @@ import {
 } from 'firebase/auth';
 import {
   collection, addDoc, query, where, orderBy, onSnapshot,
-  doc, getDoc, setDoc, updateDoc, limit, Timestamp
+  doc, getDoc, setDoc, updateDoc, deleteDoc, limit, Timestamp
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '../firebase';
@@ -950,8 +950,7 @@ function TodaySummary({ open, onClose }: { open: boolean; onClose: () => void })
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this expense?')) return;
     try {
-      const { deleteDoc, doc: firestoreDoc } = await import('firebase/firestore');
-      await deleteDoc(firestoreDoc(db, 'finance_expenses', id));
+      await deleteDoc(doc(db, 'finance_expenses', id));
       toast.success('Expense deleted');
     } catch { toast.error('Failed to delete'); }
   };
@@ -959,8 +958,7 @@ function TodaySummary({ open, onClose }: { open: boolean; onClose: () => void })
   const handleEditSave = async () => {
     if (!editingExpense) return;
     try {
-      const { updateDoc: ud, doc: fd } = await import('firebase/firestore');
-      await ud(fd(db, 'finance_expenses', editingExpense.id), {
+      await updateDoc(doc(db, 'finance_expenses', editingExpense.id), {
         total: parseFloat(editTotal) || 0,
         supplier: editSupplier,
         notes: editNotes,
