@@ -677,6 +677,9 @@ function LoyaltyTab({ user }: { user: any }) {
     );
     return onSnapshot(q, snap => {
       setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() })) as CRMCustomer[]);
+    }, (err) => {
+      console.error('[LoyaltyTab] Firestore error:', err.code, err.message);
+      toast.error(`Could not load members: ${err.code}`);
     });
   }, []);
 
@@ -795,6 +798,9 @@ function CRMTab({ user }: { user: any }) {
     const q = query(collection(db, 'crm_customers'), orderBy('createdAt', 'desc'));
     return onSnapshot(q, snap => {
       setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() })) as CRMCustomer[]);
+    }, (err) => {
+      console.error('[CRMTab] Firestore error:', err.code, err.message);
+      toast.error(`Could not load customers: ${err.code}`);
     });
   }, []);
 
