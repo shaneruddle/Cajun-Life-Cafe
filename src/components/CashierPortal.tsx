@@ -469,9 +469,12 @@ function CustomerWallet({
     }
   };
 
+  const [activationLink, setActivationLink] = useState<string | null>(null);
+
   const generateActivationLink = async () => {
     if (!liveCustomer.id) return;
     try {
+      // 1. Write token to Firestore
       const token = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
       await addDoc(collection(db, 'activation_tokens'), {
         token,
@@ -483,11 +486,18 @@ function CustomerWallet({
         createdAt: new Date().toISOString(),
       });
       const link = `https://cajunlifecafe.com/activate/${token}`;
-      await navigator.clipboard.writeText(link);
-      toast.success('LINE activation link copied! Send it to the customer via LINE or SMS.', { duration: 6000 });
+      setActivationLink(link);
+
+      // 2. Try clipboard — may fail on mobile, that's ok
+      try {
+        await navigator.clipboard.writeText(link);
+        toast.success('Activation link copied to clipboard!', { duration: 6000 });
+      } catch {
+        // Clipboard not available (common on mobile) — show link on screen instead
+      }
     } catch (err) {
-      console.error(err);
-      toast.error('Failed to generate link');
+      console.error('Activation token error:', err);
+      toast.error('Failed to generate link — check Firestore rules');
     }
   };
 
@@ -517,6 +527,20 @@ function CustomerWallet({
               >
                 Link LINE →
               </button>
+            )}
+            {activationLink && !liveCustomer.lineUserId && (
+              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-[10px] text-amber-700 font-bold mb-1">Send this link to the customer:</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] font-mono text-amber-800 break-all flex-1">{activationLink}</p>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(activationLink).then(() => toast.success('Copied!'))}
+                    className="text-[10px] bg-amber-500 text-white px-2 py-1 rounded-lg font-bold shrink-0"
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
             )}
           </div>
           <div className="text-right">
