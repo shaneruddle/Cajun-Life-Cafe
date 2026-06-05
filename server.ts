@@ -14,7 +14,7 @@ dotenv.config();
 if (!getApps().length) {
   initializeApp({ credential: applicationDefault() });
 }
-const adminDb = getFirestore(undefined, 'ai-studio-88dfc183-b7e7-45b8-b831-62b1a7bbdb29');
+const adminDb = getFirestore(); // default database
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
