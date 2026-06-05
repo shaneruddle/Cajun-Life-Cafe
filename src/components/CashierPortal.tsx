@@ -632,8 +632,7 @@ function LoyaltyTab({ user }: { user: any }) {
   useEffect(() => {
     const q = query(
       collection(db, 'crm_customers'),
-      where('loyaltyEnabled', '==', true),
-      orderBy('updatedAt', 'desc')
+      where('loyaltyEnabled', '==', true)
     );
     return onSnapshot(q, snap => {
       setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() })) as CRMCustomer[]);
