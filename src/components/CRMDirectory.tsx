@@ -32,6 +32,7 @@ import {
   Wallet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import DeliveryMap from './DeliveryMap';
 import { toast } from 'sonner';
 
 export default function CRMDirectory({ user }: { user?: any }) {
@@ -54,6 +55,10 @@ export default function CRMDirectory({ user }: { user?: any }) {
     notes: '',
     status: 'active' as 'active' | 'inactive',
     lineUserId: '',
+    address: '',
+    deliveryLat: undefined as number | undefined,
+    deliveryLng: undefined as number | undefined,
+    deliveryNotes: '',
   });
 
   const adminEmail = auth.currentUser?.email || 'unknown';
@@ -141,6 +146,10 @@ export default function CRMDirectory({ user }: { user?: any }) {
       notes: customer.notes || '',
       status: customer.status || 'active',
       lineUserId: customer.lineUserId || '',
+      address: customer.address || '',
+      deliveryLat: customer.deliveryLat,
+      deliveryLng: customer.deliveryLng,
+      deliveryNotes: customer.deliveryNotes || '',
     });
     setShowAddModal(true);
   };
@@ -162,6 +171,10 @@ export default function CRMDirectory({ user }: { user?: any }) {
           notes: formData.notes,
           status: formData.status,
           lineUserId: formData.lineUserId,
+          address: formData.address,
+          deliveryLat: formData.deliveryLat ?? null,
+          deliveryLng: formData.deliveryLng ?? null,
+          deliveryNotes: formData.deliveryNotes,
           updatedAt: new Date().toISOString(),
         });
         await logActivity('Customer Updated', `Updated: ${formData.firstName} ${formData.lastName}`, 'crm');
@@ -175,6 +188,10 @@ export default function CRMDirectory({ user }: { user?: any }) {
           notes: formData.notes,
           status: formData.status,
           lineUserId: formData.lineUserId || '',
+          address: formData.address,
+          deliveryLat: formData.deliveryLat ?? null,
+          deliveryLng: formData.deliveryLng ?? null,
+          deliveryNotes: formData.deliveryNotes,
           totalSpend: 0,
           uid: adminUid,
           createdAt: new Date().toISOString(),
@@ -198,7 +215,7 @@ export default function CRMDirectory({ user }: { user?: any }) {
       }
       setShowAddModal(false);
       setSelectedCustomerId(null);
-      setFormData({ firstName: '', lastName: '', email: '', mobile: '', countryCode: '+66', notes: '', status: 'active', lineUserId: '' });
+      setFormData({ firstName: '', lastName: '', email: '', mobile: '', countryCode: '+66', notes: '', status: 'active', lineUserId: '', address: '', deliveryLat: undefined, deliveryLng: undefined, deliveryNotes: '' });
     } catch (err) {
       console.error('Save error:', err);
       toast.error('Failed to save customer');
@@ -248,7 +265,7 @@ export default function CRMDirectory({ user }: { user?: any }) {
         <button
           onClick={() => {
             setSelectedCustomerId(null);
-            setFormData({ firstName: '', lastName: '', email: '', mobile: '', countryCode: '+66', notes: '', status: 'active', lineUserId: '' });
+            setFormData({ firstName: '', lastName: '', email: '', mobile: '', countryCode: '+66', notes: '', status: 'active', lineUserId: '', address: '', deliveryLat: undefined, deliveryLng: undefined, deliveryNotes: '' });
             setShowAddModal(true);
           }}
           className="bg-ink text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg hover:bg-black transition-all"
@@ -550,6 +567,41 @@ export default function CRMDirectory({ user }: { user?: any }) {
                         className="w-full pl-14 pr-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-terracotta outline-none font-medium resize-none"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Address</label>
+                    <textarea
+                      rows={2} value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      placeholder="House number, street, area..."
+                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-terracotta outline-none font-medium resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Delivery Location</label>
+                    <p className="text-xs text-gray-400 px-1">Tap the map or drag the pin to mark delivery drop-off point.</p>
+                    <DeliveryMap
+                      lat={formData.deliveryLat}
+                      lng={formData.deliveryLng}
+                      onChange={(lat, lng) => setFormData(f => ({ ...f, deliveryLat: lat, deliveryLng: lng }))}
+                    />
+                    {formData.deliveryLat && (
+                      <p className="text-[10px] text-gray-400 font-mono px-1">
+                        {formData.deliveryLat.toFixed(6)}, {formData.deliveryLng?.toFixed(6)}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Delivery Notes</label>
+                    <textarea
+                      rows={2} value={formData.deliveryNotes}
+                      onChange={(e) => setFormData({ ...formData, deliveryNotes: e.target.value })}
+                      placeholder="Gate code, floor, landmark, instructions..."
+                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-terracotta outline-none font-medium resize-none"
+                    />
                   </div>
 
                   <div className="space-y-2">

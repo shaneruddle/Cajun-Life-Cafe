@@ -18,10 +18,11 @@ import {
   LogIn, LogOut, Camera, Loader2, Search, User, UserPlus,
   Wallet, ArrowUpCircle, ArrowDownCircle, History, Star,
   Phone, Mail, FileText, X, Check, ChevronLeft,
-  Receipt, ClipboardList, Plus, Trash2, Pencil, ChevronDown, Upload
+  Receipt, ClipboardList, Plus, Trash2, Pencil, ChevronDown, Upload, MapPin, Save
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CRMCustomer, LoyaltyTransaction } from '../types';
+import DeliveryMap from './DeliveryMap';
 
 // ── LINE push helper ───────────────────────────────────────────────────────────
 const sendLinePush = async (lineUserId: string, message: string) => {
@@ -896,6 +897,45 @@ function CRMTab({ user }: { user: any }) {
     );
   }
 
+  // Edit form state for selected customer
+  const [editData, setEditData] = useState<Partial<CRMCustomer>>({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (selected) {
+      setEditData({
+        mobile: selected.mobile || '',
+        email: selected.email || '',
+        notes: selected.notes || '',
+        address: selected.address || '',
+        deliveryLat: selected.deliveryLat,
+        deliveryLng: selected.deliveryLng,
+        deliveryNotes: selected.deliveryNotes || '',
+      });
+    }
+  }, [selected?.id]);
+
+  const handleSaveEdit = async () => {
+    if (!selected?.id) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'crm_customers', selected.id), {
+        ...editData,
+        deliveryLat: editData.deliveryLat ?? null,
+        deliveryLng: editData.deliveryLng ?? null,
+        updatedAt: new Date().toISOString(),
+      });
+      await logActivity('Customer Updated', `${selected.firstName} ${selected.lastName} updated by cashier ${user.email}`, 'crm');
+      setSelected(prev => prev ? { ...prev, ...editData } : prev);
+      toast.success('Customer updated');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (selected) {
     return (
       <div className="flex flex-col h-full">
@@ -903,53 +943,116 @@ function CRMTab({ user }: { user: any }) {
           <button onClick={() => setSelected(null)} className="p-2 -ml-2 rounded-xl hover:bg-gray-100 text-gray-500">
             <ChevronLeft size={22} />
           </button>
-          <h2 className="font-bold text-lg text-ink">{selected.firstName} {selected.lastName}</h2>
-        </div>
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {/* Contact info */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
-            {selected.mobile && (
-              <div className="flex items-center gap-3 text-sm">
-                <Phone size={16} className="text-gray-400 shrink-0" />
-                <span className="font-mono">{selected.mobile}</span>
-              </div>
-            )}
-            {selected.email && (
-              <div className="flex items-center gap-3 text-sm">
-                <Mail size={16} className="text-gray-400 shrink-0" />
-                <span>{selected.email}</span>
-              </div>
-            )}
-            {selected.notes && (
-              <div className="flex items-start gap-3 text-sm">
-                <FileText size={16} className="text-gray-400 shrink-0 mt-0.5" />
-                <span className="text-gray-600">{selected.notes}</span>
-              </div>
-            )}
+          <div className="flex-1 min-w-0">
+            <h2 className="font-bold text-lg text-ink">{selected.firstName} {selected.lastName}</h2>
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest">Edit Profile</p>
           </div>
+        </div>
 
-          {/* Loyalty status */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 pb-32">
+          {/* Loyalty status — read only */}
           {selected.loyaltyEnabled ? (
-            <div className="bg-terracotta/5 border border-terracotta/20 rounded-2xl p-5 flex items-center justify-between">
+            <div className="bg-terracotta/5 border border-terracotta/20 rounded-2xl p-4 flex items-center justify-between">
               <div>
-                <p className="font-bold text-terracotta flex items-center gap-2">
-                  <Star size={16} fill="currentColor" /> Loyalty Member
+                <p className="font-bold text-terracotta flex items-center gap-2 text-sm">
+                  <Star size={14} fill="currentColor" /> Loyalty Member
                 </p>
-                <p className="text-2xl font-display font-bold text-ink mt-1">฿{(selected.balance ?? 0).toLocaleString()}</p>
-                <p className="text-xs text-gray-400">wallet balance</p>
+                <p className="text-xl font-display font-bold text-ink">฿{(selected.balance ?? 0).toLocaleString()}</p>
               </div>
-              <Wallet size={40} className="text-terracotta/20" />
+              <Wallet size={32} className="text-terracotta/20" />
             </div>
           ) : (
             <button
               onClick={() => handleEnroll(selected)}
               disabled={enrolling}
-              className="w-full py-4 bg-amber-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg disabled:opacity-60"
+              className="w-full py-3 bg-amber-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              {enrolling ? <Loader2 size={20} className="animate-spin" /> : <Star size={20} />}
+              {enrolling ? <Loader2 size={18} className="animate-spin" /> : <Star size={18} />}
               Enroll in Loyalty Program
             </button>
           )}
+
+          {/* Editable fields */}
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Mobile</label>
+            <div className="flex items-center border border-gray-200 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-terracotta">
+              <span className="px-4 py-3.5 text-gray-500 font-mono text-sm bg-gray-50 border-r border-gray-200">🇹🇭 +66</span>
+              <input
+                type="tel" value={(editData.mobile ?? '').replace(/^\+66/, '')}
+                onChange={e => setEditData(d => ({ ...d, mobile: `+66${e.target.value.replace(/^0/, '')}` }))}
+                placeholder="812 345 678"
+                className="flex-1 px-4 py-3.5 text-base focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Email</label>
+            <input
+              type="email" value={editData.email ?? ''}
+              onChange={e => setEditData(d => ({ ...d, email: e.target.value }))}
+              placeholder="customer@email.com"
+              className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Notes</label>
+            <textarea
+              rows={2} value={editData.notes ?? ''}
+              onChange={e => setEditData(d => ({ ...d, notes: e.target.value }))}
+              placeholder="Allergies, preferences..."
+              className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Address</label>
+            <textarea
+              rows={2} value={editData.address ?? ''}
+              onChange={e => setEditData(d => ({ ...d, address: e.target.value }))}
+              placeholder="House number, street, area..."
+              className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+              <MapPin size={12} /> Delivery Location
+            </label>
+            <p className="text-xs text-gray-400 mb-2">Tap the map or drag the pin to mark drop-off point.</p>
+            <DeliveryMap
+              lat={editData.deliveryLat}
+              lng={editData.deliveryLng}
+              onChange={(lat, lng) => setEditData(d => ({ ...d, deliveryLat: lat, deliveryLng: lng }))}
+            />
+            {editData.deliveryLat && (
+              <p className="text-[10px] text-gray-400 font-mono mt-1">
+                {editData.deliveryLat.toFixed(6)}, {editData.deliveryLng?.toFixed(6)}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Delivery Notes</label>
+            <textarea
+              rows={2} value={editData.deliveryNotes ?? ''}
+              onChange={e => setEditData(d => ({ ...d, deliveryNotes: e.target.value }))}
+              placeholder="Gate code, floor, landmark..."
+              className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta resize-none"
+            />
+          </div>
+        </div>
+
+        <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-100 p-4 max-w-lg mx-auto">
+          <button
+            onClick={handleSaveEdit}
+            disabled={saving}
+            className="w-full py-4 bg-terracotta text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg disabled:opacity-60"
+          >
+            {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+            Save Changes
+          </button>
         </div>
       </div>
     );

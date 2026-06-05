@@ -148,6 +148,11 @@ export interface CRMCustomer {
   uid: string;
   createdAt: string;
   updatedAt: string;
+  // Address & delivery
+  address?: string;
+  deliveryLat?: number;
+  deliveryLng?: number;
+  deliveryNotes?: string;
   // Loyalty fields — present once enrolled
   loyaltyEnabled?: boolean;
   balance?: number;
