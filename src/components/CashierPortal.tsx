@@ -203,6 +203,11 @@ function RegisterForm({
   const [lastName, setLastName] = useState(prefillName.split(' ').slice(1).join(' ') || '');
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
+  const [notes, setNotes] = useState('');
+  const [address, setAddress] = useState('');
+  const [deliveryLat, setDeliveryLat] = useState<number | undefined>(undefined);
+  const [deliveryLng, setDeliveryLng] = useState<number | undefined>(undefined);
+  const [deliveryNotes, setDeliveryNotes] = useState('');
   const [enroll, setEnroll] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -217,7 +222,11 @@ function RegisterForm({
         lastName: lastName.trim(),
         email: email.trim(),
         mobile: fullMobile || mobile,
-        notes: '',
+        notes,
+        address,
+        deliveryLat: deliveryLat ?? null,
+        deliveryLng: deliveryLng ?? null,
+        deliveryNotes,
         totalSpend: 0,
         status: 'active',
         uid: staffUid,
@@ -288,6 +297,52 @@ function RegisterForm({
             type="email" value={email} onChange={e => setEmail(e.target.value)}
             placeholder="optional"
             className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Notes</label>
+          <textarea
+            rows={2} value={notes} onChange={e => setNotes(e.target.value)}
+            placeholder="Allergies, preferences, regulars..."
+            className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Address</label>
+          <textarea
+            rows={2} value={address} onChange={e => setAddress(e.target.value)}
+            placeholder="House number, street, area..."
+            className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">
+            Delivery Location
+          </label>
+          <p className="text-xs text-gray-400 mb-2">Tap the map or drag the pin to mark drop-off point.</p>
+          <React.Suspense fallback={<div style={{height:220,background:"#f3f4f6",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",color:"#9ca3af",fontSize:13}}>Loading map…</div>}>
+            <DeliveryMap
+              lat={deliveryLat}
+              lng={deliveryLng}
+              onChange={(lat, lng) => { setDeliveryLat(lat); setDeliveryLng(lng); }}
+            />
+          </React.Suspense>
+          {deliveryLat && (
+            <p className="text-[10px] text-gray-400 font-mono mt-1">
+              {deliveryLat.toFixed(6)}, {deliveryLng?.toFixed(6)}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Delivery Notes</label>
+          <textarea
+            rows={2} value={deliveryNotes} onChange={e => setDeliveryNotes(e.target.value)}
+            placeholder="Gate code, floor, landmark, instructions..."
+            className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta resize-none"
           />
         </div>
 
