@@ -13,7 +13,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, auth, storage , menuDb} from '../firebase';
+import { db, auth, storage } from '../firebase';
 const firebaseConfig = { storageBucket: 'cajun-life-cafe.firebasestorage.app' };
 import { imageService } from '../services/imageService';
 import { MenuItem, Category, OperationType } from '../types';
@@ -373,7 +373,7 @@ export default function Dashboard() {
       setLoading(false);
     }, 4000);
 
-    const q = query(collection(menuDb, 'menu'), orderBy('order', 'asc'));
+    const q = query(collection(db, 'menu'), orderBy('order', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const menuItems = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -386,7 +386,7 @@ export default function Dashboard() {
       setLoading(false);
     });
 
-    const categoriesQuery = query(collection(menuDb, 'categories'), orderBy('order', 'asc'));
+    const categoriesQuery = query(collection(db, 'categories'), orderBy('order', 'asc'));
     const unsubscribeCategories = onSnapshot(categoriesQuery, (snapshot) => {
       const cats = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -469,7 +469,7 @@ export default function Dashboard() {
         }
         
         if (needsUpdate && item.id) {
-          batch.update(doc(menuDb, 'menu', item.id), updatedItem);
+          batch.update(doc(db, 'menu', item.id), updatedItem);
           fixedCount++;
         }
       });
@@ -501,7 +501,7 @@ export default function Dashboard() {
       
       items.forEach(item => {
         if (item.id) {
-          batch.update(doc(menuDb, 'menu', item.id), {
+          batch.update(doc(db, 'menu', item.id), {
             image: '',
             secondaryImage: '',
             highResImage: '',
@@ -544,7 +544,7 @@ export default function Dashboard() {
         const batch = writeBatch(db);
         newItems.forEach((item, index) => {
           if (item.id) {
-            const itemRef = doc(menuDb, 'menu', item.id);
+            const itemRef = doc(db, 'menu', item.id);
             batch.update(itemRef, { order: index });
           }
         });
@@ -573,14 +573,14 @@ export default function Dashboard() {
       );
 
       if (editingItem?.id) {
-        await updateDoc(doc(menuDb, 'menu', editingItem.id), {
+        await updateDoc(doc(db, 'menu', editingItem.id), {
           ...cleanData,
           uid: auth.currentUser?.uid || null
         });
         await logActivity('Menu Item Updated', `Updated menu item: ${formData.name}`, 'menu');
         setSuccess('Item updated successfully!');
       } else {
-        await addDoc(collection(menuDb, 'menu'), {
+        await addDoc(collection(db, 'menu'), {
           ...cleanData,
           uid: auth.currentUser?.uid || null
         });
@@ -601,7 +601,7 @@ export default function Dashboard() {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this item?')) return;
     try {
-      await deleteDoc(doc(menuDb, 'menu', id));
+      await deleteDoc(doc(db, 'menu', id));
       await logActivity('Menu Item Deleted', `Deleted menu item ID: ${id}`, 'menu');
       setSuccess('Item deleted successfully!');
     } catch (err) {
@@ -611,7 +611,7 @@ export default function Dashboard() {
 
   const togglePublished = async (item: MenuItem) => {
     try {
-      await updateDoc(doc(menuDb, 'menu', item.id!), {
+      await updateDoc(doc(db, 'menu', item.id!), {
         published: !item.published
       });
       await logActivity('Menu Item Visibility Toggled', `${item.published ? 'Unpublished' : 'Published'} menu item: ${item.name}`, 'menu');

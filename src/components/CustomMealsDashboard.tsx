@@ -12,7 +12,7 @@ import {
   writeBatch,
   getDocs
 } from 'firebase/firestore';
-import { db, auth , menuDb} from '../firebase';
+import { db, auth } from '../firebase';
 import { CustomMealItem, CustomMealOption } from '../types';
 import { handleFirestoreError } from '../utils/firestore';
 import { logActivity } from '../utils/logger';
@@ -196,7 +196,7 @@ export default function CustomMealsDashboard() {
       setLoading(false);
     }, 4000);
 
-    const q = query(collection(menuDb, 'custom_meals'), orderBy('order', 'asc'));
+    const q = query(collection(db, 'custom_meals'), orderBy('order', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const customItems = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -230,7 +230,7 @@ export default function CustomMealsDashboard() {
         const batch = writeBatch(db);
         newItems.forEach((item, index) => {
           if (item.id) {
-            const itemRef = doc(menuDb, 'custom_meals', item.id);
+            const itemRef = doc(db, 'custom_meals', item.id);
             batch.update(itemRef, { order: index });
           }
         });
@@ -248,14 +248,14 @@ export default function CustomMealsDashboard() {
     setError(null);
     try {
       if (editingItem?.id) {
-        await updateDoc(doc(menuDb, 'custom_meals', editingItem.id), {
+        await updateDoc(doc(db, 'custom_meals', editingItem.id), {
           ...formData,
           uid: auth.currentUser?.uid
         });
         await logActivity('Custom Meal Updated', `Updated custom meal: ${formData.name}`, 'custom_meal');
         setSuccess('Item updated successfully!');
       } else {
-        await addDoc(collection(menuDb, 'custom_meals'), {
+        await addDoc(collection(db, 'custom_meals'), {
           ...formData,
           uid: auth.currentUser?.uid
         });
@@ -272,7 +272,7 @@ export default function CustomMealsDashboard() {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this item?')) return;
     try {
-      await deleteDoc(doc(menuDb, 'custom_meals', id));
+      await deleteDoc(doc(db, 'custom_meals', id));
       await logActivity('Custom Meal Deleted', `Deleted custom meal ID: ${id}`, 'custom_meal');
       setSuccess('Item deleted successfully!');
     } catch (err) {
@@ -288,7 +288,7 @@ export default function CustomMealsDashboard() {
     addLog("Starting delete all process...");
     
     try {
-      const q = query(collection(menuDb, 'custom_meals'));
+      const q = query(collection(db, 'custom_meals'));
       const snapshot = await getDocs(q);
       
       addLog(`Found ${snapshot.docs.length} items to delete.`);
@@ -333,7 +333,7 @@ export default function CustomMealsDashboard() {
     addLog("Starting sequential delete...");
     
     try {
-      const q = query(collection(menuDb, 'custom_meals'));
+      const q = query(collection(db, 'custom_meals'));
       const snapshot = await getDocs(q);
       
       addLog(`Found ${snapshot.docs.length} items to delete sequentially.`);
@@ -364,7 +364,7 @@ export default function CustomMealsDashboard() {
   const countItems = async () => {
     addLog("Counting items...");
     try {
-      const q = query(collection(menuDb, 'custom_meals'));
+      const q = query(collection(db, 'custom_meals'));
       const snapshot = await getDocs(q);
       addLog(`Total items in database: ${snapshot.docs.length}`);
       setSuccess(`Found ${snapshot.docs.length} items.`);
@@ -376,7 +376,7 @@ export default function CustomMealsDashboard() {
   const testPermissions = async () => {
     addLog("Testing admin permissions...");
     try {
-      const testRef = doc(collection(menuDb, 'custom_meals'), 'test_perm_check');
+      const testRef = doc(collection(db, 'custom_meals'), 'test_perm_check');
       await setDoc(testRef, { 
         name: 'Test Permission', 
         type: 'Test', 
@@ -398,7 +398,7 @@ export default function CustomMealsDashboard() {
     setLoading(true);
     try {
       for (const item of INITIAL_CUSTOM_MEALS) {
-        await addDoc(collection(menuDb, 'custom_meals'), {
+        await addDoc(collection(db, 'custom_meals'), {
           ...item,
           uid: auth.currentUser?.uid
         });

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { collection, query, where, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
-import { db , menuDb} from '../../firebase';
+import { db } from '../../firebase';
 import { Expense, Income, Ingredient } from './types';
 import { MenuItem } from '../../types';
 import { Download, TrendingUp, TrendingDown } from 'lucide-react';
@@ -29,7 +29,7 @@ export default function FinanceReports() {
     const unsubInc = onSnapshot(incQ, snap => setIncome(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Income[]));
 
     getDocs(collection(db, 'finance_ingredients')).then(snap => setIngredients(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Ingredient[]));
-    getDocs(collection(menuDb, 'menu')).then(snap => setMenuItems(snap.docs.map(d => ({ id: d.id, ...d.data() })) as MenuItem[]));
+    getDocs(collection(db, 'menu')).then(snap => setMenuItems(snap.docs.map(d => ({ id: d.id, ...d.data() })) as MenuItem[]));
 
     return () => { unsubExp(); unsubInc(); };
   }, [selectedMonth]);

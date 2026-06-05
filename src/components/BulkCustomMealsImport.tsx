@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { collection, addDoc, serverTimestamp, query, getDocs, writeBatch } from 'firebase/firestore';
-import { db, auth , menuDb} from '../firebase';
+import { db, auth } from '../firebase';
 import { ArrowLeft, Upload, CheckCircle2, AlertCircle, FileText, ChevronRight, Database, Scale, Info } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -246,7 +246,7 @@ const BulkCustomMealsImport: React.FC = () => {
     try {
       if (clearBeforeImport) {
         setStatus({ type: 'info', message: 'Clearing existing data...' });
-        const q = query(collection(menuDb, 'custom_meals'));
+        const q = query(collection(db, 'custom_meals'));
         const snapshot = await getDocs(q);
         
         if (!snapshot.empty) {
@@ -338,7 +338,7 @@ const BulkCustomMealsImport: React.FC = () => {
 
       for (let i = 0; i < totalEntries; i++) {
         const meal = mealEntries[i];
-        await addDoc(collection(menuDb, 'custom_meals'), meal);
+        await addDoc(collection(db, 'custom_meals'), meal);
         count++;
         setProgress(50 + Math.round(((i + 1) / totalEntries) * 50));
       }

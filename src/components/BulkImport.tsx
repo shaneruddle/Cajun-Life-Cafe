@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { collection, addDoc, setDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { db, auth , menuDb} from '../firebase';
+import { db, auth } from '../firebase';
 import { normalizeImageUrl } from '../utils/images';
 import { logActivity } from '../utils/logger';
 import { ArrowLeft, Upload, CheckCircle2, AlertCircle, FileText, ChevronRight, Database } from 'lucide-react';
@@ -163,9 +163,9 @@ const BulkImport: React.FC = () => {
           const docId = item.originalId || null;
           if (docId) {
             delete item.originalId;
-            await setDoc(doc(menuDb, 'menu', docId), item);
+            await setDoc(doc(db, 'menu', docId), item);
           } else {
-            await addDoc(collection(menuDb, 'menu'), item);
+            await addDoc(collection(db, 'menu'), item);
           }
           count++;
         }

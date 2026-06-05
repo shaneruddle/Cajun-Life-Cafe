@@ -34,7 +34,7 @@ import {
 } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
-import { db, menuDb, auth } from "./firebase";
+import { db, auth } from "./firebase";
 import { MenuItem, CustomMealItem, Category } from "./types";
 import { handleFirestoreError } from "./utils/firestore";
 import { normalizeImageUrl } from "./utils/images";
@@ -228,7 +228,7 @@ const Menu = () => {
   const [language, setLanguage] = useState<Language>("en");
 
   useEffect(() => {
-    const q = query(collection(menuDb, 'categories'), orderBy("order", "asc"));
+    const q = query(collection(db, 'categories'), orderBy("order", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const cats = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Category[];
       setCategoryList(cats);
@@ -237,7 +237,7 @@ const Menu = () => {
   }, []);
 
   useEffect(() => {
-    const q = query(collection(menuDb, 'menu'), where("published", "==", true));
+    const q = query(collection(db, 'menu'), where("published", "==", true));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const menuItems = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as MenuItem[];
       setItems(menuItems.sort((a, b) => (a.order || 0) - (b.order || 0)));
@@ -325,7 +325,7 @@ const CustomMeals = () => {
   const [activeType, setActiveType] = useState<string>("Protein");
 
   useEffect(() => {
-    const q = query(collection(menuDb, 'custom_meals'), orderBy("order", "asc"));
+    const q = query(collection(db, 'custom_meals'), orderBy("order", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setItems(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as CustomMealItem[]);
     }, (err) => handleFirestoreError(err, "list", "custom_meals"));
