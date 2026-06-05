@@ -34,7 +34,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 
-export default function CRMDirectory() {
+export default function CRMDirectory({ user }: { user?: any }) {
+  const isAdmin = user?.email?.toLowerCase() === 'info@cajunlifecafe.com' || user?.role === 'admin';
   const [customers, setCustomers] = useState<CRMCustomer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -208,6 +209,14 @@ export default function CRMDirectory() {
 
   const handleDelete = async (customer: CRMCustomer) => {
     if (!customer.id) return;
+    if (!isAdmin) {
+      toast.error('Only admins can delete customers');
+      return;
+    }
+    if ((customer.balance ?? 0) > 0) {
+      toast.error(`Cannot delete — ${customer.firstName} has a ฿${customer.balance?.toLocaleString()} wallet balance`);
+      return;
+    }
     if (!window.confirm(`Delete ${customer.firstName} ${customer.lastName}? This cannot be undone.`)) return;
     try {
       await deleteDoc(doc(db, 'crm_customers', customer.id));
@@ -362,13 +371,15 @@ export default function CRMDirectory() {
                         >
                           <Edit2 size={16} />
                         </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(customer); }}
-                          className="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(customer); }}
+                            className="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -566,7 +577,7 @@ export default function CRMDirectory() {
                   )}
 
                   <div className="pt-4 flex gap-4">
-                    {selectedCustomerId && (
+                    {selectedCustomerId && isAdmin && (
                       <button
                         type="button"
                         onClick={() => { const c = customers.find(x => x.id === selectedCustomerId); if (c) handleDelete(c); }}

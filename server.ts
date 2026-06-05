@@ -361,14 +361,25 @@ Rules:
     if (!smtpHost || !smtpUser || !smtpPass) return { sent: false, entries: 0, error: "SMTP not configured" };
 
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const logsSnap = await adminDb.collection("system_logs")
-      .where("category", "==", "loyalty")
-      .where("timestamp", ">=", since)
-      .orderBy("timestamp", "asc")
-      .get();
+
+    // Fetch activity logs and all loyalty members in parallel
+    const [logsSnap, membersSnap] = await Promise.all([
+      adminDb.collection("system_logs")
+        .where("category", "==", "loyalty")
+        .where("timestamp", ">=", since)
+        .orderBy("timestamp", "asc")
+        .get(),
+      adminDb.collection("crm_customers")
+        .where("loyaltyEnabled", "==", true)
+        .get()
+    ]);
+
     const logs = logsSnap.docs.map(d => d.data());
+    const members = membersSnap.docs.map(d => d.data());
+    const totalBalance = members.reduce((sum: number, m: any) => sum + (m.balance || 0), 0);
     const dateStr = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Bangkok", day: "2-digit", month: "long", year: "numeric" });
 
+    // Activity rows
     let rows = "";
     if (logs.length === 0) {
       rows = `<tr><td colspan="4" style="text-align:center;color:#999;padding:20px;">No loyalty activity in the past 24 hours</td></tr>`;
@@ -380,7 +391,63 @@ Rules:
       }
     }
 
-    const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f7f7f7;padding:30px"><div style="max-width:700px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08)"><div style="background:#1a1a1a;padding:24px 32px;border-radius:12px 12px 0 0"><p style="margin:0;color:#fff;font-size:20px;font-weight:700">Cajun Life Cafe</p><p style="margin:4px 0 0;color:#aaa;font-size:13px">Loyalty Activity Digest — ${dateStr}</p></div><div style="padding:24px 32px"><p style="color:#333"><strong>${logs.length} loyalty event${logs.length !== 1 ? "s" : ""}</strong> in the past 24 hours.</p><table width="100%" style="border-collapse:collapse;border:1px solid #eee"><thead><tr style="background:#f9f9f9"><th style="padding:10px;text-align:left;color:#666;font-size:12px">Time</th><th style="padding:10px;text-align:left;color:#666;font-size:12px">Action</th><th style="padding:10px;text-align:left;color:#666;font-size:12px">Details</th><th style="padding:10px;text-align:left;color:#666;font-size:12px">Staff</th></tr></thead><tbody>${rows}</tbody></table></div><div style="padding:16px 32px 24px;border-top:1px solid #eee"><p style="color:#aaa;font-size:12px;margin:0">Auto-generated nightly at midnight ICT.</p></div></div></body></html>`;
+    // Balance snapshot rows — sorted by balance descending
+    const sortedMembers = [...members].sort((a: any, b: any) => (b.balance || 0) - (a.balance || 0));
+    let balanceRows = "";
+    for (const m of sortedMembers) {
+      const bal = m.balance || 0;
+      const colour = bal > 0 ? "#276749" : "#999";
+      const linked = m.lineUserId ? "✓" : "–";
+      balanceRows += `<tr style="border-bottom:1px solid #eee">
+        <td style="padding:10px;font-weight:600;color:#333">${m.firstName || ""} ${m.lastName || ""}</td>
+        <td style="padding:10px;color:#666;font-size:13px">${m.mobile || "–"}</td>
+        <td style="padding:10px;font-weight:700;color:${colour};text-align:right">฿${bal.toLocaleString()}</td>
+        <td style="padding:10px;color:#999;font-size:12px;text-align:center">${linked}</td>
+      </tr>`;
+    }
+
+    const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f7f7f7;padding:30px"><div style="max-width:700px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+      <div style="background:#1a1a1a;padding:24px 32px;border-radius:12px 12px 0 0">
+        <p style="margin:0;color:#fff;font-size:20px;font-weight:700">Cajun Life Cafe</p>
+        <p style="margin:4px 0 0;color:#aaa;font-size:13px">Loyalty Digest — ${dateStr}</p>
+      </div>
+
+      <div style="padding:24px 32px">
+        <p style="color:#333"><strong>${logs.length} loyalty event${logs.length !== 1 ? "s" : ""}</strong> in the past 24 hours.</p>
+        <table width="100%" style="border-collapse:collapse;border:1px solid #eee">
+          <thead><tr style="background:#f9f9f9">
+            <th style="padding:10px;text-align:left;color:#666;font-size:12px">Time</th>
+            <th style="padding:10px;text-align:left;color:#666;font-size:12px">Action</th>
+            <th style="padding:10px;text-align:left;color:#666;font-size:12px">Details</th>
+            <th style="padding:10px;text-align:left;color:#666;font-size:12px">Staff</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+
+      <div style="padding:0 32px 24px">
+        <p style="color:#333;font-weight:700;font-size:16px;margin-bottom:4px">💰 Wallet Balances Snapshot</p>
+        <p style="color:#666;font-size:13px;margin-top:0">${members.length} enrolled member${members.length !== 1 ? "s" : ""} · Total outstanding: <strong>฿${totalBalance.toLocaleString()}</strong></p>
+        <table width="100%" style="border-collapse:collapse;border:1px solid #eee">
+          <thead><tr style="background:#f9f9f9">
+            <th style="padding:10px;text-align:left;color:#666;font-size:12px">Customer</th>
+            <th style="padding:10px;text-align:left;color:#666;font-size:12px">Mobile</th>
+            <th style="padding:10px;text-align:right;color:#666;font-size:12px">Balance</th>
+            <th style="padding:10px;text-align:center;color:#666;font-size:12px">LINE</th>
+          </tr></thead>
+          <tbody>${balanceRows}</tbody>
+          <tfoot><tr style="background:#f9f9f9">
+            <td colspan="2" style="padding:10px;font-weight:700;color:#333">Total outstanding</td>
+            <td style="padding:10px;font-weight:700;color:#276749;text-align:right">฿${totalBalance.toLocaleString()}</td>
+            <td></td>
+          </tr></tfoot>
+        </table>
+      </div>
+
+      <div style="padding:16px 32px 24px;border-top:1px solid #eee">
+        <p style="color:#aaa;font-size:12px;margin:0">Auto-generated nightly at midnight ICT.</p>
+      </div>
+    </div></body></html>`;
 
     try {
       const nodemailer = require("nodemailer");

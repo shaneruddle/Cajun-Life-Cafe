@@ -536,7 +536,7 @@ function AppContent({ user, setUser }: any) {
           <Route path="users" element={isAdmin ? <UserManagement /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="finance" element={canAccessFinance ? <FinanceDashboard user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="loyalty" element={isAdmin || isStaff ? <LoyaltyDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
-          <Route path="crm" element={isAdmin || isMarketing ? <CRMDirectory /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="crm" element={isAdmin || isMarketing ? <CRMDirectory user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="images" element={isAdmin || isMarketing ? <ImageManagement /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="logs" element={isAdmin ? <SystemLogs /> : <div className="p-20 text-center">Access Denied</div>} />
         </Route>
