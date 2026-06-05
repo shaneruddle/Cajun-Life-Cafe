@@ -14,6 +14,7 @@ import {
   X,
   Settings,
   ArrowLeft,
+  Receipt,
   Flame,
   Zap,
   Wheat,
@@ -109,6 +110,11 @@ const Navbar = ({
                   <Settings size={16} /> Dashboard
                 </Link>
               )}
+              {canAccessStaffPortal && (
+                <Link to="/cashier" className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all ${scrolled ? "bg-terracotta text-white hover:bg-terracotta/90" : "bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"}`}>
+                  <Receipt size={16} /> Staff Portal
+                </Link>
+              )}
               <Auth onUserChange={setUser} />
             </>
           ) : (
@@ -136,6 +142,11 @@ const Navbar = ({
                 {canAccessDashboard && (
                   <Link to="/dashboard" className="flex items-center gap-2 text-lg font-medium text-olive" onClick={() => setIsOpen(false)}>
                     <Settings size={18} /> Dashboard
+                  </Link>
+                )}
+                {canAccessStaffPortal && (
+                  <Link to="/cashier" className="flex items-center gap-2 text-lg font-medium text-terracotta" onClick={() => setIsOpen(false)}>
+                    <Receipt size={18} /> Staff Portal
                   </Link>
                 )}
               </>
@@ -511,7 +522,7 @@ function AppContent({ user, setUser }: any) {
           </button>
         </div>
       )}
-      {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && <Navbar canAccessDashboard={isMarketing} setUser={setUser} />}
+      {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && <Navbar canAccessDashboard={isMarketing} canAccessStaffPortal={isCashier || isManager} setUser={setUser} />}
       <Routes>
         <Route path="/" element={<MainSite isAdmin={isAdmin} />} />
         <Route path="/menu" element={<DigitalMenuDisplay />} />
