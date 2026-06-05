@@ -1,0 +1,21 @@
+name: Migrate Menu to Default Database (run once)
+
+on:
+  workflow_dispatch:  # manual trigger only
+
+jobs:
+  migrate:
+    name: Copy menu collections to default Firestore DB
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - name: Write service account key
+        run: echo '${{ secrets.GCP_SA_KEY }}' > /tmp/sa-key.json
+      - name: Run migration
+        run: node scripts/migrate-to-default-db.mjs
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa-key.json
