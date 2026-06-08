@@ -20,11 +20,9 @@ export default function DeliveryMap({ lat, lng, onChange, readOnly = false }: Pr
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    // Guard: Leaflet CDN may not have loaded yet
     if (typeof L === 'undefined') {
       console.warn('Leaflet not loaded yet — retrying in 500ms');
       const timer = setTimeout(() => {
-        // Force re-mount by clearing ref
         mapRef.current = null;
       }, 500);
       return () => clearTimeout(timer);
@@ -36,7 +34,7 @@ export default function DeliveryMap({ lat, lng, onChange, readOnly = false }: Pr
     try {
       const map = L.map(containerRef.current, { zoomControl: true }).setView([initLat, initLng], 15);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
+        attribution: '\u00a9 OpenStreetMap',
         maxZoom: 19,
       }).addTo(map);
 
@@ -74,7 +72,7 @@ export default function DeliveryMap({ lat, lng, onChange, readOnly = false }: Pr
   }, []);
 
   useEffect(() => {
-    if (markerRef.current && lat !== undefined && lng !== undefined) {
+    if (markerRef.current && lat != null && lng != null) {
       markerRef.current.setLatLng([lat, lng]);
       mapRef.current?.panTo([lat, lng]);
     }
