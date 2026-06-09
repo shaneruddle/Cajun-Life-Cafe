@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
@@ -39,11 +40,22 @@ const sendLinePush = async (lineUserId: string, message: string) => {
 
 // ── Login ──────────────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
+  const [tab, setTab] = useState<'signin' | 'signup'>('signin');
+
+  // ── Sign-in state ──
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [resetting, setResetting] = useState(false);
+
+  // ── Sign-up state ──
+  const [suName, setSuName] = useState('');
+  const [suEmail, setSuEmail] = useState('');
+  const [suPassword, setSuPassword] = useState('');
+  const [suConfirm, setSuConfirm] = useState('');
+  const [suLoading, setSuLoading] = useState(false);
+  const [suDone, setSuDone] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +70,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
       }
       const data = snap.data();
       if (!['cashier', 'manager', 'admin'].includes(data.role)) {
-        toast.error('You do not have cashier access.');
+        toast.error('Your account is pending approval. Ask your manager to grant access.');
         await signOut(auth); return;
       }
       await setDoc(doc(db, 'users', cred.user.uid), { lastLogin: new Date().toISOString() }, { merge: true });
@@ -103,7 +115,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
       }
       const data = snap.data();
       if (!['cashier', 'manager', 'admin'].includes(data.role)) {
-        toast.error('You do not have cashier access.');
+        toast.error('Your account is pending approval. Ask your manager to grant access.');
         await signOut(auth); return;
       }
       await setDoc(doc(db, 'users', cred.user.uid), { lastLogin: new Date().toISOString() }, { merge: true });
@@ -114,6 +126,39 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!suName.trim()) { toast.error('Enter your name'); return; }
+    if (!suEmail.trim()) { toast.error('Enter your email'); return; }
+    if (suPassword.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    if (suPassword !== suConfirm) { toast.error('Passwords do not match'); return; }
+    setSuLoading(true);
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, suEmail.trim(), suPassword);
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        uid: cred.user.uid,
+        email: suEmail.trim(),
+        displayName: suName.trim(),
+        role: 'employee',
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+      });
+      await signOut(auth);
+      setSuDone(true);
+    } catch (err: any) {
+      const code = err.code || '';
+      if (code === 'auth/email-already-in-use') {
+        toast.error('That email is already registered. Try signing in.');
+      } else if (code === 'auth/invalid-email') {
+        toast.error('Invalid email address.');
+      } else {
+        toast.error('Sign-up failed. Try again.');
+      }
+    } finally {
+      setSuLoading(false);
     }
   };
 
@@ -128,62 +173,138 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
           <p className="text-white/70 mt-1 text-sm">Staff Portal</p>
         </div>
 
-        <form onSubmit={handleLogin} className="bg-white rounded-3xl p-8 shadow-2xl space-y-5">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
-            <input
-              type="email" autoComplete="email" value={email}
-              onChange={e => setEmail(e.target.value)} placeholder="you@email.com"
-              className="w-full border border-gray-200 rounded-2xl px-4 py-4 text-base focus:outline-none focus:ring-2 focus:ring-terracotta"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
-            <input
-              type="password" autoComplete="current-password" value={password}
-              onChange={e => setPassword(e.target.value)} placeholder="••••••••"
-              className="w-full border border-gray-200 rounded-2xl px-4 py-4 text-base focus:outline-none focus:ring-2 focus:ring-terracotta"
-            />
-          </div>
-          <button type="submit" disabled={loading}
-            className="w-full py-4 bg-terracotta text-white rounded-2xl font-bold text-lg hover:bg-terracotta/90 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg"
+        {/* Tab switcher */}
+        <div className="flex bg-white/20 rounded-2xl p-1 mb-4">
+          <button
+            type="button"
+            onClick={() => setTab('signin')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${tab === 'signin' ? 'bg-white text-terracotta shadow' : 'text-white/80 hover:text-white'}`}
           >
-            {loading ? <><Loader2 size={20} className="animate-spin" /> Signing in…</> : <><LogIn size={20} /> Sign In</>}
+            Sign In
           </button>
-          <div className="relative flex items-center gap-3 my-1">
-            <div className="flex-1 h-px bg-gray-100" />
-            <span className="text-xs text-gray-400 font-medium">or</span>
-            <div className="flex-1 h-px bg-gray-100" />
-          </div>
+          <button
+            type="button"
+            onClick={() => setTab('signup')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${tab === 'signup' ? 'bg-white text-terracotta shadow' : 'text-white/80 hover:text-white'}`}
+          >
+            Sign Up
+          </button>
+        </div>
 
-          <button type="button" onClick={handleGoogleLogin} disabled={loading}
-            className="w-full py-4 border-2 border-gray-200 text-gray-700 rounded-2xl font-bold text-base hover:bg-gray-50 transition-all disabled:opacity-60 flex items-center justify-center gap-3"
-          >
-            <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
-            Continue with Google
-          </button>
-
-          <button type="button" onClick={() => setShowReset(!showReset)}
-            className="w-full text-center text-sm text-gray-400 hover:text-terracotta transition-colors"
-          >
-            Forgot password?
-          </button>
-          {showReset && (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-              <p className="text-sm text-amber-700 mb-3">We'll send a reset link to the email above.</p>
-              <button type="button" onClick={handleReset} disabled={resetting}
-                className="w-full py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {resetting && <Loader2 size={16} className="animate-spin" />} Send Reset Email
-              </button>
+        {tab === 'signin' ? (
+          <form onSubmit={handleLogin} className="bg-white rounded-3xl p-8 shadow-2xl space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
+              <input
+                type="email" autoComplete="email" value={email}
+                onChange={e => setEmail(e.target.value)} placeholder="you@email.com"
+                className="w-full border border-gray-200 rounded-2xl px-4 py-4 text-base focus:outline-none focus:ring-2 focus:ring-terracotta"
+              />
             </div>
-          )}
-        </form>
-        <p className="text-center text-white/50 text-xs mt-6">Don't have an account? Ask your manager.</p>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
+              <input
+                type="password" autoComplete="current-password" value={password}
+                onChange={e => setPassword(e.target.value)} placeholder="••••••••"
+                className="w-full border border-gray-200 rounded-2xl px-4 py-4 text-base focus:outline-none focus:ring-2 focus:ring-terracotta"
+              />
+            </div>
+            <button type="submit" disabled={loading}
+              className="w-full py-4 bg-terracotta text-white rounded-2xl font-bold text-lg hover:bg-terracotta/90 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg"
+            >
+              {loading ? <><Loader2 size={20} className="animate-spin" /> Signing in…</> : <><LogIn size={20} /> Sign In</>}
+            </button>
+            <div className="relative flex items-center gap-3 my-1">
+              <div className="flex-1 h-px bg-gray-100" />
+              <span className="text-xs text-gray-400 font-medium">or</span>
+              <div className="flex-1 h-px bg-gray-100" />
+            </div>
+            <button type="button" onClick={handleGoogleLogin} disabled={loading}
+              className="w-full py-4 border-2 border-gray-200 text-gray-700 rounded-2xl font-bold text-base hover:bg-gray-50 transition-all disabled:opacity-60 flex items-center justify-center gap-3"
+            >
+              <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+              Continue with Google
+            </button>
+            <button type="button" onClick={() => setShowReset(!showReset)}
+              className="w-full text-center text-sm text-gray-400 hover:text-terracotta transition-colors"
+            >
+              Forgot password?
+            </button>
+            {showReset && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                <p className="text-sm text-amber-700 mb-3">We'll send a reset link to the email above.</p>
+                <button type="button" onClick={handleReset} disabled={resetting}
+                  className="w-full py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {resetting && <Loader2 size={16} className="animate-spin" />} Send Reset Email
+                </button>
+              </div>
+            )}
+          </form>
+        ) : suDone ? (
+          <div className="bg-white rounded-3xl p-8 shadow-2xl text-center space-y-4">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800">Account Created!</h2>
+            <p className="text-gray-500 text-sm">Your account is pending approval. Ask your manager to grant you cashier access, then sign in.</p>
+            <button
+              type="button"
+              onClick={() => { setSuDone(false); setTab('signin'); setEmail(suEmail); }}
+              className="w-full py-4 bg-terracotta text-white rounded-2xl font-bold hover:bg-terracotta/90 transition-all"
+            >
+              Go to Sign In
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSignUp} className="bg-white rounded-3xl p-8 shadow-2xl space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Full Name</label>
+              <input
+                type="text" autoComplete="name" value={suName}
+                onChange={e => setSuName(e.target.value)} placeholder="Your name"
+                className="w-full border border-gray-200 rounded-2xl px-4 py-4 text-base focus:outline-none focus:ring-2 focus:ring-terracotta"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
+              <input
+                type="email" autoComplete="email" value={suEmail}
+                onChange={e => setSuEmail(e.target.value)} placeholder="you@email.com"
+                className="w-full border border-gray-200 rounded-2xl px-4 py-4 text-base focus:outline-none focus:ring-2 focus:ring-terracotta"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
+              <input
+                type="password" autoComplete="new-password" value={suPassword}
+                onChange={e => setSuPassword(e.target.value)} placeholder="Min. 6 characters"
+                className="w-full border border-gray-200 rounded-2xl px-4 py-4 text-base focus:outline-none focus:ring-2 focus:ring-terracotta"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Confirm Password</label>
+              <input
+                type="password" autoComplete="new-password" value={suConfirm}
+                onChange={e => setSuConfirm(e.target.value)} placeholder="Repeat password"
+                className="w-full border border-gray-200 rounded-2xl px-4 py-4 text-base focus:outline-none focus:ring-2 focus:ring-terracotta"
+              />
+            </div>
+            <button type="submit" disabled={suLoading}
+              className="w-full py-4 bg-terracotta text-white rounded-2xl font-bold text-lg hover:bg-terracotta/90 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg"
+            >
+              {suLoading ? <><Loader2 size={20} className="animate-spin" /> Creating account…</> : 'Create Account'}
+            </button>
+            <p className="text-center text-xs text-gray-400">After signing up, your manager will grant you access.</p>
+          </form>
+        )}
       </div>
     </div>
   );
 }
+
 
 // ── Register new customer form ─────────────────────────────────────────────────
 function RegisterForm({
