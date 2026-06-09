@@ -62,7 +62,7 @@ export default function Auth({ onUserChange }: { onUserChange: (user: any) => vo
         } catch (err) {
           console.error('Auth: Firestore error:', err);
           setUser(user);
-          onUserChange({ uid: user.uid, email: user.email, role: 'employee' });
+          onUserChange({ uid: user.uid, email: user.email });
         }
       } else {
         setUser(null);
