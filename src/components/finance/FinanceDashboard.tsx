@@ -3,9 +3,8 @@ import FinanceOverview from './FinanceOverview';
 import LogExpense from './LogExpense';
 import LogIncome from './LogIncome';
 import Ingredients from './Ingredients';
-import RecipeCosting from './RecipeCosting';
 import FinanceReports from './FinanceReports';
-import { LayoutDashboard, Receipt, TrendingUp, Scale, FileBarChart, Calculator } from 'lucide-react';
+import { LayoutDashboard, Receipt, TrendingUp, Scale, FileBarChart } from 'lucide-react';
 
 type FinanceRole = 'owner' | 'manager' | 'cashier';
 
@@ -21,7 +20,6 @@ const ALL_TABS = [
   { id: 'expense',      label: 'Log Expense',  icon: <Receipt size={16} />,         roles: ['owner', 'manager', 'cashier'] },
   { id: 'income',       label: 'Log Income',   icon: <TrendingUp size={16} />,      roles: ['owner', 'manager', 'cashier'] },
   { id: 'ingredients',  label: 'Ingredients',  icon: <Scale size={16} />,           roles: ['owner', 'manager'] },
-  { id: 'recipes',      label: 'Recipe Costing', icon: <Calculator size={16} />,       roles: ['owner', 'manager'] },
   { id: 'reports',      label: 'Reports',      icon: <FileBarChart size={16} />,    roles: ['owner'] },
 ];
 
