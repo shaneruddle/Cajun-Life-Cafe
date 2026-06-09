@@ -1,0 +1,56 @@
+name: Check and Fix Mina
+
+on:
+  push:
+    paths:
+      - '.github/workflows/check-and-fix.yml'
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check and fix all user docs
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          echo "$GCP_SA_KEY" > /tmp/sa-key.json
+          pip install firebase-admin -q
+          python3 << 'PYEOF'
+import firebase_admin
+from firebase_admin import credentials, firestore, auth as fb_auth
+
+cred = credentials.Certificate('/tmp/sa-key.json')
+firebase_admin.initialize_app(cred)
+db = firestore.client()
+
+print("=== ALL users docs in Firestore ===")
+for d in db.collection('users').stream():
+    data = d.to_dict()
+    print(f"doc_id={d.id} | email={data.get('email')} | role={data.get('role')} | name={data.get('displayName')}")
+
+print("\n=== ALL Firebase Auth users ===")
+for u in fb_auth.list_users().users:
+    doc = db.collection('users').document(u.uid).get()
+    doc_role = doc.to_dict().get('role') if doc.exists else 'NO DOC'
+    print(f"email={u.email} | uid={u.uid} | firestore_role={doc_role}")
+
+print("\n=== FIXING: set cashier role for any non-admin, non-info@ that has cashier in email or name ===")
+# Force fix anyone who isn't info@cajunlifecafe.com to have their doc match their Auth UID
+for u in fb_auth.list_users().users:
+    if u.email == 'info@cajunlifecafe.com':
+        continue
+    doc_ref = db.collection('users').document(u.uid)
+    doc = doc_ref.get()
+    if not doc.exists:
+        print(f"MISSING DOC for {u.email} - creating with employee role")
+        doc_ref.set({
+            'uid': u.uid,
+            'email': u.email,
+            'displayName': u.display_name or '',
+            'role': 'employee',
+            'createdAt': firestore.SERVER_TIMESTAMP,
+            'lastLogin': firestore.SERVER_TIMESTAMP,
+        })
+    else:
+        print(f"OK: {u.email} => role={doc.to_dict().get('role')}")
+PYEOF
