@@ -139,9 +139,11 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
     if (suPassword !== suConfirm) { toast.error('Passwords do not match'); return; }
     setSuLoading(true);
     try {
+      // Step 1: create auth account
       const cred = await createUserWithEmailAndPassword(auth, suEmail.trim(), suPassword);
-      // Write the Firestore doc first, then sign out
-      await setDoc(doc(db, 'users', cred.user.uid), {
+      
+      // Step 2: write Firestore doc with timeout guard
+      const writeDoc = setDoc(doc(db, 'users', cred.user.uid), {
         uid: cred.user.uid,
         email: suEmail.trim(),
         displayName: suName.trim(),
@@ -149,12 +151,15 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
       });
-      await logActivity('Staff Account Created', `New account: ${suEmail.trim()} (${suName.trim()}) — pending approval`, 'user');
+      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
+      await Promise.race([writeDoc, timeout]);
+
+      // Step 3: sign out and show success
       await signOut(auth);
       setSuDone(true);
     } catch (err: any) {
-      const code = err.code || '';
-      console.error('SIGNUP ERROR:', code, err.message, err);
+      const code = err.code || err.message || '';
+      console.error('SIGNUP ERROR:', code, err);
       if (code === 'auth/email-already-in-use') {
         toast.error('That email is already registered. Try signing in.');
       } else if (code === 'auth/invalid-email') {
@@ -162,9 +167,13 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
       } else if (code === 'auth/weak-password') {
         toast.error('Password must be at least 6 characters.');
       } else if (code === 'auth/operation-not-allowed') {
-        toast.error('Sign-up error: ' + code + ' — contact admin.');
+        toast.error('Sign-up disabled — contact admin.');
+      } else if (code === 'timeout') {
+        toast.error('Connection timed out. Check your internet and try again.');
+      } else if (code.includes('permission') || code.includes('PERMISSION')) {
+        toast.error('Account created but profile save failed. Contact admin with error: permission-denied');
       } else {
-        toast.error('Sign-up failed: ' + (code || err.message || 'unknown error'));
+        toast.error('Sign-up failed: ' + code);
       }
     } finally {
       setSuLoading(false);
