@@ -1,5 +1,5 @@
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useState, useEffect } from 'react';
 import { LogIn, LogOut, User as UserIcon, ShieldCheck, Loader2 } from 'lucide-react';
@@ -12,76 +12,57 @@ export default function Auth({ onUserChange }: { onUserChange: (user: any) => vo
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log("Auth: Initializing auth listener");
-    // Safety timeout: if auth state doesn't resolve in 5 seconds, stop loading
-    const timeout = setTimeout(() => {
-      if (loading) {
-        console.warn("Auth: Auth state resolution timed out");
-        setLoading(false);
-      }
-    }, 5000);
+    const timeout = setTimeout(() => { setLoading(false); }, 5000);
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       clearTimeout(timeout);
-      console.log("Auth: State changed, user:", user?.email);
       if (user) {
-        // Update user profile in Firestore
         try {
           const userRef = doc(db, 'users', user.uid);
           const userSnap = await getDoc(userRef);
-          let data: any = {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            emailVerified: user.emailVerified
-          };
-          
-          if (!userSnap.exists()) {
-            // Check if another doc already exists for this email (duplicate UID scenario)
-            let inheritedRole = user.email?.toLowerCase() === 'info@cajunlifecafe.com' ? 'admin' : 'employee';
-            try {
-              const emailQuery = query(collection(db, 'users'), where('email', '==', user.email));
-              const emailSnap = await getDocs(emailQuery);
-              if (!emailSnap.empty) {
-                const existingRole = emailSnap.docs[0].data().role;
-                if (existingRole && existingRole !== 'employee') {
-                  inheritedRole = existingRole;
-                  console.log("Auth: Inherited role from existing email doc:", inheritedRole);
-                }
-              }
-            } catch (e) {
-              console.warn("Auth: Could not query by email for role inheritance", e);
-            }
-            const initialProfile = {
-              ...data,
-              role: inheritedRole,
-              createdAt: new Date().toISOString(),
-              lastLogin: new Date().toISOString()
-            };
-            console.log("Auth: Creating initial profile for:", user.email, "Role:", initialProfile.role);
-            await setDoc(userRef, initialProfile);
-            data = initialProfile;
-          } else {
+
+          if (userSnap.exists()) {
             const existingData = userSnap.data();
-            const updateData = {
+            // Only update non-role fields — NEVER touch role
+            await setDoc(userRef, {
               lastLogin: new Date().toISOString(),
               displayName: user.displayName || existingData.displayName,
               email: user.email || existingData.email,
-              photoURL: user.photoURL || existingData.photoURL
-            };
-            console.log("Auth: Updating existing profile for:", user.email, "Existing Role:", existingData.role);
-            await setDoc(userRef, updateData, { merge: true });
-            data = { ...data, ...existingData, ...updateData };
+              photoURL: user.photoURL || existingData.photoURL,
+            }, { merge: true });
+            const data = { uid: user.uid, ...existingData };
+            setUser(user);
+            setUserData(data);
+            onUserChange(data);
+          } else {
+            // Doc doesn't exist — admin Google login only lands here on first ever sign-in
+            // Only create a doc for the known admin email; everyone else signs up via CashierPortal
+            if (user.email?.toLowerCase() === 'info@cajunlifecafe.com') {
+              const adminProfile = {
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                photoURL: user.photoURL,
+                role: 'admin',
+                createdAt: new Date().toISOString(),
+                lastLogin: new Date().toISOString(),
+              };
+              await setDoc(userRef, adminProfile);
+              setUser(user);
+              setUserData(adminProfile);
+              onUserChange(adminProfile);
+            } else {
+              // Unknown user — sign them out, don't create a doc
+              await signOut(auth);
+              setUser(null);
+              setUserData(null);
+              onUserChange(null);
+            }
           }
-          setUser(user);
-          setUserData(data);
-          onUserChange(data);
         } catch (err) {
-          console.error("Auth: Firestore error:", err);
-          // Fallback to basic user if Firestore fails
+          console.error('Auth: Firestore error:', err);
           setUser(user);
-          onUserChange({ uid: user.uid, email: user.email, role: user.email?.toLowerCase() === 'info@cajunlifecafe.com' ? 'admin' : 'employee' });
+          onUserChange({ uid: user.uid, email: user.email, role: 'employee' });
         }
       } else {
         setUser(null);
@@ -90,37 +71,25 @@ export default function Auth({ onUserChange }: { onUserChange: (user: any) => vo
       }
       setLoading(false);
     });
-    return () => {
-      unsubscribe();
-      clearTimeout(timeout);
-    };
+
+    return () => { unsubscribe(); clearTimeout(timeout); };
   }, [onUserChange]);
 
   const handleLogin = async () => {
-    console.log("Auth: Login clicked");
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      toast.success("Successfully logged in!");
+      toast.success('Successfully logged in!');
     } catch (error: any) {
-      console.error('Auth: Login failed:', error);
-      let message = "Login failed. Please try again.";
-      if (error.code === 'auth/popup-blocked') {
-        message = "Login popup was blocked by your browser. Please allow popups for this site.";
-      } else if (error.code === 'auth/unauthorized-domain') {
-        message = "This domain is not authorized in Firebase Console. Please add the app domain to Authorized Domains.";
-      }
+      let message = 'Login failed. Please try again.';
+      if (error.code === 'auth/popup-blocked') message = 'Login popup was blocked. Please allow popups for this site.';
+      else if (error.code === 'auth/unauthorized-domain') message = 'This domain is not authorized in Firebase Console.';
       toast.error(message);
     }
   };
 
   const handleLogout = async () => {
-    console.log("Auth: Logout clicked");
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error('Auth: Logout failed:', error);
-    }
+    try { await signOut(auth); } catch (error) { console.error('Auth: Logout failed:', error); }
   };
 
   if (loading) return (
@@ -144,26 +113,17 @@ export default function Auth({ onUserChange }: { onUserChange: (user: any) => vo
             <div className="hidden md:block">
               <div className="flex items-center gap-1">
                 <p className="text-xs font-bold text-ink leading-none">{user.displayName}</p>
-                {userData?.role === 'admin' && (
-                  <ShieldCheck size={12} className="text-terracotta" />
-                )}
+                {userData?.role === 'admin' && <ShieldCheck size={12} className="text-terracotta" />}
               </div>
               <p className="text-[10px] text-gray-400">{user.email}</p>
             </div>
           </div>
-          <button 
-            onClick={handleLogout}
-            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
-            title="Logout"
-          >
+          <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all" title="Logout">
             <LogOut size={18} />
           </button>
         </div>
       ) : (
-        <button 
-          onClick={handleLogin}
-          className="flex items-center gap-2 px-8 py-3 bg-terracotta text-white rounded-full hover:bg-terracotta/90 transition-all text-sm font-bold shadow-xl border-2 border-white/20 group"
-        >
+        <button onClick={handleLogin} className="flex items-center gap-2 px-8 py-3 bg-terracotta text-white rounded-full hover:bg-terracotta/90 transition-all text-sm font-bold shadow-xl border-2 border-white/20 group">
           <LogIn size={18} className="group-hover:translate-x-1 transition-transform" /> Admin Login
         </button>
       )}
