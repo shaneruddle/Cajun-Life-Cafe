@@ -3,6 +3,7 @@ import {
   collection, 
   getDocs, 
   updateDoc, 
+  setDoc,
   doc, 
   onSnapshot,
   query,
@@ -56,9 +57,9 @@ export default function UserManagement() {
 
   const handleRoleChange = async (userId: string, newRole: 'admin' | 'manager' | 'marketing' | 'cashier' | 'employee') => {
     try {
-      await updateDoc(doc(db, 'users', userId), {
+      await setDoc(doc(db, 'users', userId), {
         role: newRole
-      });
+      }, { merge: true });
       await logActivity('User Role Updated', `Updated user ID: ${userId} role to ${newRole}`, 'user');
       setSuccess(`User role updated to ${newRole}`);
       setEditingRole(null);
