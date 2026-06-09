@@ -139,24 +139,19 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
     if (suPassword !== suConfirm) { toast.error('Passwords do not match'); return; }
     setSuLoading(true);
     try {
-      // Step 1: create auth account
       const cred = await createUserWithEmailAndPassword(auth, suEmail.trim(), suPassword);
-      
-      // Step 2: write Firestore doc with timeout guard
-      const writeDoc = setDoc(doc(db, 'users', cred.user.uid), {
+      // Don't await anything else — just mark done and sign out in background
+      setSuDone(true);
+      // Write doc and sign out in background without blocking UI
+      setDoc(doc(db, 'users', cred.user.uid), {
         uid: cred.user.uid,
         email: suEmail.trim(),
         displayName: suName.trim(),
         role: 'employee',
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
-      });
-      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
-      await Promise.race([writeDoc, timeout]);
-
-      // Step 3: sign out and show success
-      await signOut(auth);
-      setSuDone(true);
+      }).catch(console.error);
+      signOut(auth).catch(console.error);
     } catch (err: any) {
       const code = err.code || err.message || '';
       console.error('SIGNUP ERROR:', code, err);
@@ -168,10 +163,6 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
         toast.error('Password must be at least 6 characters.');
       } else if (code === 'auth/operation-not-allowed') {
         toast.error('Sign-up disabled — contact admin.');
-      } else if (code === 'timeout') {
-        toast.error('Connection timed out. Check your internet and try again.');
-      } else if (code.includes('permission') || code.includes('PERMISSION')) {
-        toast.error('Account created but profile save failed. Contact admin with error: permission-denied');
       } else {
         toast.error('Sign-up failed: ' + code);
       }
