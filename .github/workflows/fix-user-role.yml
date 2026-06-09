@@ -12,37 +12,9 @@ jobs:
       - name: Fix supatsorn role in Firestore
         env:
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          SCRIPT_B64: aW1wb3J0IGZpcmViYXNlX2FkbWluCmZyb20gZmlyZWJhc2VfYWRtaW4gaW1wb3J0IGNyZWRlbnRpYWxzLCBmaXJlc3RvcmUsIGF1dGggYXMgZmJfYXV0aAoKY3JlZCA9IGNyZWRlbnRpYWxzLkNlcnRpZmljYXRlKCIvdG1wL3NhLWtleS5qc29uIikKZmlyZWJhc2VfYWRtaW4uaW5pdGlhbGl6ZV9hcHAoY3JlZCkKZGIgPSBmaXJlc3RvcmUuY2xpZW50KCkKCnRyeToKICAgIHVzZXIgPSBmYl9hdXRoLmdldF91c2VyX2J5X2VtYWlsKCJzdXBhdHNvcm41NjA4QGdtYWlsLmNvbSIpCiAgICB1aWQgPSB1c2VyLnVpZAogICAgcHJpbnQoIkZvdW5kIFVJRDoiLCB1aWQpCiAgICBkb2NfcmVmID0gZGIuY29sbGVjdGlvbigidXNlcnMiKS5kb2N1bWVudCh1aWQpCiAgICBkb2MgPSBkb2NfcmVmLmdldCgpCiAgICBpZiBkb2MuZXhpc3RzOgogICAgICAgIHByaW50KCJDdXJyZW50IHJvbGU6IiwgZG9jLnRvX2RpY3QoKS5nZXQoInJvbGUiKSkKICAgICAgICBkb2NfcmVmLnVwZGF0ZSh7InJvbGUiOiAiY2FzaGllciJ9KQogICAgICAgIHByaW50KCJVcGRhdGVkIHRvIGNhc2hpZXIiKQogICAgZWxzZToKICAgICAgICBkb2NfcmVmLnNldCh7InVpZCI6IHVpZCwgImVtYWlsIjogInN1cGF0c29ybjU2MDhAZ21haWwuY29tIiwgInJvbGUiOiAiY2FzaGllciJ9KQogICAgICAgIHByaW50KCJDcmVhdGVkIGRvYyB3aXRoIGNhc2hpZXIgcm9sZSIpCiAgICBvcnBoYW5zID0gbGlzdChkYi5jb2xsZWN0aW9uKCJ1c2VycyIpLndoZXJlKCJlbWFpbCIsICI9PSIsICJzdXBhdHNvcm41NjA4QGdtYWlsLmNvbSIpLnN0cmVhbSgpKQogICAgZm9yIG8gaW4gb3JwaGFuczoKICAgICAgICBpZiBvLmlkICE9IHVpZDoKICAgICAgICAgICAgcHJpbnQoIk9ycGhhbiBmb3VuZDoiLCBvLmlkLCAicm9sZToiLCBvLnRvX2RpY3QoKS5nZXQoInJvbGUiKSkKICAgICAgICAgICAgby5yZWZlcmVuY2UudXBkYXRlKHsicm9sZSI6ICJjYXNoaWVyIn0pCiAgICAgICAgICAgIHByaW50KCJPcnBoYW4gdXBkYXRlZCIpCmV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgIHByaW50KCJFcnJvcjoiLCBlKQogICAgcmFpc2UK
         run: |
           echo "$GCP_SA_KEY" > /tmp/sa-key.json
+          echo "$SCRIPT_B64" | base64 -d > /tmp/fix_role.py
           pip install firebase-admin -q
-          python3 -c "
-import firebase_admin
-from firebase_admin import credentials, firestore, auth as fb_auth
-
-cred = credentials.Certificate('/tmp/sa-key.json')
-firebase_admin.initialize_app(cred)
-db = firestore.client()
-
-try:
-    user = fb_auth.get_user_by_email('supatsorn5608@gmail.com')
-    uid = user.uid
-    print('Found UID:', uid)
-    doc_ref = db.collection('users').document(uid)
-    doc = doc_ref.get()
-    if doc.exists:
-        print('Current role:', doc.to_dict().get('role'))
-        doc_ref.update({'role': 'cashier'})
-        print('Updated to cashier')
-    else:
-        doc_ref.set({'uid': uid, 'email': 'supatsorn5608@gmail.com', 'role': 'cashier', 'createdAt': firestore.SERVER_TIMESTAMP})
-        print('Created doc with cashier role')
-    orphans = list(db.collection('users').where('email', '==', 'supatsorn5608@gmail.com').stream())
-    for o in orphans:
-        if o.id != uid:
-            print('Orphan found:', o.id, 'role:', o.to_dict().get('role'))
-            o.reference.update({'role': 'cashier'})
-            print('Orphan updated')
-except Exception as e:
-    print('Error:', e)
-    raise
-"
+          python3 /tmp/fix_role.py
