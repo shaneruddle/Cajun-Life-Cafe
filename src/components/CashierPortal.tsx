@@ -1509,12 +1509,28 @@ function ExpenseTab({ user }: { user: any }) {
         await uploadBytes(storageRef, imageFile);
         receipt_url = await getDownloadURL(storageRef);
       }
-      await addDoc(collection(db, 'finance_expenses'), {
+      const expenseRef = await addDoc(collection(db, 'finance_expenses'), {
         date: formData.date, supplier: formData.supplier, category_id: formData.category_id,
         category_name: formData.category_name, total: parseFloat(formData.total), currency: 'THB',
         receipt_url, notes: formData.notes, logged_by: user?.email || 'unknown', created_at: new Date().toISOString(),
         ...(lineItems.length > 0 && { line_items: lineItems }),
       });
+      if (formData.category_id === 'food' && lineItems.length > 0) {
+        await Promise.all(lineItems.filter(item => item.description).map(item =>
+          addDoc(collection(db, 'ingredient_purchases'), {
+            ingredient_name: item.description,
+            supplier: formData.supplier,
+            quantity: item.quantity ?? 1,
+            unit: item.weight || 'piece',
+            unit_cost: item.quantity ? Math.round((item.amount / item.quantity) * 100) / 100 : item.amount,
+            total_cost: item.amount,
+            date: formData.date,
+            expense_id: expenseRef.id,
+            logged_by: user?.email || 'unknown',
+            created_at: new Date().toISOString(),
+          })
+        ));
+      }
       await logActivity('Expense Logged', `฿${parseFloat(formData.total).toLocaleString()} · ${formData.category_name} · ${formData.supplier || 'no supplier'} · ${formData.date}`, 'finance');
       setStep('done');
     } catch { toast.error('Failed to save'); setStep('review'); }
