@@ -84,8 +84,8 @@ async function startServer() {
           "anthropic-version": "2023-06-01"
         },
         body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 1024,
+          model: "claude-sonnet-4-6",
+          max_tokens: 1500,
           messages: [{
             role: "user",
             content: [
@@ -112,7 +112,7 @@ Rules:
   * quantity: number of units purchased (e.g. 2, 5, 1)
   * unit: the purchase unit — extract from the item name or column. Use: "kg", "g", "l", "ml", "piece", "pack", "box", "can", "bag", "bottle". If the item name contains a weight/volume (e.g. "น้ำมัน 5L", "ซีอิ้ว 700ml") extract that as the unit with quantity 1
   * unit_price: price per unit (THB)
-  * total_price: total for that line. Dashes (—) after numbers are decorative. "680 —" means 680. Numbers split across columns like "103" "56" means 103.56
+  * total_price: total for that line. Dashes (—) or lines after numbers are decorative. "680 —" means 680. "1,680-" means 1680. IMPORTANT: read every digit carefully — do not drop leading digits. If the AMOUNT column shows "1680" do not return 680.
   * SKIP the line entirely if you cannot confidently read the description or amount
 - supplier: use the shop/brand name from the receipt header`
               }
