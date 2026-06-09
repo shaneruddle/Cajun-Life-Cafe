@@ -52,8 +52,8 @@ export default function Auth({ onUserChange }: { onUserChange: (user: any) => vo
               setUserData(adminProfile);
               onUserChange(adminProfile);
             } else {
-              // Unknown user — sign them out, don't create a doc
-              await signOut(auth);
+              // Unknown user — no doc, not admin. Don't create anything, don't interfere.
+              // CashierPortal handles its own signOut after sign-up.
               setUser(null);
               setUserData(null);
               onUserChange(null);
