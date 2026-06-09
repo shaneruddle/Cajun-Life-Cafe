@@ -1,5 +1,5 @@
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useState, useEffect } from 'react';
 import { LogIn, LogOut, User as UserIcon, ShieldCheck, Loader2 } from 'lucide-react';
@@ -38,9 +38,24 @@ export default function Auth({ onUserChange }: { onUserChange: (user: any) => vo
           };
           
           if (!userSnap.exists()) {
+            // Check if another doc already exists for this email (duplicate UID scenario)
+            let inheritedRole = user.email?.toLowerCase() === 'info@cajunlifecafe.com' ? 'admin' : 'employee';
+            try {
+              const emailQuery = query(collection(db, 'users'), where('email', '==', user.email));
+              const emailSnap = await getDocs(emailQuery);
+              if (!emailSnap.empty) {
+                const existingRole = emailSnap.docs[0].data().role;
+                if (existingRole && existingRole !== 'employee') {
+                  inheritedRole = existingRole;
+                  console.log("Auth: Inherited role from existing email doc:", inheritedRole);
+                }
+              }
+            } catch (e) {
+              console.warn("Auth: Could not query by email for role inheritance", e);
+            }
             const initialProfile = {
               ...data,
-              role: user.email?.toLowerCase() === 'info@cajunlifecafe.com' ? 'admin' : 'employee',
+              role: inheritedRole,
               createdAt: new Date().toISOString(),
               lastLogin: new Date().toISOString()
             };
