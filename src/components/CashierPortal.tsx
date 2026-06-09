@@ -74,6 +74,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
         await signOut(auth); return;
       }
       await setDoc(doc(db, 'users', cred.user.uid), { lastLogin: new Date().toISOString() }, { merge: true });
+      await logActivity('Staff Sign In', `${data.displayName || suEmail || cred.user.email} signed in via email`, 'user');
       onLogin({ ...data, uid: cred.user.uid });
     } catch (err: any) {
       const code = err.code || '';
@@ -119,6 +120,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
         await signOut(auth); return;
       }
       await setDoc(doc(db, 'users', cred.user.uid), { lastLogin: new Date().toISOString() }, { merge: true });
+      await logActivity('Staff Sign In', `${data.displayName || cred.user.email} signed in via Google`, 'user');
       onLogin({ ...data, uid: cred.user.uid });
     } catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user') {
@@ -147,6 +149,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
       });
+      await logActivity('Staff Account Created', `New account: ${suEmail.trim()} (${suName.trim()}) — pending approval`, 'user');
       await signOut(auth);
       setSuDone(true);
     } catch (err: any) {
