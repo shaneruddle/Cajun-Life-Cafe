@@ -1,7 +1,9 @@
 name: Fix User Role
 
 on:
-  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/fix-user-role.yml'
 
 jobs:
   fix-role:
@@ -13,51 +15,34 @@ jobs:
         run: |
           echo "$GCP_SA_KEY" > /tmp/sa-key.json
           pip install firebase-admin -q
-          python3 << 'PYEOF'
-import json, firebase_admin
-from firebase_admin import credentials, firestore, auth
+          python3 -c "
+import firebase_admin
+from firebase_admin import credentials, firestore, auth as fb_auth
 
 cred = credentials.Certificate('/tmp/sa-key.json')
 firebase_admin.initialize_app(cred)
-
 db = firestore.client()
-fa = auth.Client(firebase_admin.get_app())
 
-# Find the user by email
 try:
-    user = fa.get_user_by_email('supatsorn5608@gmail.com')
+    user = fb_auth.get_user_by_email('supatsorn5608@gmail.com')
     uid = user.uid
-    print(f"Found UID: {uid}")
-    
-    # Check existing doc
+    print('Found UID:', uid)
     doc_ref = db.collection('users').document(uid)
     doc = doc_ref.get()
-    
     if doc.exists:
-        data = doc.to_dict()
-        print(f"Existing role: {data.get('role')}")
+        print('Current role:', doc.to_dict().get('role'))
         doc_ref.update({'role': 'cashier'})
-        print("Updated role to cashier")
+        print('Updated to cashier')
     else:
-        print("Doc does not exist, creating...")
-        doc_ref.set({
-            'uid': uid,
-            'email': 'supatsorn5608@gmail.com',
-            'role': 'cashier',
-            'createdAt': firestore.SERVER_TIMESTAMP,
-            'lastLogin': firestore.SERVER_TIMESTAMP
-        })
-        print("Created doc with cashier role")
-    
-    # Also check for orphan docs by email
-    orphans = db.collection('users').where('email', '==', 'supatsorn5608@gmail.com').stream()
+        doc_ref.set({'uid': uid, 'email': 'supatsorn5608@gmail.com', 'role': 'cashier', 'createdAt': firestore.SERVER_TIMESTAMP})
+        print('Created doc with cashier role')
+    orphans = list(db.collection('users').where('email', '==', 'supatsorn5608@gmail.com').stream())
     for o in orphans:
         if o.id != uid:
-            print(f"Found orphan doc: {o.id} with role: {o.to_dict().get('role')}")
-            # Update orphan too just in case
+            print('Orphan found:', o.id, 'role:', o.to_dict().get('role'))
             o.reference.update({'role': 'cashier'})
-            print(f"Updated orphan doc role to cashier")
-            
+            print('Orphan updated')
 except Exception as e:
-    print(f"Error: {e}")
-PYEOF
+    print('Error:', e)
+    raise
+"
