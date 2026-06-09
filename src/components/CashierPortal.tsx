@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
@@ -137,26 +136,44 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
     if (suPassword !== suConfirm) { toast.error('Passwords do not match'); return; }
     setSuLoading(true);
     try {
-      const cred = await createUserWithEmailAndPassword(auth, suEmail.trim(), suPassword);
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        uid: cred.user.uid,
+      // Use REST API to create the account so the SDK's onAuthStateChanged
+      // doesn't fire mid-flow before the Firestore doc is written
+      const FIREBASE_API_KEY = 'AIzaSyAJWxOldfga1VWGfi8-Z5cowgkDT0JnfSI';
+      const res = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: suEmail.trim(), password: suPassword, returnSecureToken: false }),
+        }
+      );
+      const json = await res.json();
+      if (!res.ok) {
+        const code = json.error?.message || '';
+        if (code.includes('EMAIL_EXISTS')) {
+          toast.error('That email is already registered. Try signing in.');
+        } else if (code.includes('INVALID_EMAIL')) {
+          toast.error('Invalid email address.');
+        } else if (code.includes('WEAK_PASSWORD')) {
+          toast.error('Password must be at least 6 characters.');
+        } else {
+          toast.error('Sign-up failed. Try again.');
+        }
+        return;
+      }
+      const uid = json.localId;
+      // Write Firestore doc immediately — no auth session opened, no race condition
+      await setDoc(doc(db, 'users', uid), {
+        uid,
         email: suEmail.trim(),
         displayName: suName.trim(),
         role: 'employee',
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
       });
-      await signOut(auth);
       setSuDone(true);
     } catch (err: any) {
-      const code = err.code || '';
-      if (code === 'auth/email-already-in-use') {
-        toast.error('That email is already registered. Try signing in.');
-      } else if (code === 'auth/invalid-email') {
-        toast.error('Invalid email address.');
-      } else {
-        toast.error('Sign-up failed. Try again.');
-      }
+      toast.error('Sign-up failed. Try again.');
     } finally {
       setSuLoading(false);
     }
