@@ -151,14 +151,17 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
       setSuDone(true);
     } catch (err: any) {
       const code = err.code || '';
+      console.error('SIGNUP ERROR:', code, err.message, err);
       if (code === 'auth/email-already-in-use') {
         toast.error('That email is already registered. Try signing in.');
       } else if (code === 'auth/invalid-email') {
         toast.error('Invalid email address.');
       } else if (code === 'auth/weak-password') {
         toast.error('Password must be at least 6 characters.');
+      } else if (code === 'auth/operation-not-allowed') {
+        toast.error('Sign-up error: ' + code + ' — contact admin.');
       } else {
-        toast.error('Sign-up failed. Try again.');
+        toast.error('Sign-up failed: ' + (code || err.message || 'unknown error'));
       }
     } finally {
       setSuLoading(false);
