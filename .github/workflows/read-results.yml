@@ -1,0 +1,20 @@
+name: Read Results
+
+on:
+  push:
+    paths:
+      - '.github/workflows/read-results.yml'
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read diagnosis
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          SCRIPT: aW1wb3J0IGZpcmViYXNlX2FkbWluLCBqc29uCmZyb20gZmlyZWJhc2VfYWRtaW4gaW1wb3J0IGNyZWRlbnRpYWxzLCBmaXJlc3RvcmUKCmNyZWQgPSBjcmVkZW50aWFscy5DZXJ0aWZpY2F0ZSgiL3RtcC9zYS1rZXkuanNvbiIpCnRyeToKICAgIGZpcmViYXNlX2FkbWluLmluaXRpYWxpemVfYXBwKGNyZWQpCmV4Y2VwdDoKICAgIHBhc3MKZGIgPSBmaXJlc3RvcmUuY2xpZW50KCkKCiMgUmVhZCB0aGUgZGlhZ25vc2lzIHJlc3VsdCBmcm9tIHN5c3RlbV9sb2dzCmxvZ3MgPSBsaXN0KGRiLmNvbGxlY3Rpb24oInN5c3RlbV9sb2dzIikud2hlcmUoImFjdGlvbiIsICI9PSIsICJESUFHTk9TSVMiKS5vcmRlcl9ieSgidGltZXN0YW1wIiwgZGlyZWN0aW9uPWZpcmVzdG9yZS5RdWVyeS5ERVNDRU5ESU5HKS5saW1pdCgxKS5zdHJlYW0oKSkKaWYgbG9nczoKICAgIGRldGFpbHMgPSBqc29uLmxvYWRzKGxvZ3NbMF0udG9fZGljdCgpWyJkZXRhaWxzIl0pCiAgICBwcmludCgiPT09IEZJUkVTVE9SRSBET0NTID09PSIpCiAgICBmb3IgZCBpbiBkZXRhaWxzWyJmaXJlc3RvcmVfZG9jcyJdOgogICAgICAgIHByaW50KGYiICBkb2NfaWQ9e2RbJ2RvY19pZCddWzoyMF19IGVtYWlsPXtkWydlbWFpbCddfSByb2xlPXtkWydyb2xlJ119IG5hbWU9e2RbJ25hbWUnXX0iKQogICAgcHJpbnQoIlxuPT09IEFVVEggVVNFUlMgPT09IikKICAgIGZvciB1IGluIGRldGFpbHNbImF1dGhfdXNlcnMiXToKICAgICAgICBwcmludChmIiAgZW1haWw9e3VbJ2VtYWlsJ119IHVpZD17dVsndWlkJ11bOjIwXX0gZmlyZXN0b3JlX3JvbGU9e3VbJ2ZpcmVzdG9yZV9yb2xlJ119IGRvY19leGlzdHM9e3VbJ2RvY19leGlzdHMnXX0iKQogICAgcHJpbnQoIlxuPT09IEZJWEVTIEFQUExJRUQgPT09IikKICAgIGZvciBmIGluIGRldGFpbHNbImZpeGVzIl06CiAgICAgICAgcHJpbnQoZiIgIHtmfSIpCmVsc2U6CiAgICBwcmludCgiTm8gZGlhZ25vc2lzIGxvZyBmb3VuZCIpCg==
+        run: |
+          echo "$GCP_SA_KEY" > /tmp/sa-key.json
+          echo "$SCRIPT" | base64 -d > /tmp/read_results.py
+          pip install firebase-admin -q
+          python3 /tmp/read_results.py
