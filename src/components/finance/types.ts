@@ -50,14 +50,16 @@ export interface Ingredient {
 
 export interface IngredientPurchase {
   id: string;
-  ingredient_id: string;
   ingredient_name: string;
+  supplier?: string;
   quantity: number;
   unit: string;
   unit_cost: number;
   total_cost: number;
   date: string;
-  expense_id?: string; // linked back to the expense
+  expense_id?: string;
+  logged_by?: string;
+  created_at?: string;
 }
 
 export interface MonthlySummary {
