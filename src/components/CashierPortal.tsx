@@ -1452,6 +1452,8 @@ function ExpenseTab({ user }: { user: any }) {
     notes: '',
   });
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editBuf, setEditBuf] = useState<LineItem>({ description: '', amount: 0 });
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -1463,6 +1465,7 @@ function ExpenseTab({ user }: { user: any }) {
     setStep('capture'); setImageFile(null); setImagePreview(null);
     setFormData({ date: new Date().toISOString().slice(0, 10), supplier: '', category_id: 'food', category_name: 'Food & Ingredients', total: '', notes: '' });
     setLineItems([]);
+    setEditingIdx(null);
   };
 
   const handleImageSelected = async (file: File) => {
@@ -1588,28 +1591,43 @@ function ExpenseTab({ user }: { user: any }) {
           <label className="block text-sm font-semibold text-gray-700 mb-1.5">Total Amount (฿)</label>
           <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-400">฿</span><input type="number" inputMode="decimal" value={formData.total} onChange={e => setFormData(p => ({ ...p, total: e.target.value }))} placeholder="0.00" className="w-full border-2 border-gray-200 rounded-2xl pl-10 pr-4 py-4 text-3xl font-bold focus:outline-none focus:ring-2 focus:ring-terracotta" /></div>
         </div>
-        {lineItems.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-semibold text-gray-700">Line Items ({lineItems.length})</label>
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-semibold text-gray-700">Line Items{lineItems.length > 0 ? ` (${lineItems.length})` : ''}</label>
+            {lineItems.length > 0 && editingIdx === null && (
               <button type="button" onClick={() => setLineItems([])} className="text-xs text-gray-400 hover:text-red-500">Clear all</button>
-            </div>
-            <div className="border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100">
-              {lineItems.map((item, i) => (
-                <div key={i} className="flex items-center gap-2 px-3 py-2.5">
+            )}
+          </div>
+          <div className="border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100">
+            {lineItems.map((item, i) => (
+              editingIdx === i ? (
+                <div key={i} className="p-3 space-y-2 bg-gray-50">
+                  <input autoFocus value={editBuf.description} onChange={e => setEditBuf(p => ({...p, description: e.target.value}))} placeholder="Description" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                  <div className="flex gap-2">
+                    <input value={editBuf.quantity ?? ''} onChange={e => setEditBuf(p => ({...p, quantity: e.target.value ? Number(e.target.value) : undefined}))} placeholder="Qty" type="number" inputMode="numeric" className="w-16 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                    <input value={editBuf.weight ?? ''} onChange={e => setEditBuf(p => ({...p, weight: e.target.value || undefined}))} placeholder="Unit (kg…)" className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                    <input value={editBuf.amount || ''} onChange={e => setEditBuf(p => ({...p, amount: Number(e.target.value)}))} placeholder="Amount" type="number" inputMode="decimal" className="w-24 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => { setLineItems(prev => prev.map((it, idx) => idx === i ? {...editBuf} : it)); setEditingIdx(null); }} className="flex-1 py-2 bg-terracotta text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1"><Check size={14} /> Save</button>
+                    <button type="button" onClick={() => { if (!item.description) setLineItems(prev => prev.filter((_, idx) => idx !== i)); setEditingIdx(null); }} className="px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-500">Cancel</button>
+                    <button type="button" onClick={() => { setLineItems(prev => prev.filter((_, idx) => idx !== i)); setEditingIdx(null); }} className="px-3 py-2 border border-red-100 text-red-400 rounded-xl text-sm"><Trash2 size={14} /></button>
+                  </div>
+                </div>
+              ) : (
+                <div key={i} className="flex items-center gap-2 px-3 py-2.5 cursor-pointer active:bg-gray-50" onClick={() => { setEditBuf({...item}); setEditingIdx(i); }}>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{item.description}</p>
-                    {(item.quantity || item.weight) && (
-                      <p className="text-xs text-gray-400">{[item.quantity, item.weight].filter(Boolean).join(' ')}</p>
-                    )}
+                    <p className="text-sm font-medium text-gray-800 truncate">{item.description || <span className="text-gray-400 italic">untitled</span>}</p>
+                    {(item.quantity || item.weight) && <p className="text-xs text-gray-400">{[item.quantity, item.weight].filter(Boolean).join(' ')}</p>}
                   </div>
                   <span className="text-sm font-semibold text-gray-900 shrink-0">&#3647;{item.amount.toLocaleString()}</span>
-                  <button type="button" onClick={() => setLineItems(prev => prev.filter((_, idx) => idx !== i))} className="p-1 text-gray-300 hover:text-red-500 shrink-0"><X size={14} /></button>
+                  <Pencil size={12} className="text-gray-300 shrink-0" />
                 </div>
-              ))}
-            </div>
+              )
+            ))}
+            <button type="button" onClick={() => { const blank: LineItem = { description: '', amount: 0 }; setLineItems(prev => [...prev, blank]); setEditBuf(blank); setEditingIdx(lineItems.length); }} className="w-full py-2.5 text-sm text-terracotta font-medium flex items-center justify-center gap-1 hover:bg-gray-50"><Plus size={14} /> Add item</button>
           </div>
-        )}
+        </div>
         <div><label className="block text-sm font-semibold text-gray-700 mb-1.5">Notes (optional)</label><input type="text" value={formData.notes} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} placeholder="Any extra details" className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta" /></div>
       </div>
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-100 p-4 max-w-lg mx-auto">
