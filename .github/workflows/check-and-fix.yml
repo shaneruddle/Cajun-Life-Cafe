@@ -12,44 +12,9 @@ jobs:
       - name: Diagnose and fix
         env:
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          SCRIPT: aW1wb3J0IGZpcmViYXNlX2FkbWluCmZyb20gZmlyZWJhc2VfYWRtaW4gaW1wb3J0IGNyZWRlbnRpYWxzLCBmaXJlc3RvcmUsIGF1dGggYXMgZmJfYXV0aAoKY3JlZCA9IGNyZWRlbnRpYWxzLkNlcnRpZmljYXRlKCIvdG1wL3NhLWtleS5qc29uIikKZmlyZWJhc2VfYWRtaW4uaW5pdGlhbGl6ZV9hcHAoY3JlZCkKZGIgPSBmaXJlc3RvcmUuY2xpZW50KCkKCnByaW50KCI9PT0gQUxMIEZpcmVzdG9yZSB1c2VycyBkb2NzID09PSIpCmZvciBkIGluIGRiLmNvbGxlY3Rpb24oInVzZXJzIikuc3RyZWFtKCk6CiAgICBkYXRhID0gZC50b19kaWN0KCkKICAgIHByaW50KGYiICBkb2NfaWQ9e2QuaWR9IHwgZW1haWw9e2RhdGEuZ2V0KCdlbWFpbCcpfSB8IHJvbGU9e2RhdGEuZ2V0KCdyb2xlJyl9IHwgbmFtZT17ZGF0YS5nZXQoJ2Rpc3BsYXlOYW1lJyl9IikKCnByaW50KCJcbj09PSBBTEwgRmlyZWJhc2UgQXV0aCBhY2NvdW50cyA9PT0iKQphbGxfYXV0aCA9IGxpc3QoZmJfYXV0aC5saXN0X3VzZXJzKCkudXNlcnMpCmZvciB1IGluIGFsbF9hdXRoOgogICAgZG9jID0gZGIuY29sbGVjdGlvbigidXNlcnMiKS5kb2N1bWVudCh1LnVpZCkuZ2V0KCkKICAgIHJvbGUgPSBkb2MudG9fZGljdCgpLmdldCgicm9sZSIpIGlmIGRvYy5leGlzdHMgZWxzZSAiTk8gRklSRVNUT1JFIERPQyIKICAgIHByaW50KGYiICBlbWFpbD17dS5lbWFpbH0gfCB1aWQ9e3UudWlkfSB8IGZpcmVzdG9yZV9yb2xlPXtyb2xlfSIpCgpwcmludCgiXG49PT0gRklYSU5HOiBlbnN1cmUgZXZlcnkgQXV0aCBVSUQgaGFzIGEgbWF0Y2hpbmcgRmlyZXN0b3JlIGRvYyA9PT0iKQpmb3IgdSBpbiBhbGxfYXV0aDoKICAgIGlmIHUuZW1haWwgPT0gImluZm9AY2FqdW5saWZlY2FmZS5jb20iOgogICAgICAgIGNvbnRpbnVlCiAgICBkb2NfcmVmID0gZGIuY29sbGVjdGlvbigidXNlcnMiKS5kb2N1bWVudCh1LnVpZCkKICAgIGRvYyA9IGRvY19yZWYuZ2V0KCkKICAgIGlmIG5vdCBkb2MuZXhpc3RzOgogICAgICAgIG1hdGNoZXMgPSBsaXN0KGRiLmNvbGxlY3Rpb24oInVzZXJzIikud2hlcmUoImVtYWlsIiwgIj09IiwgdS5lbWFpbCkuc3RyZWFtKCkpCiAgICAgICAgcm9sZSA9IG1hdGNoZXNbMF0udG9fZGljdCgpLmdldCgicm9sZSIsICJlbXBsb3llZSIpIGlmIG1hdGNoZXMgZWxzZSAiZW1wbG95ZWUiCiAgICAgICAgcHJpbnQoZiIgIENSRUFUSU5HIGRvYyBmb3Ige3UuZW1haWx9IHVpZD17dS51aWR9IHdpdGggcm9sZT17cm9sZX0iKQogICAgICAgIGRvY19yZWYuc2V0KHsidWlkIjogdS51aWQsICJlbWFpbCI6IHUuZW1haWwsICJkaXNwbGF5TmFtZSI6IHUuZGlzcGxheV9uYW1lIG9yICIiLCAicm9sZSI6IHJvbGV9KQogICAgZWxzZToKICAgICAgICBwcmludChmIiAgT0s6IHt1LmVtYWlsfSB1aWQ9e3UudWlkfSByb2xlPXtkb2MudG9fZGljdCgpLmdldCgncm9sZScpfSIpCnByaW50KCJEb25lLiIpCg==
         run: |
           echo "$GCP_SA_KEY" > /tmp/sa-key.json
+          echo "$SCRIPT" | base64 -d > /tmp/diagnose.py
           pip install firebase-admin -q
-          python3 -c "
-import firebase_admin
-from firebase_admin import credentials, firestore, auth as fb_auth
-
-cred = credentials.Certificate('/tmp/sa-key.json')
-firebase_admin.initialize_app(cred)
-db = firestore.client()
-
-print('=== ALL Firestore users docs ===')
-for d in db.collection('users').stream():
-    data = d.to_dict()
-    print(f'  doc_id={d.id} | email={data.get(\"email\")} | role={data.get(\"role\")} | name={data.get(\"displayName\")}')
-
-print()
-print('=== ALL Firebase Auth accounts ===')
-all_auth = list(fb_auth.list_users().users)
-for u in all_auth:
-    doc = db.collection('users').document(u.uid).get()
-    role = doc.to_dict().get('role') if doc.exists else 'NO FIRESTORE DOC'
-    print(f'  email={u.email} | uid={u.uid} | firestore_role={role}')
-
-print()
-print('=== FIXING: ensure every Auth UID has a matching Firestore doc ===')
-for u in all_auth:
-    if u.email == 'info@cajunlifecafe.com':
-        continue
-    doc_ref = db.collection('users').document(u.uid)
-    doc = doc_ref.get()
-    if not doc.exists:
-        # Find any doc with this email
-        matches = list(db.collection('users').where('email', '==', u.email).stream())
-        role = matches[0].to_dict().get('role', 'employee') if matches else 'employee'
-        print(f'  CREATING doc for {u.email} uid={u.uid} with role={role}')
-        doc_ref.set({'uid': u.uid, 'email': u.email, 'displayName': u.display_name or '', 'role': role, 'createdAt': firestore.SERVER_TIMESTAMP})
-    else:
-        print(f'  OK: {u.email} uid={u.uid} role={doc.to_dict().get(\"role\")}')
-print('Done.')
-"
+          python3 /tmp/diagnose.py
