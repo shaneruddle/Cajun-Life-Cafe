@@ -1482,12 +1482,13 @@ function ExpenseTab({ user }: { user: any }) {
       if (result.success && result.data) {
         const d = result.data;
         setFormData(prev => ({ ...prev, supplier: d.supplier || prev.supplier, date: d.date || prev.date, total: d.total ? String(d.total) : prev.total }));
-        if (Array.isArray(d.items)) {
-          setLineItems(d.items
-            .filter((item: any) => item.description && (item.total_price != null || item.unit_price != null))
+        const rawItems = d.line_items || d.items || [];
+        if (Array.isArray(rawItems) && rawItems.length > 0) {
+          setLineItems(rawItems
+            .filter((item: any) => (item.name || item.description) && (item.total_cost != null || item.unit_cost != null || item.total_price != null || item.unit_price != null))
             .map((item: any): LineItem => ({
-              description: item.description,
-              amount: item.total_price ?? item.unit_price ?? 0,
+              description: item.name || item.description || '',
+              amount: item.total_cost ?? item.total_price ?? item.unit_cost ?? item.unit_price ?? 0,
               quantity: item.quantity ?? undefined,
               weight: item.unit || undefined,
             }))
@@ -1515,33 +1516,33 @@ function ExpenseTab({ user }: { user: any }) {
         receipt_url, notes: formData.notes, logged_by: user?.email || 'unknown', created_at: new Date().toISOString(),
         ...(lineItems.length > 0 && { line_items: lineItems }),
       });
-      if (formData.category_id === 'food' && lineItems.length > 0) {
+      if (lineItems.length > 0) {
         await Promise.all(lineItems.filter(item => item.description).map(item =>
           addDoc(collection(db, 'ingredient_purchases'), {
             ingredient_name: item.description,
             supplier: formData.supplier,
             quantity: item.quantity ?? 1,
-            unit: item.weight || 'piece',
+            unit: item.weight || 'pcs',
             unit_cost: item.quantity ? Math.round((item.amount / item.quantity) * 100) / 100 : item.amount,
             total_cost: item.amount,
             date: formData.date,
             expense_id: expenseRef.id,
+            receipt_url,
             logged_by: user?.email || 'unknown',
             created_at: new Date().toISOString(),
           })
         ));
-      }
-      if (formData.category_id === 'food') {
+      } else {
         await addDoc(collection(db, 'ingredient_purchases'), {
           ingredient_name: formData.supplier || 'Unknown',
-          receipt_url,
           supplier: formData.supplier || '',
           quantity: 1,
-          unit: 'purchase',
+          unit: 'pcs',
           unit_cost: parseFloat(formData.total) || 0,
           total_cost: parseFloat(formData.total) || 0,
           date: formData.date,
           expense_id: expenseRef.id,
+          receipt_url,
           logged_by: user?.email || 'unknown',
           created_at: new Date().toISOString(),
         });

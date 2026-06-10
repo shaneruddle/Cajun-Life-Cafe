@@ -85,7 +85,7 @@ async function startServer() {
         },
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
-          max_tokens: 1500,
+          max_tokens: 2048,
           messages: [{
             role: "user",
             content: [
@@ -95,26 +95,28 @@ async function startServer() {
               },
               {
                 type: "text",
-                text: `You are a receipt parser. Look at this receipt image and extract the data.
-Return ONLY valid JSON with no markdown fences:
+                text: `You are a receipt parser for a Thai restaurant. Extract all data from this receipt image.
+Return ONLY valid JSON with no markdown fences or extra text:
 {
   "supplier": "shop or supplier name",
   "date": "",
   "total": total amount as number or null,
-  "currency": "THB",
-  "items": [{"description": "item name in English", "quantity": number or null, "unit": "unit of measure or empty string", "unit_price": number or null, "total_price": number or null}]
+  "line_items": [
+    { "name": "item name in English", "quantity": number, "unit": "kg", "unit_cost": number, "total_cost": number }
+  ]
 }
 Rules:
 - date: always return empty string "" — the app will use today's date
-- total: look for ยอดรวม, รวมทั้งสิ้น, รวมเงิน, TOTAL, grand total. If on second page, sum visible line items
-- items: extract line items you can read clearly — SKIP any line that is blurry, unclear, or illegible. For each clear item:
-  * description: translate to English, keep it concise (e.g. "Chicken Breast", "Cooking Oil 1L", "Fish Sauce 700ml")
-  * quantity: number of units purchased (e.g. 2, 5, 1)
-  * unit: the purchase unit — extract from the item name or column. Use: "kg", "g", "l", "ml", "piece", "pack", "box", "can", "bag", "bottle". If the item name contains a weight/volume (e.g. "น้ำมัน 5L", "ซีอิ้ว 700ml") extract that as the unit with quantity 1
-  * unit_price: price per unit (THB)
-  * total_price: total for that line. Dashes (—) or lines after numbers are decorative. "680 —" means 680. "1,680-" means 1680. IMPORTANT: read every digit carefully — do not drop leading digits. If the AMOUNT column shows "1680" do not return 680.
+- total: look for ยอดรวม, รวมทั้งสิ้น, รวมเงิน, TOTAL, grand total
+- line_items: extract ALL line items from the receipt. Thai handwritten receipts have columns: จำนวน (qty) | รายการ (description) | หน่วยละ (unit price) | จำนวนเงิน (amount)
+  * name: translate Thai to English, keep concise (e.g. "Chicken Wings", "Tiger Prawns", "Cooking Oil")
+  * quantity: number of units (numeric only, e.g. 6, 3, 1)
+  * unit: use "kg", "g", "L", "ml", "pcs", "pack", "box", "can", "bag", "bottle" — use "pcs" if unclear
+  * unit_cost: price per unit as number
+  * total_cost: total for that line as number. Decorative pen strokes after amounts should be ignored — "1800 /" means 1800. If a price looks like "103/56" it means 103.56
   * SKIP the line entirely if you cannot confidently read the description or amount
-- supplier: use the shop/brand name from the receipt header`
+- supplier: use the shop/brand name from the receipt header
+- Return ONLY valid JSON, no markdown, no extra text`
               }
             ]
           }]
