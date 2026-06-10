@@ -121,12 +121,7 @@ export default function Ingredients() {
             </button>
           </p>
         </div>
-        {filtered.length > 0 && (
-          <div className="text-right">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Total spent</p>
-            <p className="text-xl font-bold text-ink">&#3647;{totalSpent.toLocaleString()}</p>
-          </div>
-        )}
+        
       </div>
 
       <div className="relative mb-4">
