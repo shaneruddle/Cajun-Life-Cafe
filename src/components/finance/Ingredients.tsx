@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { collection, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { IngredientPurchase } from './types';
-import { Search, Pencil, Trash2, Check, X, Scale } from 'lucide-react';
+import { Search, Pencil, Trash2, Check, X, Scale, Image, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Ingredients() {
@@ -10,6 +10,18 @@ export default function Ingredients() {
   const [search, setSearch] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBuf, setEditBuf] = useState<Partial<IngredientPurchase>>({});
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({
+    ingredient_name: '',
+    supplier: '',
+    date: new Date().toISOString().split('T')[0],
+    quantity: 1,
+    unit: 'purchase',
+    unit_cost: 0,
+    total_cost: 0,
+  });
+  const [addSubmitting, setAddSubmitting] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, 'ingredient_purchases'), orderBy('date', 'desc'));
@@ -51,12 +63,63 @@ export default function Ingredients() {
 
   const totalSpent = filtered.reduce((s, p) => s + (p.total_cost || 0), 0);
 
+  const handleAddFormChange = (field: string, value: string | number) => {
+    setAddForm(prev => {
+      const next = { ...prev, [field]: value };
+      if (field === 'quantity' || field === 'unit_cost') {
+        next.total_cost = Number(next.quantity) * Number(next.unit_cost);
+      }
+      return next;
+    });
+  };
+
+  const handleAddSubmit = async () => {
+    if (!addForm.ingredient_name.trim()) {
+      toast.error('Ingredient name is required');
+      return;
+    }
+    setAddSubmitting(true);
+    try {
+      await addDoc(collection(db, 'ingredient_purchases'), {
+        ingredient_name: addForm.ingredient_name.trim(),
+        supplier: addForm.supplier.trim(),
+        quantity: Number(addForm.quantity),
+        unit: addForm.unit.trim() || 'purchase',
+        unit_cost: Number(addForm.unit_cost),
+        total_cost: Number(addForm.total_cost),
+        date: addForm.date,
+        logged_by: '',
+        created_at: new Date().toISOString(),
+      });
+      toast.success('Entry added');
+      setShowAddModal(false);
+      setAddForm({
+        ingredient_name: '',
+        supplier: '',
+        date: new Date().toISOString().split('T')[0],
+        quantity: 1,
+        unit: 'purchase',
+        unit_cost: 0,
+        total_cost: 0,
+      });
+    } catch { toast.error('Failed to add entry'); }
+    setAddSubmitting(false);
+  };
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-ink">Ingredients</h1>
-          <p className="text-sm text-gray-500 mt-1">Purchase history — auto-populated from Food & Ingredients expenses</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Purchase history — auto-populated from Food &amp; Ingredients expenses
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="ml-3 inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-terracotta text-white rounded-lg hover:bg-terracotta/90 transition-colors"
+            >
+              <Plus size={11} /> Add
+            </button>
+          </p>
         </div>
         {filtered.length > 0 && (
           <div className="text-right">
@@ -80,7 +143,7 @@ export default function Ingredients() {
         <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
           <Scale size={32} className="mx-auto text-gray-300 mb-3" />
           <p className="text-gray-500 font-medium">No ingredients yet</p>
-          <p className="text-gray-400 text-sm mt-1">Log a Food & Ingredients expense with line items — they'll appear here automatically</p>
+          <p className="text-gray-400 text-sm mt-1">Log a Food &amp; Ingredients expense with line items — they'll appear here automatically</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -122,6 +185,9 @@ export default function Ingredients() {
                   <p className="text-sm text-right hidden md:block">&#3647;{Number(p.unit_cost).toLocaleString()}<span className="text-xs text-gray-400">/{p.unit}</span></p>
                   <p className="text-sm font-semibold text-right">&#3647;{Number(p.total_cost).toLocaleString()}</p>
                   <div className="flex items-center justify-end gap-1">
+                    {(p as any).receipt_url && (
+                      <button onClick={() => setLightboxUrl((p as any).receipt_url)} className="p-1.5 rounded-lg hover:bg-green-50 text-gray-300 hover:text-green-500 transition-colors" title="View receipt"><Image size={13} /></button>
+                    )}
                     <button onClick={() => startEdit(p)} className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-300 hover:text-blue-400 transition-colors"><Pencil size={13} /></button>
                     <button onClick={() => handleDelete(p.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-400 transition-colors"><Trash2 size={13} /></button>
                   </div>
@@ -132,6 +198,124 @@ export default function Ingredients() {
           <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex justify-between text-sm">
             <span className="text-gray-500">{filtered.length} purchase{filtered.length !== 1 ? 's' : ''}{search ? ' matching' : ''}</span>
             <span className="font-bold text-ink">&#3647;{totalSpent.toLocaleString()}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Receipt lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <X size={20} />
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="Receipt"
+            className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl object-contain"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
+
+      {/* Add line item modal */}
+      {showAddModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowAddModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-ink">Add Line Item</h2>
+              <button onClick={() => setShowAddModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"><X size={16} /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Ingredient / Item <span className="text-red-400">*</span></label>
+                <input
+                  value={addForm.ingredient_name}
+                  onChange={e => handleAddFormChange('ingredient_name', e.target.value)}
+                  placeholder="e.g. Crawfish"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Supplier</label>
+                <input
+                  value={addForm.supplier}
+                  onChange={e => handleAddFormChange('supplier', e.target.value)}
+                  placeholder="e.g. Makro"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Date</label>
+                <input
+                  type="date"
+                  value={addForm.date}
+                  onChange={e => handleAddFormChange('date', e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Quantity</label>
+                  <input
+                    type="number"
+                    value={addForm.quantity}
+                    onChange={e => handleAddFormChange('quantity', Number(e.target.value))}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Unit</label>
+                  <input
+                    value={addForm.unit}
+                    onChange={e => handleAddFormChange('unit', e.target.value)}
+                    placeholder="purchase"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Unit Cost &#3647;</label>
+                  <input
+                    type="number"
+                    value={addForm.unit_cost}
+                    onChange={e => handleAddFormChange('unit_cost', Number(e.target.value))}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Cost &#3647;</label>
+                  <input
+                    type="number"
+                    value={addForm.total_cost}
+                    onChange={e => handleAddFormChange('total_cost', Number(e.target.value))}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={handleAddSubmit}
+                disabled={addSubmitting}
+                className="flex-1 py-2.5 bg-terracotta text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-terracotta/90 transition-colors disabled:opacity-50"
+              >
+                <Plus size={14} /> {addSubmitting ? 'Saving…' : 'Add Entry'}
+              </button>
+              <button onClick={() => setShowAddModal(false)} className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-500 hover:bg-gray-50 transition-colors">Cancel</button>
+            </div>
           </div>
         </div>
       )}
