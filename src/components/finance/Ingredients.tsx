@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { IngredientPurchase } from './types';
-import { Search, Pencil, Trash2, Check, X, Scale, Image, Plus } from 'lucide-react';
+import { Search, Pencil, Trash2, Check, X, Scale, Image, Plus, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Ingredients() {
@@ -29,6 +29,13 @@ export default function Ingredients() {
       setPurchases(snap.docs.map(d => ({ id: d.id, ...d.data() })) as IngredientPurchase[])
     );
   }, []);
+
+  const toggleStar = async (p: IngredientPurchase) => {
+    try {
+      await updateDoc(doc(db, 'ingredient_purchases', p.id), { starred: !p.starred });
+      toast.success(p.starred ? 'Removed from recipe ingredients' : 'Added to recipe ingredients');
+    } catch { toast.error('Failed to update'); }
+  };
 
   const filtered = purchases.filter(p =>
     !search ||
@@ -90,6 +97,7 @@ export default function Ingredients() {
         date: addForm.date,
         logged_by: '',
         created_at: new Date().toISOString(),
+        starred: false,
       });
       toast.success('Entry added');
       setShowAddModal(false);
@@ -120,8 +128,11 @@ export default function Ingredients() {
               <Plus size={11} /> Add
             </button>
           </p>
+          <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+            <Star size={11} className="fill-amber-400 text-amber-400" />
+            Star a row to make it available in Recipe Costing
+          </p>
         </div>
-        
       </div>
 
       <div className="relative mb-4">
@@ -180,6 +191,13 @@ export default function Ingredients() {
                   <p className="text-sm text-right hidden md:block">&#3647;{Number(p.unit_cost).toLocaleString()}<span className="text-xs text-gray-400">/{p.unit}</span></p>
                   <p className="text-sm font-semibold text-right">&#3647;{Number(p.total_cost).toLocaleString()}</p>
                   <div className="flex items-center justify-end gap-1">
+                    <button
+                      onClick={() => toggleStar(p)}
+                      className={`p-1.5 rounded-lg transition-colors ${p.starred ? 'text-amber-400 hover:text-amber-500 hover:bg-amber-50' : 'text-gray-300 hover:text-amber-400 hover:bg-amber-50'}`}
+                      title={p.starred ? 'Remove from recipe ingredients' : 'Add to recipe ingredients'}
+                    >
+                      <Star size={14} className={p.starred ? 'fill-amber-400' : ''} />
+                    </button>
                     {(p as any).receipt_url && (
                       <button onClick={() => setLightboxUrl((p as any).receipt_url)} className="p-1.5 rounded-lg hover:bg-green-50 text-gray-300 hover:text-green-500 transition-colors" title="View receipt"><Image size={13} /></button>
                     )}
