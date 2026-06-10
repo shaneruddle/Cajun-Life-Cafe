@@ -1,41 +1,39 @@
 import { useState, useEffect } from 'react';
 import {
-  collection, doc, onSnapshot, query, orderBy,
-  setDoc, updateDoc, deleteField,
+  collection, doc, onSnapshot, query,
+  setDoc, where,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { MenuItem } from '../../types';
 import { X, Plus, Trash2, TrendingUp, TrendingDown, Minus, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface Ingredient {
+interface StarredIngredient {
   id: string;
-  name: string;
+  ingredient_name: string;
   unit: string;
-  current_cost_per_unit?: number;
+  unit_cost: number;
+  quantity: number;
 }
 
 interface RecipeLine {
-  ingredient_id: string;
+  purchase_id: string;
   ingredient_name: string;
-  portion_g: number;   // grams (or ml) per serving
+  portion_g: number;
   unit: string;
+  unit_cost: number;
+  quantity: number;
 }
 
-// Normalise cost to per-gram or per-ml
-function costPerBaseUnit(ing: Ingredient): number | null {
-  if (!ing.current_cost_per_unit) return null;
-  if (ing.unit === 'kg') return ing.current_cost_per_unit / 1000;
-  if (ing.unit === 'l')  return ing.current_cost_per_unit / 1000;
-  return ing.current_cost_per_unit;
-}
-
-function lineCost(line: RecipeLine, ingMap: Record<string, Ingredient>): number | null {
-  const ing = ingMap[line.ingredient_id];
-  if (!ing) return null;
-  const cpu = costPerBaseUnit(ing);
-  if (cpu === null) return null;
-  return cpu * line.portion_g;
+function lineCost(line: RecipeLine): number | null {
+  if (!line.unit_cost || !line.quantity) return null;
+  const unit = line.unit?.toLowerCase() ?? '';
+  let totalBaseUnits: number;
+  if (unit === 'kg') totalBaseUnits = line.quantity * 1000;
+  else if (unit === 'l') totalBaseUnits = line.quantity * 1000;
+  else if (unit === 'g' || unit === 'ml') totalBaseUnits = line.quantity;
+  else totalBaseUnits = line.quantity;
+  return (line.unit_cost / totalBaseUnits) * line.portion_g;
 }
 
 function MarginBadge({ cost, price }: { cost: number; price: number }) {
@@ -57,26 +55,28 @@ interface Props {
 }
 
 export default function MenuItemCosting({ item, onClose }: Props) {
-  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [starredIngredients, setStarredIngredients] = useState<StarredIngredient[]>([]);
   const [recipe, setRecipe] = useState<RecipeLine[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newLine, setNewLine] = useState({ ingredient_id: '', portion_g: '' });
+  const [newLine, setNewLine] = useState({ purchase_id: '', portion_g: '' });
   const [saving, setSaving] = useState(false);
 
-  const ingMap = Object.fromEntries(ingredients.map(i => [i.id, i]));
+  const ingMap = Object.fromEntries(starredIngredients.map(i => [i.id, i]));
   const docId = item.id!;
   const recipeDocRef = doc(db, 'menu_recipes', docId);
 
-  // Load all ingredients
   useEffect(() => {
     const unsub = onSnapshot(
-      query(collection(db, 'finance_ingredients'), orderBy('name')),
-      snap => setIngredients(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Ingredient[])
+      query(collection(db, 'ingredient_purchases'), where('starred', '==', true)),
+      snap => {
+        const items = snap.docs.map(d => ({ id: d.id, ...d.data() })) as StarredIngredient[];
+        items.sort((a, b) => (a.ingredient_name ?? '').localeCompare(b.ingredient_name ?? ''));
+        setStarredIngredients(items);
+      }
     );
     return unsub;
   }, []);
 
-  // Load this item's recipe
   useEffect(() => {
     const unsub = onSnapshot(recipeDocRef, snap => {
       if (snap.exists()) {
@@ -92,7 +92,7 @@ export default function MenuItemCosting({ item, onClose }: Props) {
   const totalCost = () => {
     let sum = 0;
     for (const line of recipe) {
-      const c = lineCost(line, ingMap);
+      const c = lineCost(line);
       if (c === null) return null;
       sum += c;
     }
@@ -100,19 +100,21 @@ export default function MenuItemCosting({ item, onClose }: Props) {
   };
 
   const addLine = async () => {
-    if (!newLine.ingredient_id || !newLine.portion_g) return;
-    const ing = ingMap[newLine.ingredient_id];
+    if (!newLine.purchase_id || !newLine.portion_g) return;
+    const ing = ingMap[newLine.purchase_id];
     if (!ing) return;
     const updated = [...recipe, {
-      ingredient_id: ing.id,
-      ingredient_name: ing.name,
+      purchase_id: ing.id,
+      ingredient_name: ing.ingredient_name,
       portion_g: parseFloat(newLine.portion_g),
       unit: ing.unit,
+      unit_cost: ing.unit_cost,
+      quantity: ing.quantity,
     }];
     setSaving(true);
     try {
       await setDoc(recipeDocRef, { menu_item_id: docId, lines: updated }, { merge: true });
-      setNewLine({ ingredient_id: '', portion_g: '' });
+      setNewLine({ purchase_id: '', portion_g: '' });
     } catch { toast.error('Failed to save'); }
     setSaving(false);
   };
@@ -128,7 +130,7 @@ export default function MenuItemCosting({ item, onClose }: Props) {
 
   const menuPrice = parseFloat(item.price) || 0;
   const cost = totalCost();
-  const unknownCost = recipe.some(l => lineCost(l, ingMap) === null);
+  const unknownCost = recipe.some(l => lineCost(l) === null);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
@@ -177,7 +179,7 @@ export default function MenuItemCosting({ item, onClose }: Props) {
               </div>
             )}
             {unknownCost && (
-              <p className="text-xs text-amber-500 mt-3">⚠ Some ingredient costs not yet known — scan invoices to update</p>
+              <p className="text-xs text-amber-500 mt-3">⚠ Some ingredient costs not yet known</p>
             )}
           </div>
 
@@ -195,15 +197,14 @@ export default function MenuItemCosting({ item, onClose }: Props) {
             ) : (
               <div className="space-y-2">
                 {recipe.map((line, i) => {
-                  const c = lineCost(line, ingMap);
-                  const ing = ingMap[line.ingredient_id];
+                  const c = lineCost(line);
                   return (
                     <div key={i} className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-3">
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-sm text-ink truncate">{line.ingredient_name}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {line.portion_g}{line.unit === 'kg' || line.unit === 'l' ? 'g' : line.unit === 'piece' ? ' pcs' : 'ml'} per serving
-                          {ing?.current_cost_per_unit ? ` · ฿${ing.current_cost_per_unit}/${ing.unit}` : ''}
+                          {line.portion_g} {line.unit} per serving
+                          {line.unit_cost ? ` · ฿${line.unit_cost}/${line.unit}` : ''}
                         </p>
                       </div>
                       <div className="flex items-center gap-3 ml-3 shrink-0">
@@ -226,14 +227,14 @@ export default function MenuItemCosting({ item, onClose }: Props) {
           <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Add Ingredient</p>
             <select
-              value={newLine.ingredient_id}
-              onChange={e => setNewLine(p => ({ ...p, ingredient_id: e.target.value }))}
+              value={newLine.purchase_id}
+              onChange={e => setNewLine(p => ({ ...p, purchase_id: e.target.value }))}
               className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta bg-white"
             >
               <option value="">Select ingredient...</option>
-              {ingredients.map(i => (
+              {starredIngredients.map(i => (
                 <option key={i.id} value={i.id}>
-                  {i.name} ({i.unit}){i.current_cost_per_unit ? ` — ฿${i.current_cost_per_unit}/${i.unit}` : ' — cost unknown'}
+                  {i.ingredient_name} — ฿{i.unit_cost}/{i.unit}
                 </option>
               ))}
             </select>
@@ -249,15 +250,15 @@ export default function MenuItemCosting({ item, onClose }: Props) {
               </div>
               <button
                 onClick={addLine}
-                disabled={saving || !newLine.ingredient_id || !newLine.portion_g}
+                disabled={saving || !newLine.purchase_id || !newLine.portion_g}
                 className="px-5 py-2.5 bg-terracotta text-white rounded-xl text-sm font-bold hover:bg-terracotta/90 disabled:opacity-40 transition-all flex items-center gap-2"
               >
                 <Plus size={15} /> Add
               </button>
             </div>
             <p className="text-xs text-gray-400">
-              Enter grams for solid ingredients, ml for liquids, or count for items like eggs or bread rolls.
-              {ingredients.length === 0 && ' Add ingredients in Finance → Ingredients first.'}
+              Enter grams for solid ingredients, ml for liquids, or count for items like eggs.
+              {starredIngredients.length === 0 && ' Star ingredients in Finance → Ingredients first.'}
             </p>
           </div>
 
