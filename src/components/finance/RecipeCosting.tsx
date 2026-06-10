@@ -79,8 +79,8 @@ export default function RecipeCosting() {
       snap => setRecipes(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Recipe[])
     );
     const unsub2 = onSnapshot(
-      query(collection(db, 'ingredient_purchases'), where('starred', '==', true), orderBy('ingredient_name')),
-      snap => setStarredPurchases(snap.docs.map(d => ({ id: d.id, ...d.data() })) as IngredientPurchase[])
+      query(collection(db, 'ingredient_purchases'), where('starred', '==', true)),
+      snap => setStarredPurchases(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.ingredient_name ?? '').localeCompare(b.ingredient_name ?? '')) as IngredientPurchase[])
     );
     return () => { unsub1(); unsub2(); };
   }, []);
