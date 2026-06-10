@@ -1,43 +1,50 @@
 import { useState, useEffect } from 'react';
 import {
   collection, addDoc, updateDoc, deleteDoc, doc,
-  onSnapshot, query, orderBy, setDoc,
+  onSnapshot, query, orderBy, where,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { Ingredient } from './types';
-import { Plus, Trash2, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Pencil, X } from 'lucide-react';
+import { IngredientPurchase } from './types';
+import { Plus, Trash2, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Pencil, X, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface RecipeIngredient {
-  ingredient_id: string;
+  purchase_id: string;
   ingredient_name: string;
-  portion_g: number;   // grams used per serving
-  unit: string;        // purchase unit (kg, g, l, etc)
+  portion_g: number;   // amount used per serving (g, ml, or count)
+  unit: string;        // purchase unit (kg, g, l, purchase, etc)
+  unit_cost: number;   // cost per purchase unit at time of adding
+  quantity: number;    // purchase quantity (e.g. 5 units of 1kg)
 }
 
 interface Recipe {
   id: string;
-  name: string;        // e.g. "Chicken Wrap"
-  menu_price: number;  // selling price in THB
+  name: string;
+  menu_price: number;
   ingredients: RecipeIngredient[];
-  category: string;    // Food / Drinks / Other
+  category: string;
   created_at: string;
   updated_at: string;
 }
 
 const CATEGORIES = ['Food', 'Drinks', 'Desserts', 'Other'];
 
-// Convert portion grams to cost given current ingredient cost
-function calcIngredientCost(ing: RecipeIngredient, ingredient: Ingredient): number | null {
-  if (!ingredient.current_cost_per_unit) return null;
-  const cost = ingredient.current_cost_per_unit;
-  const unit = ingredient.unit;
-  // Normalise to cost-per-gram or cost-per-ml
-  let costPerBaseUnit: number;
-  if (unit === 'kg') costPerBaseUnit = cost / 1000;
-  else if (unit === 'l') costPerBaseUnit = cost / 1000;
-  else costPerBaseUnit = cost; // g, ml, piece etc
-  return costPerBaseUnit * ing.portion_g;
+// Calculate cost of one ingredient in a dish
+// unit_cost is cost per purchase unit (e.g. ฿1320 per 20kg bag)
+// portion_g is how much is used per serving
+function calcIngredientCost(ri: RecipeIngredient): number | null {
+  if (!ri.unit_cost || !ri.quantity) return null;
+  const unit = ri.unit?.toLowerCase() ?? '';
+
+  // Determine total grams/ml in the purchase
+  let totalBaseUnits: number;
+  if (unit === 'kg') totalBaseUnits = ri.quantity * 1000;
+  else if (unit === 'l') totalBaseUnits = ri.quantity * 1000;
+  else if (unit === 'g' || unit === 'ml') totalBaseUnits = ri.quantity;
+  else totalBaseUnits = ri.quantity; // piece / purchase — treat as count
+
+  const costPerBaseUnit = ri.unit_cost / totalBaseUnits;
+  return costPerBaseUnit * ri.portion_g;
 }
 
 function MarginBadge({ cost, price }: { cost: number; price: number }) {
@@ -55,17 +62,16 @@ function MarginBadge({ cost, price }: { cost: number; price: number }) {
 
 export default function RecipeCosting() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [starredPurchases, setStarredPurchases] = useState<IngredientPurchase[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
 
-  // Form state
   const [form, setForm] = useState({
     name: '', menu_price: '', category: 'Food',
     ingredients: [] as RecipeIngredient[],
   });
-  const [newIng, setNewIng] = useState({ ingredient_id: '', portion_g: '' });
+  const [newIng, setNewIng] = useState({ purchase_id: '', portion_g: '' });
 
   useEffect(() => {
     const unsub1 = onSnapshot(
@@ -73,21 +79,19 @@ export default function RecipeCosting() {
       snap => setRecipes(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Recipe[])
     );
     const unsub2 = onSnapshot(
-      query(collection(db, 'finance_ingredients'), orderBy('name')),
-      snap => setIngredients(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Ingredient[])
+      query(collection(db, 'ingredient_purchases'), where('starred', '==', true), orderBy('ingredient_name')),
+      snap => setStarredPurchases(snap.docs.map(d => ({ id: d.id, ...d.data() })) as IngredientPurchase[])
     );
     return () => { unsub1(); unsub2(); };
   }, []);
 
-  const ingMap = Object.fromEntries(ingredients.map(i => [i.id, i]));
+  const purchaseMap = Object.fromEntries(starredPurchases.map(p => [p.id, p]));
 
   const calcTotalCost = (recipe: Recipe): number | null => {
     let total = 0;
     for (const ri of recipe.ingredients) {
-      const ing = ingMap[ri.ingredient_id];
-      if (!ing) continue;
-      const c = calcIngredientCost(ri, ing);
-      if (c === null) return null; // unknown cost — can't calculate
+      const c = calcIngredientCost(ri);
+      if (c === null) return null;
       total += c;
     }
     return total;
@@ -96,31 +100,33 @@ export default function RecipeCosting() {
   const openNew = () => {
     setEditingRecipe(null);
     setForm({ name: '', menu_price: '', category: 'Food', ingredients: [] });
-    setNewIng({ ingredient_id: '', portion_g: '' });
+    setNewIng({ purchase_id: '', portion_g: '' });
     setShowForm(true);
   };
 
   const openEdit = (r: Recipe) => {
     setEditingRecipe(r);
     setForm({ name: r.name, menu_price: String(r.menu_price), category: r.category, ingredients: [...r.ingredients] });
-    setNewIng({ ingredient_id: '', portion_g: '' });
+    setNewIng({ purchase_id: '', portion_g: '' });
     setShowForm(true);
   };
 
   const addIngredient = () => {
-    if (!newIng.ingredient_id || !newIng.portion_g) return;
-    const ing = ingMap[newIng.ingredient_id];
-    if (!ing) return;
-    setForm(p => ({
-      ...p,
-      ingredients: [...p.ingredients, {
-        ingredient_id: ing.id,
-        ingredient_name: ing.name,
+    if (!newIng.purchase_id || !newIng.portion_g) return;
+    const p = purchaseMap[newIng.purchase_id];
+    if (!p) return;
+    setForm(prev => ({
+      ...prev,
+      ingredients: [...prev.ingredients, {
+        purchase_id: p.id,
+        ingredient_name: p.ingredient_name,
         portion_g: parseFloat(newIng.portion_g),
-        unit: ing.unit,
+        unit: p.unit,
+        unit_cost: p.unit_cost,
+        quantity: p.quantity,
       }],
     }));
-    setNewIng({ ingredient_id: '', portion_g: '' });
+    setNewIng({ purchase_id: '', portion_g: '' });
   };
 
   const removeIngredient = (idx: number) => {
@@ -160,6 +166,12 @@ export default function RecipeCosting() {
         <div>
           <h1 className="text-2xl font-bold text-ink">Recipe Costing</h1>
           <p className="text-sm text-gray-500 mt-1">Build dishes from ingredients to calculate food cost and margin</p>
+          {starredPurchases.length === 0 && (
+            <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+              <Star size={11} className="fill-amber-400 text-amber-400" />
+              Star ingredients in the Ingredients tab to add them here
+            </p>
+          )}
         </div>
         <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 bg-terracotta text-white rounded-xl font-bold text-sm hover:bg-terracotta/90 transition-all">
           <Plus size={16} /> Add Recipe
@@ -200,13 +212,12 @@ export default function RecipeCosting() {
             {form.ingredients.length > 0 && (
               <div className="space-y-2 mb-3">
                 {form.ingredients.map((ri, i) => {
-                  const ing = ingMap[ri.ingredient_id];
-                  const cost = ing ? calcIngredientCost(ri, ing) : null;
+                  const cost = calcIngredientCost(ri);
                   return (
                     <div key={i} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-2.5">
                       <div>
                         <span className="text-sm font-semibold text-ink">{ri.ingredient_name}</span>
-                        <span className="text-xs text-gray-400 ml-2">{ri.portion_g}{ri.unit === 'kg' || ri.unit === 'l' ? 'g' : ri.unit === 'piece' ? ' pcs' : 'ml'} per serving</span>
+                        <span className="text-xs text-gray-400 ml-2">{ri.portion_g} {ri.unit === 'kg' || ri.unit === 'l' ? 'g' : ri.unit === 'piece' ? 'pcs' : ri.unit === 'ml' ? 'ml' : 'units'} per serving</span>
                       </div>
                       <div className="flex items-center gap-3">
                         {cost !== null
@@ -223,18 +234,30 @@ export default function RecipeCosting() {
 
             {/* Add ingredient row */}
             <div className="flex gap-2">
-              <select value={newIng.ingredient_id} onChange={e => setNewIng(p => ({ ...p, ingredient_id: e.target.value }))}
-                className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta">
+              <select
+                value={newIng.purchase_id}
+                onChange={e => setNewIng(p => ({ ...p, purchase_id: e.target.value }))}
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
+              >
                 <option value="">Select ingredient...</option>
-                {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}
+                {starredPurchases.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.ingredient_name} — ฿{p.unit_cost}/{p.unit}
+                  </option>
+                ))}
               </select>
-              <input type="number" value={newIng.portion_g} onChange={e => setNewIng(p => ({ ...p, portion_g: e.target.value }))}
-                placeholder="grams" className="w-28 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+              <input
+                type="number"
+                value={newIng.portion_g}
+                onChange={e => setNewIng(p => ({ ...p, portion_g: e.target.value }))}
+                placeholder="portion"
+                className="w-28 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
+              />
               <button onClick={addIngredient} className="px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-gray-700">
                 + Add
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-1">Enter grams (or ml for liquids) used per serving</p>
+            <p className="text-xs text-gray-400 mt-1">Enter grams or ml for solid/liquid ingredients, or count for items like eggs. Star ingredients in the Ingredients tab first.</p>
           </div>
 
           <div className="flex gap-3 pt-2 border-t border-gray-100">
@@ -295,14 +318,13 @@ export default function RecipeCosting() {
                       </thead>
                       <tbody className="divide-y divide-gray-50">
                         {recipe.ingredients.map((ri, i) => {
-                          const ing = ingMap[ri.ingredient_id];
-                          const cost = ing ? calcIngredientCost(ri, ing) : null;
+                          const cost = calcIngredientCost(ri);
                           return (
                             <tr key={i}>
                               <td className="py-2 font-medium text-ink">{ri.ingredient_name}</td>
-                              <td className="py-2 text-right text-gray-500">{ri.portion_g}g</td>
+                              <td className="py-2 text-right text-gray-500">{ri.portion_g} {ri.unit}</td>
                               <td className="py-2 text-right text-gray-500">
-                                {ing?.current_cost_per_unit ? `฿${ing.current_cost_per_unit}/${ing.unit}` : '—'}
+                                {ri.unit_cost ? `฿${ri.unit_cost}/${ri.unit}` : '—'}
                               </td>
                               <td className="py-2 text-right font-semibold">
                                 {cost !== null ? `฿${cost.toFixed(2)}` : <span className="text-gray-300">unknown</span>}
