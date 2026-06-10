@@ -60,6 +60,7 @@ export interface IngredientPurchase {
   expense_id?: string;
   logged_by?: string;
   created_at?: string;
+  starred?: boolean;
 }
 
 export interface MonthlySummary {
