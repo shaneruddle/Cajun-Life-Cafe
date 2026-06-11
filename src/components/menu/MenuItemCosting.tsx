@@ -59,6 +59,8 @@ export default function MenuItemCosting({ item, onClose }: Props) {
   const [recipe, setRecipe] = useState<RecipeLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [newLine, setNewLine] = useState({ purchase_id: '', portion_g: '' });
+  const [ingQuery, setIngQuery] = useState('');
+  const [ingOpen, setIngOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const ingMap = Object.fromEntries(starredIngredients.map(i => [i.id, i]));
@@ -226,18 +228,34 @@ export default function MenuItemCosting({ item, onClose }: Props) {
           {/* Add ingredient */}
           <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Add Ingredient</p>
-            <select
-              value={newLine.purchase_id}
-              onChange={e => setNewLine(p => ({ ...p, purchase_id: e.target.value }))}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta bg-white"
-            >
-              <option value="">Select ingredient...</option>
-              {starredIngredients.map(i => (
-                <option key={i.id} value={i.id}>
-                  {i.ingredient_name} — ฿{i.unit_cost}/{i.unit}
-                </option>
+            <div className="relative">
+          <input
+            value={ingOpen ? ingQuery : (() => { const s = starredIngredients.find(i => i.id === newLine.purchase_id); return s ? s.ingredient_name + ' \u2014 \u0E3F' + s.unit_cost + '/' + s.unit : ingQuery; })()}
+            onChange={e => { setIngQuery(e.target.value); setIngOpen(true); }}
+            onFocus={() => { setIngOpen(true); setIngQuery(''); }}
+            onBlur={() => setTimeout(() => setIngOpen(false), 150)}
+            placeholder="Type to search ingredients..."
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta bg-white"
+          />
+          {ingOpen && (
+            <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 overflow-auto">
+              {starredIngredients.filter(i => !ingQuery || (i.ingredient_name || '').toLowerCase().includes(ingQuery.toLowerCase())).map(i => (
+                <button
+                  key={i.id}
+                  type="button"
+                  onMouseDown={() => { setNewLine(p => ({ ...p, purchase_id: i.id })); setIngOpen(false); setIngQuery(''); }}
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-amber-50 border-b border-gray-50 last:border-0"
+                >
+                  <span className="font-medium">{i.ingredient_name}</span>
+                  <span className="text-gray-400"> {'\u2014 \u0E3F'}{i.unit_cost}/{i.unit}</span>
+                </button>
               ))}
-            </select>
+              {starredIngredients.filter(i => !ingQuery || (i.ingredient_name || '').toLowerCase().includes(ingQuery.toLowerCase())).length === 0 && (
+                <p className="px-4 py-3 text-sm text-gray-400">No matches</p>
+              )}
+            </div>
+          )}
+        </div>
             <div className="flex gap-2">
               <div className="flex-1">
                 <input
