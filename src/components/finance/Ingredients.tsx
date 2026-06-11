@@ -5,21 +5,93 @@ import { IngredientPurchase } from './types';
 import { Search, Pencil, Trash2, Check, X, Scale, Image, Plus, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
+const INPUT_CLS = 'w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta';
+const LBL_CLS = 'block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1';
+
+const isWeightUnit = (u: string) => ['g', 'kg', 'ml', 'l'].includes((u || '').toLowerCase());
+
+const computePurchase = (qtyRaw: any, unit: string, sizeEachRaw: any, sizeUnit: string, totalPaidRaw: any) => {
+  const qty = Number(qtyRaw) || 0;
+  const sizeEach = Number(sizeEachRaw) || 0;
+  const totalPaid = Number(totalPaidRaw) || 0;
+  let quantity = qty;
+  let finalUnit = (unit || 'pcs').trim();
+  if (!isWeightUnit(finalUnit) && sizeEach > 0) {
+    quantity = qty * sizeEach;
+    finalUnit = sizeUnit;
+  }
+  const unit_cost = quantity > 0 ? Math.round((totalPaid / quantity) * 10000) / 10000 : 0;
+  return { quantity, unit: finalUnit, unit_cost, total_cost: totalPaid };
+};
+
+const previewText = (buf: any) => {
+  const c = computePurchase(buf.qty, buf.unit, buf.sizeEach, buf.sizeUnit || 'g', buf.totalPaid);
+  if (!c.quantity || !c.total_cost) return '';
+  const per = c.unit_cost < 10 ? c.unit_cost.toFixed(2) : c.unit_cost.toLocaleString();
+  return 'You bought ' + c.quantity.toLocaleString() + ' ' + c.unit + ' for \u0E3F' + c.total_cost.toLocaleString() + ' (\u0E3F' + per + ' per ' + c.unit + ')';
+};
+
+const UNIT_OPTIONS = ['pack', 'pcs', 'bottle', 'can', 'box', 'kg', 'g', 'L', 'ml'];
+
+function PurchaseFields({ buf, set }: { buf: any; set: (field: string, value: any) => void }) {
+  const countUnit = !isWeightUnit(buf.unit);
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={LBL_CLS}>How many did you buy?</label>
+          <input type="number" value={buf.qty ?? ''} onChange={e => set('qty', e.target.value)} placeholder="e.g. 4" className={INPUT_CLS} />
+        </div>
+        <div>
+          <label className={LBL_CLS}>Of what?</label>
+          <select value={buf.unit} onChange={e => set('unit', e.target.value)} className={INPUT_CLS}>
+            {buf.unit && !UNIT_OPTIONS.includes(buf.unit) ? <option value={buf.unit}>{buf.unit}</option> : null}
+            {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+      </div>
+      {countUnit && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={LBL_CLS}>Size of each one (optional)</label>
+            <input type="number" value={buf.sizeEach ?? ''} onChange={e => set('sizeEach', e.target.value)} placeholder="e.g. 500" className={INPUT_CLS} />
+          </div>
+          <div>
+            <label className={LBL_CLS}>g or ml</label>
+            <select value={buf.sizeUnit || 'g'} onChange={e => set('sizeUnit', e.target.value)} className={INPUT_CLS}>
+              <option value="g">g (grams)</option>
+              <option value="ml">ml</option>
+            </select>
+          </div>
+        </div>
+      )}
+      <div>
+        <label className={LBL_CLS}>Total paid (฿) — from the receipt</label>
+        <input type="number" value={buf.totalPaid ?? ''} onChange={e => set('totalPaid', e.target.value)} placeholder="e.g. 1316" className={INPUT_CLS} />
+      </div>
+      {previewText(buf) ? (
+        <p className="text-xs font-semibold text-green-700 bg-green-50 rounded-lg px-3 py-2">{previewText(buf)}</p>
+      ) : null}
+    </>
+  );
+}
+
 export default function Ingredients() {
   const [purchases, setPurchases] = useState<IngredientPurchase[]>([]);
   const [search, setSearch] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editBuf, setEditBuf] = useState<Partial<IngredientPurchase>>({});
+  const [editBuf, setEditBuf] = useState<any>({});
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({
+  const [addForm, setAddForm] = useState<any>({
     ingredient_name: '',
     supplier: '',
     date: new Date().toISOString().split('T')[0],
-    quantity: 1,
-    unit: 'purchase',
-    unit_cost: 0,
-    total_cost: 0,
+    qty: '',
+    unit: 'pack',
+    sizeEach: '',
+    sizeUnit: 'g',
+    totalPaid: '',
   });
   const [addSubmitting, setAddSubmitting] = useState(false);
 
@@ -43,18 +115,31 @@ export default function Ingredients() {
     p.supplier?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const startEdit = (p: IngredientPurchase) => { setEditingId(p.id); setEditBuf({ ...p }); };
+  const startEdit = (p: IngredientPurchase) => {
+    setEditingId(p.id);
+    setEditBuf({
+      ingredient_name: p.ingredient_name || '',
+      supplier: p.supplier || '',
+      date: p.date || '',
+      qty: p.quantity ?? '',
+      unit: p.unit || 'pcs',
+      sizeEach: '',
+      sizeUnit: 'g',
+      totalPaid: (p.total_cost ?? ((Number(p.quantity) || 0) * (Number(p.unit_cost) || 0))) || '',
+    });
+  };
 
   const saveEdit = async () => {
     if (!editingId) return;
     try {
+      const c = computePurchase(editBuf.qty, editBuf.unit, editBuf.sizeEach, editBuf.sizeUnit || 'g', editBuf.totalPaid);
       await updateDoc(doc(db, 'ingredient_purchases', editingId), {
-        ingredient_name: editBuf.ingredient_name,
+        ingredient_name: editBuf.ingredient_name || '',
         supplier: editBuf.supplier || '',
-        quantity: Number(editBuf.quantity) || 0,
-        unit: editBuf.unit || '',
-        unit_cost: Number(editBuf.unit_cost) || 0,
-        total_cost: Number(editBuf.total_cost) || 0,
+        quantity: c.quantity,
+        unit: c.unit,
+        unit_cost: c.unit_cost,
+        total_cost: c.total_cost,
         date: editBuf.date,
       });
       setEditingId(null);
@@ -71,13 +156,7 @@ export default function Ingredients() {
   const totalSpent = filtered.reduce((s, p) => s + (p.total_cost || 0), 0);
 
   const handleAddFormChange = (field: string, value: string | number) => {
-    setAddForm(prev => {
-      const next = { ...prev, [field]: value };
-      if (field === 'quantity' || field === 'unit_cost') {
-        next.total_cost = Number(next.quantity) * Number(next.unit_cost);
-      }
-      return next;
-    });
+    setAddForm((prev: any) => ({ ...prev, [field]: value }));
   };
 
   const handleAddSubmit = async () => {
@@ -85,15 +164,20 @@ export default function Ingredients() {
       toast.error('Ingredient name is required');
       return;
     }
+    if (!Number(addForm.qty) || !Number(addForm.totalPaid)) {
+      toast.error('Enter how much you bought and the total you paid');
+      return;
+    }
     setAddSubmitting(true);
     try {
+      const c = computePurchase(addForm.qty, addForm.unit, addForm.sizeEach, addForm.sizeUnit || 'g', addForm.totalPaid);
       await addDoc(collection(db, 'ingredient_purchases'), {
         ingredient_name: addForm.ingredient_name.trim(),
         supplier: addForm.supplier.trim(),
-        quantity: Number(addForm.quantity),
-        unit: addForm.unit.trim() || 'purchase',
-        unit_cost: Number(addForm.unit_cost),
-        total_cost: Number(addForm.total_cost),
+        quantity: c.quantity,
+        unit: c.unit,
+        unit_cost: c.unit_cost,
+        total_cost: c.total_cost,
         date: addForm.date,
         logged_by: '',
         created_at: new Date().toISOString(),
@@ -105,10 +189,11 @@ export default function Ingredients() {
         ingredient_name: '',
         supplier: '',
         date: new Date().toISOString().split('T')[0],
-        quantity: 1,
-        unit: 'purchase',
-        unit_cost: 0,
-        total_cost: 0,
+        qty: '',
+        unit: 'pack',
+        sizeEach: '',
+        sizeUnit: 'g',
+        totalPaid: '',
       });
     } catch { toast.error('Failed to add entry'); }
     setAddSubmitting(false);
@@ -164,38 +249,25 @@ export default function Ingredients() {
           <div className="divide-y divide-gray-50">
             {filtered.map(p =>
               editingId === p.id ? (
-                <div key={p.id} className="p-4 bg-amber-50 space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
+                <div key={p.id} className="p-4 bg-amber-50 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Ingredient</label>
-                      <input value={editBuf.ingredient_name || ''} onChange={e => setEditBuf(b => ({...b, ingredient_name: e.target.value}))} placeholder="Ingredient" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                      <label className={LBL_CLS}>Ingredient</label>
+                      <input value={editBuf.ingredient_name || ''} onChange={e => setEditBuf((b: any) => ({ ...b, ingredient_name: e.target.value }))} className={INPUT_CLS} />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Supplier</label>
-                      <input value={editBuf.supplier || ''} onChange={e => setEditBuf(b => ({...b, supplier: e.target.value}))} placeholder="Supplier" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                      <label className={LBL_CLS}>Supplier</label>
+                      <input value={editBuf.supplier || ''} onChange={e => setEditBuf((b: any) => ({ ...b, supplier: e.target.value }))} className={INPUT_CLS} />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Qty</label>
-                      <input value={editBuf.quantity ?? ''} onChange={e => setEditBuf(b => ({...b, quantity: Number(e.target.value)}))} placeholder="Qty" type="number" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Unit (kg / g / L / ml / pcs)</label>
-                      <input value={editBuf.unit || ''} onChange={e => setEditBuf(b => ({...b, unit: e.target.value}))} placeholder="Unit (kg, g…)" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Cost per unit (฿)</label>
-                      <input value={editBuf.unit_cost ?? ''} onChange={e => setEditBuf(b => ({...b, unit_cost: Number(e.target.value)}))} placeholder="Unit cost" type="number" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Date</label>
-                      <input value={editBuf.date || ''} onChange={e => setEditBuf(b => ({...b, date: e.target.value}))} type="date" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
-                    </div>
+                  <PurchaseFields buf={editBuf} set={(f, v) => setEditBuf((b: any) => ({ ...b, [f]: v }))} />
+                  <div>
+                    <label className={LBL_CLS}>Date</label>
+                    <input type="date" value={editBuf.date || ''} onChange={e => setEditBuf((b: any) => ({ ...b, date: e.target.value }))} className={INPUT_CLS} />
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={saveEdit} className="flex-1 py-2 bg-terracotta text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1"><Check size={13} /> Save</button>
-                    <button onClick={() => setEditingId(null)} className="px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-500 flex items-center gap-1"><X size={13} /> Cancel</button>
+                    <button onClick={saveEdit} className="flex-1 py-2 bg-terracotta text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1"><Check size={14} /> Save</button>
+                    <button onClick={() => setEditingId(null)} className="px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-500 flex items-center gap-1"><X size={14} /> Cancel</button>
                   </div>
                 </div>
               ) : (
@@ -296,47 +368,9 @@ export default function Ingredients() {
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Quantity</label>
-                  <input
-                    type="number"
-                    value={addForm.quantity}
-                    onChange={e => handleAddFormChange('quantity', Number(e.target.value))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Unit</label>
-                  <input
-                    value={addForm.unit}
-                    onChange={e => handleAddFormChange('unit', e.target.value)}
-                    placeholder="purchase"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Unit Cost &#3647;</label>
-                  <input
-                    type="number"
-                    value={addForm.unit_cost}
-                    onChange={e => handleAddFormChange('unit_cost', Number(e.target.value))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Cost &#3647;</label>
-                  <input
-                    type="number"
-                    value={addForm.total_cost}
-                    onChange={e => handleAddFormChange('total_cost', Number(e.target.value))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
-                  />
-                </div>
-              </div>
+              <PurchaseFields buf={addForm} set={handleAddFormChange} />
             </div>
+
             <div className="flex gap-2 mt-5">
               <button
                 onClick={handleAddSubmit}
