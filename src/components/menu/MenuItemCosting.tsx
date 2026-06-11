@@ -49,6 +49,18 @@ function MarginBadge({ cost, price }: { cost: number; price: number }) {
   );
 }
 
+function FoodCostBadge({ cost, price }: { cost: number; price: number }) {
+  const pct = price > 0 ? (cost / price) * 100 : 0;
+  const cls = pct <= 30 ? 'bg-green-100 text-green-700'
+    : pct <= 40 ? 'bg-amber-100 text-amber-700'
+    : 'bg-red-100 text-red-700';
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${cls}`}>
+      {pct.toFixed(0)}% food cost
+    </span>
+  );
+}
+
 interface Props {
   item: MenuItem;
   onClose: () => void;
@@ -174,7 +186,7 @@ export default function MenuItemCosting({ item, onClose }: Props) {
             </div>
             {cost !== null && menuPrice > 0 && (
               <div className="mt-4 flex items-center justify-between">
-                <MarginBadge cost={cost} price={menuPrice} />
+                <div className="flex items-center gap-2"><MarginBadge cost={cost} price={menuPrice} /><FoodCostBadge cost={cost} price={menuPrice} /></div>
                 <p className="text-sm text-gray-500">
                   Profit per dish: <span className="font-bold text-ink">฿{(menuPrice - cost).toFixed(2)}</span>
                 </p>
