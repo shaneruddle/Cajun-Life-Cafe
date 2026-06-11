@@ -33,7 +33,7 @@ function lineCost(line: RecipeLine): number | null {
   else if (unit === 'l') totalBaseUnits = line.quantity * 1000;
   else if (unit === 'g' || unit === 'ml') totalBaseUnits = line.quantity;
   else totalBaseUnits = line.quantity;
-  return (line.unit_cost / totalBaseUnits) * line.portion_g;
+  return ((line.unit_cost * line.quantity) / totalBaseUnits) * line.portion_g;
 }
 
 function MarginBadge({ cost, price }: { cost: number; price: number }) {
