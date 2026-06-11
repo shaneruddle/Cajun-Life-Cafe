@@ -25,7 +25,7 @@ import { toast } from 'sonner';
 import { CRMCustomer, LoyaltyTransaction, LineItem } from '../types';
 const DeliveryMap = React.lazy(() => import('./DeliveryMap'));
 
-// Ã¢ÂÂÃ¢ÂÂ LINE push helper Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+// ── LINE push helper ───────────────────────────────────────────────────────────
 const sendLinePush = async (lineUserId: string, message: string) => {
   try {
     await fetch('/api/line-push', {
@@ -38,18 +38,18 @@ const sendLinePush = async (lineUserId: string, message: string) => {
   }
 };
 
-// Ã¢ÂÂÃ¢ÂÂ Login Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+// ── Login ──────────────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
   const [tab, setTab] = useState<'signin' | 'signup'>('signin');
 
-  // Ã¢ÂÂÃ¢ÂÂ Sign-in state Ã¢ÂÂÃ¢ÂÂ
+  // ── Sign-in state ──
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [resetting, setResetting] = useState(false);
 
-  // Ã¢ÂÂÃ¢ÂÂ Sign-up state Ã¢ÂÂÃ¢ÂÂ
+  // ── Sign-up state ──
   const [suName, setSuName] = useState('');
   const [suEmail, setSuEmail] = useState('');
   const [suPassword, setSuPassword] = useState('');
@@ -95,7 +95,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
     setResetting(true);
     try {
       await sendPasswordResetEmail(auth, email.trim());
-      toast.success('Reset email sent Ã¢ÂÂ check your inbox');
+      toast.success('Reset email sent — check your inbox');
       setShowReset(false);
     } catch {
       toast.error('Could not send reset email.');
@@ -140,7 +140,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
     setSuLoading(true);
     try {
       const cred = await createUserWithEmailAndPassword(auth, suEmail.trim(), suPassword);
-      // Don't await anything else Ã¢ÂÂ just mark done and sign out in background
+      // Don't await anything else — just mark done and sign out in background
       setSuDone(true);
       // Write doc and sign out in background without blocking UI
       setDoc(doc(db, 'users', cred.user.uid), {
@@ -162,7 +162,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
       } else if (code === 'auth/weak-password') {
         toast.error('Password must be at least 6 characters.');
       } else if (code === 'auth/operation-not-allowed') {
-        toast.error('Sign-up disabled Ã¢ÂÂ contact admin.');
+        toast.error('Sign-up disabled — contact admin.');
       } else {
         toast.error('Sign-up failed: ' + code);
       }
@@ -214,14 +214,14 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
               <input
                 type="password" autoComplete="current-password" value={password}
-                onChange={e => setPassword(e.target.value)} placeholder="Ã¢ÂÂ¢Ã¢ÂÂ¢Ã¢ÂÂ¢Ã¢ÂÂ¢Ã¢ÂÂ¢Ã¢ÂÂ¢Ã¢ÂÂ¢Ã¢ÂÂ¢"
+                onChange={e => setPassword(e.target.value)} placeholder="••••••••"
                 className="w-full border border-gray-200 rounded-2xl px-4 py-4 text-base focus:outline-none focus:ring-2 focus:ring-terracotta"
               />
             </div>
             <button type="submit" disabled={loading}
               className="w-full py-4 bg-terracotta text-white rounded-2xl font-bold text-lg hover:bg-terracotta/90 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg"
             >
-              {loading ? <><Loader2 size={20} className="animate-spin" /> Signing inÃ¢ÂÂ¦</> : <><LogIn size={20} /> Sign In</>}
+              {loading ? <><Loader2 size={20} className="animate-spin" /> Signing in…</> : <><LogIn size={20} /> Sign In</>}
             </button>
             <div className="relative flex items-center gap-3 my-1">
               <div className="flex-1 h-px bg-gray-100" />
@@ -304,7 +304,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
             <button type="submit" disabled={suLoading}
               className="w-full py-4 bg-terracotta text-white rounded-2xl font-bold text-lg hover:bg-terracotta/90 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg"
             >
-              {suLoading ? <><Loader2 size={20} className="animate-spin" /> Creating accountÃ¢ÂÂ¦</> : 'Create Account'}
+              {suLoading ? <><Loader2 size={20} className="animate-spin" /> Creating account…</> : 'Create Account'}
             </button>
             <p className="text-center text-xs text-gray-400">After signing up, your manager will grant you access.</p>
           </form>
@@ -315,7 +315,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
 }
 
 
-// Ã¢ÂÂÃ¢ÂÂ Register new customer form Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+// ── Register new customer form ─────────────────────────────────────────────────
 function RegisterForm({
   onSaved,
   onCancel,
@@ -369,7 +369,7 @@ function RegisterForm({
         newCustomer.isVerified = true;
       }
       const docRef = await addDoc(collection(db, 'crm_customers'), newCustomer);
-      await logActivity('Customer Registered', `${firstName} ${lastName} registered by cashier ${staffEmail}${enroll ? ' Ã¢ÂÂ enrolled in loyalty' : ''}`, 'crm');
+      await logActivity('Customer Registered', `${firstName} ${lastName} registered by cashier ${staffEmail}${enroll ? ' — enrolled in loyalty' : ''}`, 'crm');
       toast.success(`${firstName} registered${enroll ? ' & enrolled!' : '!'}`);
       onSaved({ ...newCustomer, id: docRef.id });
     } catch (err) {
@@ -412,7 +412,7 @@ function RegisterForm({
         <div>
           <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Mobile</label>
           <div className="flex items-center border border-gray-200 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-terracotta">
-            <span className="px-4 py-3.5 text-gray-500 font-mono text-sm bg-gray-50 border-r border-gray-200">Ã°ÂÂÂ¹Ã°ÂÂÂ­ +66</span>
+            <span className="px-4 py-3.5 text-gray-500 font-mono text-sm bg-gray-50 border-r border-gray-200">🇹🇭 +66</span>
             <input
               type="tel" value={mobile} onChange={e => setMobile(e.target.value)}
               placeholder="812 345 678"
@@ -453,7 +453,7 @@ function RegisterForm({
             Delivery Location
           </label>
           <p className="text-xs text-gray-400 mb-2">Tap the map or drag the pin to mark drop-off point.</p>
-          <React.Suspense fallback={<div style={{height:220,background:"#f3f4f6",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",color:"#9ca3af",fontSize:13}}>Loading mapÃ¢ÂÂ¦</div>}>
+          <React.Suspense fallback={<div style={{height:220,background:"#f3f4f6",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",color:"#9ca3af",fontSize:13}}>Loading map…</div>}>
             <DeliveryMap
               lat={deliveryLat}
               lng={deliveryLng}
@@ -501,14 +501,14 @@ function RegisterForm({
         <button type="submit" form="" onClick={handleSave} disabled={saving}
           className="w-full py-4 bg-terracotta text-white rounded-2xl font-bold text-lg disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg"
         >
-          {saving ? <><Loader2 size={20} className="animate-spin" /> SavingÃ¢ÂÂ¦</> : <><UserPlus size={20} /> Save Customer</>}
+          {saving ? <><Loader2 size={20} className="animate-spin" /> Saving…</> : <><UserPlus size={20} /> Save Customer</>}
         </button>
       </div>
     </div>
   );
 }
 
-// Ã¢ÂÂÃ¢ÂÂ Customer detail / wallet screen Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+// ── Customer detail / wallet screen ───────────────────────────────────────────
 function CustomerWallet({
   customer,
   onBack,
@@ -570,15 +570,15 @@ function CustomerWallet({
       await addDoc(collection(db, 'crm_customers', liveCustomer.id, 'transactions'), {
         type: 'TOP_UP', amount: cash, bonus,
         timestamp: Timestamp.now(),
-        details: `Cash top-up Ã Â¸Â¿${cash} + 10% bonus Ã Â¸Â¿${bonus}`,
+        details: `Cash top-up ฿${cash} + 10% bonus ฿${bonus}`,
       });
-      await logActivity('Wallet Top Up', `${liveCustomer.firstName} ${liveCustomer.lastName} | Cash: Ã Â¸Â¿${cash} | Bonus: Ã Â¸Â¿${bonus} | New balance: Ã Â¸Â¿${next} | Staff: ${staffEmail}`, 'loyalty');
+      await logActivity('Wallet Top Up', `${liveCustomer.firstName} ${liveCustomer.lastName} | Cash: ฿${cash} | Bonus: ฿${bonus} | New balance: ฿${next} | Staff: ${staffEmail}`, 'loyalty');
       if (liveCustomer.lineUserId) {
-        await sendLinePush(liveCustomer.lineUserId, `Cajun Life Cafe\n\nÃ°ÂÂÂ° Wallet topped up: +Ã Â¸Â¿${total.toLocaleString()} (incl. Ã Â¸Â¿${bonus.toLocaleString()} bonus)\nNew balance: Ã Â¸Â¿${next.toLocaleString()}`);
+        await sendLinePush(liveCustomer.lineUserId, `Cajun Life Cafe\n\n💰 Wallet topped up: +฿${total.toLocaleString()} (incl. ฿${bonus.toLocaleString()} bonus)\nNew balance: ฿${next.toLocaleString()}`);
       }
       setTopUpAmount('');
       setTab('pay');
-      toast.success(`Ã Â¸Â¿${total.toLocaleString()} added!`);
+      toast.success(`฿${total.toLocaleString()} added!`);
     } catch (err) {
       console.error(err); toast.error('Top-up failed');
     } finally {
@@ -635,19 +635,19 @@ function CustomerWallet({
       });
       await addDoc(collection(db, 'crm_customers', liveCustomer.id, 'transactions'), {
         type: 'REDEEM', amount,
-        memo: `Receipt payment Ã Â¸Â¿${amount.toLocaleString()}`,
+        memo: `Receipt payment ฿${amount.toLocaleString()}`,
         receiptUrl, balanceAfter: next,
         timestamp: Timestamp.now(),
         processedBy: staffEmail,
       });
-      await logActivity('Receipt Redemption', `${liveCustomer.firstName} ${liveCustomer.lastName} | Ã Â¸Â¿${amount} deducted | Balance: Ã Â¸Â¿${prev} Ã¢ÂÂ Ã Â¸Â¿${next} | Staff: ${staffEmail}`, 'loyalty');
+      await logActivity('Receipt Redemption', `${liveCustomer.firstName} ${liveCustomer.lastName} | ฿${amount} deducted | Balance: ฿${prev} → ฿${next} | Staff: ${staffEmail}`, 'loyalty');
       if (liveCustomer.lineUserId) {
-        await sendLinePush(liveCustomer.lineUserId, `Cajun Life Cafe\n\nÃ°ÂÂÂ° Payment: Ã Â¸Â¿${amount.toLocaleString()}\nRemaining balance: Ã Â¸Â¿${next.toLocaleString()}\n\nThank you! Ã°ÂÂÂ`);
+        await sendLinePush(liveCustomer.lineUserId, `Cajun Life Cafe\n\n💰 Payment: ฿${amount.toLocaleString()}\nRemaining balance: ฿${next.toLocaleString()}\n\nThank you! 🙏`);
       }
       setScannedAmount(null);
       setScannedFile(null);
       setShowConfirm(false);
-      toast.success(`Payment confirmed! Balance: Ã Â¸Â¿${next.toLocaleString()}`);
+      toast.success(`Payment confirmed! Balance: ฿${next.toLocaleString()}`);
     } catch (err) {
       console.error(err); toast.error('Payment failed');
     } finally {
@@ -674,16 +674,16 @@ function CustomerWallet({
       const link = `https://cajunlifecafe.com/activate/${token}`;
       setActivationLink(link);
 
-      // 2. Try clipboard Ã¢ÂÂ may fail on mobile, that's ok
+      // 2. Try clipboard — may fail on mobile, that's ok
       try {
         await navigator.clipboard.writeText(link);
         toast.success('Activation link copied to clipboard!', { duration: 6000 });
       } catch {
-        // Clipboard not available (common on mobile) Ã¢ÂÂ show link on screen instead
+        // Clipboard not available (common on mobile) — show link on screen instead
       }
     } catch (err) {
       console.error('Activation token error:', err);
-      toast.error('Failed to generate link Ã¢ÂÂ check Firestore rules');
+      toast.error('Failed to generate link — check Firestore rules');
     }
   };
 
@@ -704,14 +704,14 @@ function CustomerWallet({
             <p className="text-xs text-gray-400 font-mono">{liveCustomer.mobile}</p>
             {liveCustomer.lineUserId ? (
               <p className="text-[10px] text-green-600 font-bold flex items-center gap-1 mt-0.5">
-                <span>Ã¢ÂÂ</span> LINE linked
+                <span>●</span> LINE linked
               </p>
             ) : (
               <button
                 onClick={generateActivationLink}
                 className="text-[10px] text-amber-600 font-bold underline mt-0.5"
               >
-                Link LINE Ã¢ÂÂ
+                Link LINE →
               </button>
             )}
             {activationLink && !liveCustomer.lineUserId && (
@@ -730,7 +730,7 @@ function CustomerWallet({
             )}
           </div>
           <div className="text-right">
-            <p className="text-2xl font-display font-bold text-terracotta">Ã Â¸Â¿{balance.toLocaleString()}</p>
+            <p className="text-2xl font-display font-bold text-terracotta">฿{balance.toLocaleString()}</p>
             <p className="text-[10px] text-gray-400 uppercase tracking-widest">Balance</p>
           </div>
         </div>
@@ -738,9 +738,9 @@ function CustomerWallet({
         {/* Tabs */}
         <div className="flex gap-2 mt-4">
           {([
-            { id: 'pay', label: 'Ã°ÂÂÂ· Scan & Pay' },
-            { id: 'topup', label: 'Ã°ÂÂÂ° Top Up' },
-            { id: 'history', label: 'Ã°ÂÂÂ History' },
+            { id: 'pay', label: '📷 Scan & Pay' },
+            { id: 'topup', label: '💰 Top Up' },
+            { id: 'history', label: '🕐 History' },
           ] as const).map(t => (
             <button
               key={t.id}
@@ -758,7 +758,7 @@ function CustomerWallet({
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto p-5">
 
-        {/* Ã¢ÂÂÃ¢ÂÂ Scan & Pay Ã¢ÂÂÃ¢ÂÂ */}
+        {/* ── Scan & Pay ── */}
         {tab === 'pay' && (
           <div className="space-y-4">
             {!showConfirm ? (
@@ -771,11 +771,11 @@ function CustomerWallet({
                     className="w-full py-5 bg-white text-terracotta rounded-2xl font-bold text-lg flex items-center justify-center gap-3 shadow-lg hover:bg-cream transition-all disabled:opacity-60"
                   >
                     {scanning
-                      ? <><Loader2 size={24} className="animate-spin" /> Reading receiptÃ¢ÂÂ¦</>
+                      ? <><Loader2 size={24} className="animate-spin" /> Reading receipt…</>
                       : <><Camera size={24} /> Scan Receipt</>
                     }
                   </button>
-                  <p className="text-white/50 text-xs">Current balance: Ã Â¸Â¿{balance.toLocaleString()}</p>
+                  <p className="text-white/50 text-xs">Current balance: ฿{balance.toLocaleString()}</p>
                 </div>
                 <input
                   ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
@@ -786,22 +786,22 @@ function CustomerWallet({
               <div className="space-y-4">
                 <div className="bg-white border-2 border-gray-100 rounded-3xl p-6 space-y-4">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Receipt Total</p>
-                  <p className="text-5xl font-display font-bold text-ink">Ã Â¸Â¿{scannedAmount?.toLocaleString()}</p>
+                  <p className="text-5xl font-display font-bold text-ink">฿{scannedAmount?.toLocaleString()}</p>
                   <div className="pt-4 border-t border-gray-100 space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Current balance</span>
-                      <span className="font-bold">Ã Â¸Â¿{balance.toLocaleString()}</span>
+                      <span className="font-bold">฿{balance.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">After payment</span>
                       <span className={`font-bold ${balance - (scannedAmount ?? 0) < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                        Ã Â¸Â¿{(balance - (scannedAmount ?? 0)).toLocaleString()}
+                        ฿{(balance - (scannedAmount ?? 0)).toLocaleString()}
                       </span>
                     </div>
                   </div>
                   {balance - (scannedAmount ?? 0) < 0 && (
                     <div className="bg-red-50 rounded-2xl p-3 text-red-600 text-sm font-bold text-center">
-                      Ã¢ÂÂ Ã¯Â¸Â Insufficient balance
+                      ⚠️ Insufficient balance
                     </div>
                   )}
                 </div>
@@ -810,7 +810,7 @@ function CustomerWallet({
                   disabled={processingPay || balance - (scannedAmount ?? 0) < 0}
                   className="w-full py-5 bg-terracotta text-white rounded-2xl font-bold text-xl flex items-center justify-center gap-3 shadow-lg disabled:opacity-50"
                 >
-                  {processingPay ? <><Loader2 size={24} className="animate-spin" /> ProcessingÃ¢ÂÂ¦</> : <><Check size={24} /> Confirm Payment</>}
+                  {processingPay ? <><Loader2 size={24} className="animate-spin" /> Processing…</> : <><Check size={24} /> Confirm Payment</>}
                 </button>
                 <button
                   onClick={() => { setShowConfirm(false); setScannedAmount(null); setScannedFile(null); }}
@@ -823,13 +823,13 @@ function CustomerWallet({
           </div>
         )}
 
-        {/* Ã¢ÂÂÃ¢ÂÂ Top Up Ã¢ÂÂÃ¢ÂÂ */}
+        {/* ── Top Up ── */}
         {tab === 'topup' && (
           <div className="space-y-4">
             <div className="bg-ink rounded-3xl p-6 text-white space-y-4">
               <p className="text-white/60 text-sm">Enter the cash amount received from the customer</p>
               <div>
-                <label className="block text-[10px] uppercase font-bold text-white/40 tracking-widest mb-2">Cash Amount (Ã Â¸Â¿)</label>
+                <label className="block text-[10px] uppercase font-bold text-white/40 tracking-widest mb-2">Cash Amount (฿)</label>
                 <input
                   type="number" inputMode="decimal" value={topUpAmount}
                   onChange={e => setTopUpAmount(e.target.value)}
@@ -841,15 +841,15 @@ function CustomerWallet({
                 <div className="bg-white/5 rounded-2xl p-4 space-y-2 border border-white/10">
                   <div className="flex justify-between text-sm">
                     <span className="text-white/60">Cash received</span>
-                    <span className="font-mono">Ã Â¸Â¿{cash.toLocaleString()}</span>
+                    <span className="font-mono">฿{cash.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm text-olive">
                     <span>10% bonus</span>
-                    <span className="font-mono">+Ã Â¸Â¿{bonus.toLocaleString()}</span>
+                    <span className="font-mono">+฿{bonus.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between pt-2 border-t border-white/10">
                     <span className="font-bold">Added to wallet</span>
-                    <span className="font-bold text-olive text-lg">Ã Â¸Â¿{(cash + bonus).toLocaleString()}</span>
+                    <span className="font-bold text-olive text-lg">฿{(cash + bonus).toLocaleString()}</span>
                   </div>
                 </div>
               )}
@@ -860,14 +860,14 @@ function CustomerWallet({
               className="w-full py-5 bg-ink text-white rounded-2xl font-bold text-xl flex items-center justify-center gap-3 shadow-lg disabled:opacity-40"
             >
               {processingTopUp
-                ? <><Loader2 size={24} className="animate-spin" /> ProcessingÃ¢ÂÂ¦</>
+                ? <><Loader2 size={24} className="animate-spin" /> Processing…</>
                 : <><ArrowUpCircle size={24} /> Add to Wallet</>
               }
             </button>
           </div>
         )}
 
-        {/* Ã¢ÂÂÃ¢ÂÂ History Ã¢ÂÂÃ¢ÂÂ */}
+        {/* ── History ── */}
         {tab === 'history' && (
           <div className="space-y-3">
             {transactions.length === 0 ? (
@@ -891,7 +891,7 @@ function CustomerWallet({
                 </div>
                 <div className="text-right shrink-0">
                   <p className={`font-bold ${tx.type === 'TOP_UP' ? 'text-green-600' : 'text-terracotta'}`}>
-                    {tx.type === 'TOP_UP' ? '+' : '-'}Ã Â¸Â¿{(tx.amount + (tx.bonus || 0)).toLocaleString()}
+                    {tx.type === 'TOP_UP' ? '+' : '-'}฿{(tx.amount + (tx.bonus || 0)).toLocaleString()}
                   </p>
                   {tx.receiptUrl && (
                     <a href={tx.receiptUrl} target="_blank" rel="noopener noreferrer"
@@ -907,7 +907,7 @@ function CustomerWallet({
   );
 }
 
-// Ã¢ÂÂÃ¢ÂÂ Loyalty tab Ã¢ÂÂ search + member list Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+// ── Loyalty tab — search + member list ────────────────────────────────────────
 function LoyaltyTab({ user }: { user: any }) {
   const [query_, setQuery_] = useState('');
   const [members, setMembers] = useState<CRMCustomer[]>([]);
@@ -962,7 +962,7 @@ function LoyaltyTab({ user }: { user: any }) {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text" value={query_} onChange={e => setQuery_(e.target.value)}
-            placeholder="Search by name or mobileÃ¢ÂÂ¦"
+            placeholder="Search by name or mobile…"
             className="w-full pl-12 pr-4 py-3.5 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-terracotta text-base"
           />
         </div>
@@ -1002,7 +1002,7 @@ function LoyaltyTab({ user }: { user: any }) {
                   <p className="text-xs text-gray-400 font-mono">{member.mobile}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-lg font-display font-bold text-ink">Ã Â¸Â¿{(member.balance ?? 0).toLocaleString()}</p>
+                  <p className="text-lg font-display font-bold text-ink">฿{(member.balance ?? 0).toLocaleString()}</p>
                   <p className="text-[10px] text-gray-400 uppercase tracking-widest">Balance</p>
                 </div>
               </button>
@@ -1017,7 +1017,7 @@ function LoyaltyTab({ user }: { user: any }) {
         )}
       </div>
 
-      {/* FAB Ã¢ÂÂ register new */}
+      {/* FAB — register new */}
       <div className="p-4 bg-white border-t border-gray-100">
         <button
           onClick={() => setShowRegister(true)}
@@ -1030,7 +1030,7 @@ function LoyaltyTab({ user }: { user: any }) {
   );
 }
 
-// Ã¢ÂÂÃ¢ÂÂ CRM tab Ã¢ÂÂ full directory Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+// ── CRM tab — full directory ───────────────────────────────────────────────────
 function CRMTab({ user }: { user: any }) {
   const [query_, setQuery_] = useState('');
   const [customers, setCustomers] = useState<CRMCustomer[]>([]);
@@ -1055,7 +1055,7 @@ function CRMTab({ user }: { user: any }) {
     (c.email ?? '').toLowerCase().includes(query_.toLowerCase()))
   );
 
-  // Edit form state Ã¢ÂÂ must be declared before any conditional returns (Rules of Hooks)
+  // Edit form state — must be declared before any conditional returns (Rules of Hooks)
   const [editData, setEditData] = useState<Partial<CRMCustomer>>({});
   const [saving, setSaving] = useState(false);
 
@@ -1135,14 +1135,14 @@ function CRMTab({ user }: { user: any }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4 pb-32">
-          {/* Loyalty status Ã¢ÂÂ read only */}
+          {/* Loyalty status — read only */}
           {selected.loyaltyEnabled ? (
             <div className="bg-terracotta/5 border border-terracotta/20 rounded-2xl p-4 flex items-center justify-between">
               <div>
                 <p className="font-bold text-terracotta flex items-center gap-2 text-sm">
                   <Star size={14} fill="currentColor" /> Loyalty Member
                 </p>
-                <p className="text-xl font-display font-bold text-ink">Ã Â¸Â¿{(selected.balance ?? 0).toLocaleString()}</p>
+                <p className="text-xl font-display font-bold text-ink">฿{(selected.balance ?? 0).toLocaleString()}</p>
               </div>
               <Wallet size={32} className="text-terracotta/20" />
             </div>
@@ -1161,7 +1161,7 @@ function CRMTab({ user }: { user: any }) {
           <div>
             <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Mobile</label>
             <div className="flex items-center border border-gray-200 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-terracotta">
-              <span className="px-4 py-3.5 text-gray-500 font-mono text-sm bg-gray-50 border-r border-gray-200">Ã°ÂÂÂ¹Ã°ÂÂÂ­ +66</span>
+              <span className="px-4 py-3.5 text-gray-500 font-mono text-sm bg-gray-50 border-r border-gray-200">🇹🇭 +66</span>
               <input
                 type="tel" value={(editData.mobile ?? '').replace(/^\+66/, '')}
                 onChange={e => setEditData(d => ({ ...d, mobile: `+66${e.target.value.replace(/^0/, '')}` }))}
@@ -1206,7 +1206,7 @@ function CRMTab({ user }: { user: any }) {
               <MapPin size={12} /> Delivery Location
             </label>
             <p className="text-xs text-gray-400 mb-2">Tap the map or drag the pin to mark drop-off point.</p>
-            <React.Suspense fallback={<div style={{height:220,background:"#f3f4f6",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",color:"#9ca3af",fontSize:13}}>Loading mapÃ¢ÂÂ¦</div>}>
+            <React.Suspense fallback={<div style={{height:220,background:"#f3f4f6",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",color:"#9ca3af",fontSize:13}}>Loading map…</div>}>
                     <DeliveryMap
               lat={editData.deliveryLat}
               lng={editData.deliveryLng}
@@ -1252,7 +1252,7 @@ function CRMTab({ user }: { user: any }) {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text" value={query_} onChange={e => setQuery_(e.target.value)}
-            placeholder="Search customersÃ¢ÂÂ¦"
+            placeholder="Search customers…"
             className="w-full pl-12 pr-4 py-3.5 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-terracotta text-base"
           />
         </div>
@@ -1278,7 +1278,7 @@ function CRMTab({ user }: { user: any }) {
               <p className="text-xs text-gray-400">{c.mobile || c.email || 'No contact info'}</p>
             </div>
             {c.loyaltyEnabled && (
-              <span className="text-sm font-bold text-ink shrink-0">Ã Â¸Â¿{(c.balance ?? 0).toLocaleString()}</span>
+              <span className="text-sm font-bold text-ink shrink-0">฿{(c.balance ?? 0).toLocaleString()}</span>
             )}
           </button>
         ))}
@@ -1312,7 +1312,7 @@ function CRMTab({ user }: { user: any }) {
   );
 }
 
-// Ã¢ÂÂÃ¢ÂÂ Expenses Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+// ── Expenses ──────────────────────────────────────────────────────────────────
 const EXPENSE_CATEGORIES = [
   { id: 'food',      name: 'Food & Ingredients' },
   { id: 'drinks',    name: 'Drinks & Beverages' },
@@ -1340,7 +1340,7 @@ function TodaySummary({ open, onClose }: { open: boolean; onClose: () => void })
   }, [open]);
 
   const total = expenses.reduce((s, e) => s + (e.total || 0), 0);
-  const fmt = (n: number) => `Ã Â¸Â¿${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmt = (n: number) => `฿${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this expense?')) return;
@@ -1388,7 +1388,7 @@ function TodaySummary({ open, onClose }: { open: boolean; onClose: () => void })
                 <div className="flex-1 min-w-0">
                   <span className="text-xs font-semibold uppercase tracking-wide text-terracotta bg-terracotta/10 px-2 py-0.5 rounded-full">{e.category_name}</span>
                   <p className="font-semibold text-gray-900 mt-1 truncate">{e.supplier || 'No supplier'}</p>
-                  <p className="text-xs text-gray-400">by {e.logged_by} ÃÂ· {e.created_at ? new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''}</p>
+                  <p className="text-xs text-gray-400">by {e.logged_by} · {e.created_at ? new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''}</p>
                 </div>
                 <div className="flex items-center gap-2 ml-4 shrink-0">
                   <p className="font-bold text-gray-900 text-lg">{fmt(e.total || 0)}</p>
@@ -1412,7 +1412,7 @@ function TodaySummary({ open, onClose }: { open: boolean; onClose: () => void })
             <div className="bg-white w-full max-w-lg rounded-t-3xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
               <h3 className="font-bold text-lg">Edit Expense</h3>
               <div><label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</label><input value={editSupplier} onChange={e => setEditSupplier(e.target.value)} className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-terracotta" /></div>
-              <div><label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total (Ã Â¸Â¿)</label><input type="number" value={editTotal} onChange={e => setEditTotal(e.target.value)} className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-terracotta" /></div>
+              <div><label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total (฿)</label><input type="number" value={editTotal} onChange={e => setEditTotal(e.target.value)} className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-terracotta" /></div>
               <div><label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Notes</label><input value={editNotes} onChange={e => setEditNotes(e.target.value)} className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-terracotta" /></div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setEditingExpense(null)} className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm">Cancel</button>
@@ -1494,9 +1494,9 @@ function ExpenseTab({ user }: { user: any }) {
             }))
           );
         }
-        toast.success('Receipt scanned Ã¢ÂÂ');
-      } else { toast.error('Could not read receipt Ã¢ÂÂ fill in manually'); }
-    } catch { toast.error('Scan failed Ã¢ÂÂ fill in manually'); }
+        toast.success('Receipt scanned ✓');
+      } else { toast.error('Could not read receipt — fill in manually'); }
+    } catch { toast.error('Scan failed — fill in manually'); }
     finally { setScanning(false); }
   };
 
@@ -1547,7 +1547,7 @@ function ExpenseTab({ user }: { user: any }) {
           created_at: new Date().toISOString(),
         });
       }
-      await logActivity('Expense Logged', `Ã Â¸Â¿${parseFloat(formData.total).toLocaleString()} ÃÂ· ${formData.category_name} ÃÂ· ${formData.supplier || 'no supplier'} ÃÂ· ${formData.date}`, 'finance');
+      await logActivity('Expense Logged', `฿${parseFloat(formData.total).toLocaleString()} · ${formData.category_name} · ${formData.supplier || 'no supplier'} · ${formData.date}`, 'finance');
       setStep('done');
     } catch { toast.error('Failed to save'); setStep('review'); }
   };
@@ -1555,7 +1555,7 @@ function ExpenseTab({ user }: { user: any }) {
   if (step === 'done') return (
     <div className="flex flex-col items-center justify-center h-full p-6 text-center gap-6">
       <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center"><Check size={40} className="text-green-600" /></div>
-      <div><h2 className="text-2xl font-bold text-gray-900">Expense Saved!</h2><p className="text-gray-500 mt-1">Ã Â¸Â¿{parseFloat(formData.total || '0').toLocaleString()} logged.</p></div>
+      <div><h2 className="text-2xl font-bold text-gray-900">Expense Saved!</h2><p className="text-gray-500 mt-1">฿{parseFloat(formData.total || '0').toLocaleString()} logged.</p></div>
       <button onClick={reset} className="w-full max-w-xs py-4 bg-terracotta text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg"><Plus size={20} /> Log Another</button>
       <button onClick={() => setShowSummary(true)} className="w-full max-w-xs py-4 border-2 border-gray-200 text-gray-700 rounded-2xl font-bold text-lg flex items-center justify-center gap-2"><ClipboardList size={20} /> Today's Summary</button>
       <TodaySummary open={showSummary} onClose={() => setShowSummary(false)} />
@@ -1591,15 +1591,15 @@ function ExpenseTab({ user }: { user: any }) {
   return (
     <div className="flex flex-col h-full">
       <div className="bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between sticky top-0 z-10">
-        <button onClick={reset} className="text-terracotta font-semibold text-sm flex items-center gap-1 px-3 py-3 -ml-3 rounded-xl">Ã¢ÂÂ Back</button>
+        <button onClick={reset} className="text-terracotta font-semibold text-sm flex items-center gap-1 px-3 py-3 -ml-3 rounded-xl">← Back</button>
         <h2 className="font-bold text-gray-900">Review Expense</h2>
-        {scanning ? <span className="text-xs text-terracotta flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> ScanningÃ¢ÂÂ¦</span> : <div className="w-16" />}
+        {scanning ? <span className="text-xs text-terracotta flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Scanning…</span> : <div className="w-16" />}
       </div>
       <div className="flex-1 overflow-y-auto p-5 max-w-md mx-auto w-full pb-32 space-y-4">
         {imagePreview && (
           <div className="relative">
             <img src={imagePreview} alt="Receipt" onClick={() => setLightbox(true)} className="w-full max-h-44 object-contain rounded-2xl border border-gray-200 bg-gray-50 cursor-zoom-in" />
-            {scanning && <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center"><div className="bg-white rounded-2xl px-4 py-3 flex items-center gap-2 text-sm font-semibold text-terracotta"><Loader2 size={16} className="animate-spin" /> ReadingÃ¢ÂÂ¦</div></div>}
+            {scanning && <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center"><div className="bg-white rounded-2xl px-4 py-3 flex items-center gap-2 text-sm font-semibold text-terracotta"><Loader2 size={16} className="animate-spin" /> Reading…</div></div>}
           </div>
         )}
         {lightbox && imagePreview && (
@@ -1620,8 +1620,8 @@ function ExpenseTab({ user }: { user: any }) {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Total Amount (Ã Â¸Â¿)</label>
-          <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-400">Ã Â¸Â¿</span><input type="number" inputMode="decimal" value={formData.total} onChange={e => setFormData(p => ({ ...p, total: e.target.value }))} placeholder="0.00" className="w-full border-2 border-gray-200 rounded-2xl pl-10 pr-4 py-4 text-3xl font-bold focus:outline-none focus:ring-2 focus:ring-terracotta" /></div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Total Amount (฿)</label>
+          <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-400">฿</span><input type="number" inputMode="decimal" value={formData.total} onChange={e => setFormData(p => ({ ...p, total: e.target.value }))} placeholder="0.00" className="w-full border-2 border-gray-200 rounded-2xl pl-10 pr-4 py-4 text-3xl font-bold focus:outline-none focus:ring-2 focus:ring-terracotta" /></div>
         </div>
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -1637,7 +1637,7 @@ function ExpenseTab({ user }: { user: any }) {
                   <input autoFocus value={editBuf.description} onChange={e => setEditBuf(p => ({...p, description: e.target.value}))} placeholder="Description" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
                   <div className="flex gap-2">
                     <input value={editBuf.quantity ?? ''} onChange={e => setEditBuf(p => ({...p, quantity: e.target.value ? Number(e.target.value) : undefined}))} placeholder="Qty" type="number" inputMode="numeric" className="w-16 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
-                    <input value={editBuf.weight ?? ''} onChange={e => setEditBuf(p => ({...p, weight: e.target.value || undefined}))} placeholder="Unit (kgÃ¢ÂÂ¦)" className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                    <input value={editBuf.weight ?? ''} onChange={e => setEditBuf(p => ({...p, weight: e.target.value || undefined}))} placeholder="Unit (kg…)" className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
                     <input value={editBuf.amount || ''} onChange={e => setEditBuf(p => ({...p, amount: Number(e.target.value)}))} placeholder="Amount" type="number" inputMode="decimal" className="w-24 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
                   </div>
                   <div className="flex gap-2">
@@ -1664,14 +1664,14 @@ function ExpenseTab({ user }: { user: any }) {
       </div>
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-100 p-4 max-w-lg mx-auto">
         <button onClick={handleSave} disabled={step === 'saving' || scanning} className="w-full py-4 bg-terracotta text-white rounded-2xl font-bold text-lg disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg">
-          {step === 'saving' ? <><Loader2 size={20} className="animate-spin" /> SavingÃ¢ÂÂ¦</> : <><Check size={20} /> Save Expense</>}
+          {step === 'saving' ? <><Loader2 size={20} className="animate-spin" /> Saving…</> : <><Check size={20} /> Save Expense</>}
         </button>
       </div>
     </div>
   );
 }
 
-// Ã¢ÂÂÃ¢ÂÂ Main portal Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+// ── Main portal ────────────────────────────────────────────────────────────────
 export default function CashierPortal() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
