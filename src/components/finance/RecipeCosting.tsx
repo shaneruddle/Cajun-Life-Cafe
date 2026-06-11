@@ -61,6 +61,18 @@ function MarginBadge({ cost, price }: { cost: number; price: number }) {
   );
 }
 
+function FoodCostBadge({ cost, price }: { cost: number; price: number }) {
+  const pct = price > 0 ? (cost / price) * 100 : 0;
+  const cls = pct <= 30 ? 'bg-green-100 text-green-700'
+    : pct <= 40 ? 'bg-amber-100 text-amber-700'
+    : 'bg-red-100 text-red-700';
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${cls}`}>
+      {pct.toFixed(0)}% food cost
+    </span>
+  );
+}
+
 export default function RecipeCosting() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [starredPurchases, setStarredPurchases] = useState<IngredientPurchase[]>([]);
@@ -305,7 +317,7 @@ export default function RecipeCosting() {
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className="font-bold text-ink text-lg">{recipe.name}</span>
                       <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{recipe.category}</span>
-                      {cost !== null && <MarginBadge cost={cost} price={recipe.menu_price} />}
+                      {cost !== null && <div className="flex items-center gap-2"><MarginBadge cost={cost} price={recipe.menu_price} /><FoodCostBadge cost={cost} price={recipe.menu_price} /></div>}
                     </div>
                     <div className="flex items-center gap-4 mt-1">
                       <span className="text-sm text-gray-500">Menu price: <span className="font-semibold text-ink">฿{recipe.menu_price}</span></span>
