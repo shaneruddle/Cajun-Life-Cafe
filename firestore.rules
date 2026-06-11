@@ -70,6 +70,9 @@ service cloud.firestore {
     match /finance_ingredients/{id} {
       allow read, write: if isCashier();
     }
+    match /ingredient_purchases/{id} {
+      allow read, write: if isCashier();
+    }
 
     match /employees/{id} {
       allow read, write: if isAdmin();
