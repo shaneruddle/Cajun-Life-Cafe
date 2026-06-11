@@ -43,7 +43,8 @@ function calcIngredientCost(ri: RecipeIngredient): number | null {
   else if (unit === 'g' || unit === 'ml') totalBaseUnits = ri.quantity;
   else totalBaseUnits = ri.quantity; // piece / purchase — treat as count
 
-  const costPerBaseUnit = ri.unit_cost / totalBaseUnits;
+  // unit_cost is per purchase unit, so total spend = unit_cost * quantity
+  const costPerBaseUnit = (ri.unit_cost * ri.quantity) / totalBaseUnits;
   return costPerBaseUnit * ri.portion_g;
 }
 
