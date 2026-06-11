@@ -79,6 +79,7 @@ function PurchaseFields({ buf, set }: { buf: any; set: (field: string, value: an
 export default function Ingredients() {
   const [purchases, setPurchases] = useState<IngredientPurchase[]>([]);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBuf, setEditBuf] = useState<any>({});
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -154,6 +155,10 @@ export default function Ingredients() {
   };
 
   const totalSpent = filtered.reduce((s, p) => s + (p.total_cost || 0), 0);
+  const PAGE_SIZE = 50;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const handleAddFormChange = (field: string, value: string | number) => {
     setAddForm((prev: any) => ({ ...prev, [field]: value }));
@@ -224,7 +229,7 @@ export default function Ingredients() {
         <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
           placeholder="Search ingredient or supplier…"
           className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
         />
@@ -247,7 +252,7 @@ export default function Ingredients() {
             <span />
           </div>
           <div className="divide-y divide-gray-50">
-            {filtered.map(p =>
+            {pageItems.map(p =>
               editingId === p.id ? (
                 <div key={p.id} className="p-4 bg-amber-50 space-y-3">
                   <div className="grid grid-cols-2 gap-3">
@@ -300,6 +305,13 @@ export default function Ingredients() {
           </div>
           <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex justify-between text-sm">
             <span className="text-gray-500">{filtered.length} purchase{filtered.length !== 1 ? 's' : ''}{search ? ' matching' : ''}</span>
+          {totalPages > 1 && (
+            <span className="flex items-center gap-2">
+              <button onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage <= 1} className="px-2.5 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 disabled:opacity-40">Prev</button>
+              <span className="text-xs text-gray-500">Page {safePage} of {totalPages}</span>
+              <button onClick={() => setPage(Math.min(totalPages, safePage + 1))} disabled={safePage >= totalPages} className="px-2.5 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 disabled:opacity-40">Next</button>
+            </span>
+          )}
             <span className="font-bold text-ink">&#3647;{totalSpent.toLocaleString()}</span>
           </div>
         </div>
