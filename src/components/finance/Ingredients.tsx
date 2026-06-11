@@ -166,14 +166,32 @@ export default function Ingredients() {
               editingId === p.id ? (
                 <div key={p.id} className="p-4 bg-amber-50 space-y-2">
                   <div className="grid grid-cols-2 gap-2">
-                    <input value={editBuf.ingredient_name || ''} onChange={e => setEditBuf(b => ({...b, ingredient_name: e.target.value}))} placeholder="Ingredient" className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
-                    <input value={editBuf.supplier || ''} onChange={e => setEditBuf(b => ({...b, supplier: e.target.value}))} placeholder="Supplier" className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Ingredient</label>
+                      <input value={editBuf.ingredient_name || ''} onChange={e => setEditBuf(b => ({...b, ingredient_name: e.target.value}))} placeholder="Ingredient" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Supplier</label>
+                      <input value={editBuf.supplier || ''} onChange={e => setEditBuf(b => ({...b, supplier: e.target.value}))} placeholder="Supplier" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <input value={editBuf.quantity ?? ''} onChange={e => setEditBuf(b => ({...b, quantity: Number(e.target.value)}))} placeholder="Qty" type="number" className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
-                    <input value={editBuf.unit || ''} onChange={e => setEditBuf(b => ({...b, unit: e.target.value}))} placeholder="Unit (kg, g…)" className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
-                    <input value={editBuf.unit_cost ?? ''} onChange={e => setEditBuf(b => ({...b, unit_cost: Number(e.target.value)}))} placeholder="Unit cost" type="number" className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
-                    <input value={editBuf.date || ''} onChange={e => setEditBuf(b => ({...b, date: e.target.value}))} type="date" className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Qty</label>
+                      <input value={editBuf.quantity ?? ''} onChange={e => setEditBuf(b => ({...b, quantity: Number(e.target.value)}))} placeholder="Qty" type="number" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Unit (kg / g / L / ml / pcs)</label>
+                      <input value={editBuf.unit || ''} onChange={e => setEditBuf(b => ({...b, unit: e.target.value}))} placeholder="Unit (kg, g…)" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Cost per unit (฿)</label>
+                      <input value={editBuf.unit_cost ?? ''} onChange={e => setEditBuf(b => ({...b, unit_cost: Number(e.target.value)}))} placeholder="Unit cost" type="number" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Date</label>
+                      <input value={editBuf.date || ''} onChange={e => setEditBuf(b => ({...b, date: e.target.value}))} type="date" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={saveEdit} className="flex-1 py-2 bg-terracotta text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1"><Check size={13} /> Save</button>
