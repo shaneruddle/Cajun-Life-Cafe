@@ -313,6 +313,35 @@ Rules:
   });
 
 
+  // ── Notification Email Helper ─────────────────────────────────────
+  async function sendNotificationEmail(subject: string, html: string, replyTo?: string): Promise<boolean> {
+    const smtpHost = process.env.SMTP_HOST || "";
+    const smtpPort = parseInt(process.env.SMTP_PORT || "587");
+    const smtpUser = process.env.SMTP_USER || "";
+    const smtpPass = process.env.SMTP_PASS || "";
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      console.error("Notification email: SMTP not configured");
+      return false;
+    }
+    try {
+      const nodemailer = require("nodemailer");
+      const transporter = nodemailer.createTransport({ host: smtpHost, port: smtpPort, secure: false, auth: { user: smtpUser, pass: smtpPass } });
+      await transporter.sendMail({
+        from: `"Cajun Life Cafe" <${smtpUser}>`,
+        to: "info@cajunlifecafe.com",
+        subject,
+        html,
+        ...(replyTo ? { replyTo } : {})
+      });
+      return true;
+    } catch (err) {
+      console.error("Notification email error:", err);
+      return false;
+    }
+  }
+
+  const escapeHtml = (s: any) => String(s || "").replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c] as string));
+
   // ── Loyalty Signup (public, from /loyalty page) ───────────────────
   app.post("/api/loyalty-signup", async (req, res) => {
     const { firstName, lastName, email, mobile, website } = req.body || {};
@@ -383,11 +412,71 @@ Rules:
         timestamp: now,
       });
 
+      // Notify the cafe (non-blocking — signup succeeds even if email fails)
+      sendNotificationEmail(
+        `New Loyalty Signup — ${escapeHtml(firstName)} ${escapeHtml(lastName)}`,
+        `<div style="font-family:Arial,sans-serif;max-width:560px">
+          <h2 style="color:#A64B2A;margin-bottom:4px">New Loyalty Member Signup</h2>
+          <p style="color:#666;margin-top:0">Submitted via the website loyalty page.</p>
+          <table style="border-collapse:collapse">
+            <tr><td style="padding:6px 16px 6px 0;color:#999">Name</td><td style="padding:6px 0;font-weight:700">${escapeHtml(firstName)} ${escapeHtml(lastName)}</td></tr>
+            <tr><td style="padding:6px 16px 6px 0;color:#999">Mobile</td><td style="padding:6px 0">${escapeHtml(fullMobile)}</td></tr>
+            <tr><td style="padding:6px 16px 6px 0;color:#999">Email</td><td style="padding:6px 0">${escapeHtml(email) || "&ndash;"}</td></tr>
+          </table>
+          <p style="color:#666">Enroll them in the loyalty wallet from the CRM on their first visit.</p>
+        </div>`,
+        String(email || "").trim() || undefined
+      ).catch(() => {});
+
       return res.json({ success: true, activationUrl: `${ACTIVATION_BASE_URL}/activate/${token}` });
     } catch (err) {
       console.error("Loyalty signup error:", err);
       return res.status(500).json({ success: false, error: "Server error — please try again" });
     }
+  });
+
+  // ── Contact Form (public, from homepage) ──────────────────────────
+  app.post("/api/contact", async (req, res) => {
+    const { name, email, phone, message, website } = req.body || {};
+
+    // Honeypot — bots fill hidden fields
+    if (website) return res.json({ success: true });
+
+    if (!name?.trim() || !message?.trim()) {
+      return res.status(400).json({ success: false, error: "Please tell us your name and a message" });
+    }
+    if (!email?.trim() && !phone?.trim()) {
+      return res.status(400).json({ success: false, error: "Please give us an email or phone number so we can reply" });
+    }
+    if (String(message).length > 5000) {
+      return res.status(400).json({ success: false, error: "Message is too long" });
+    }
+
+    const html = `<div style="font-family:Arial,sans-serif;max-width:560px">
+      <h2 style="color:#A64B2A;margin-bottom:4px">Website Contact Message</h2>
+      <table style="border-collapse:collapse">
+        <tr><td style="padding:6px 16px 6px 0;color:#999">Name</td><td style="padding:6px 0;font-weight:700">${escapeHtml(name)}</td></tr>
+        <tr><td style="padding:6px 16px 6px 0;color:#999">Email</td><td style="padding:6px 0">${escapeHtml(email) || "&ndash;"}</td></tr>
+        <tr><td style="padding:6px 16px 6px 0;color:#999">Phone</td><td style="padding:6px 0">${escapeHtml(phone) || "&ndash;"}</td></tr>
+      </table>
+      <p style="white-space:pre-wrap;background:#f7f7f7;padding:16px;border-radius:8px;color:#333">${escapeHtml(message)}</p>
+    </div>`;
+
+    const sent = await sendNotificationEmail(`Website Contact — ${escapeHtml(name)}`, html, String(email || "").trim() || undefined);
+    if (!sent) {
+      return res.status(500).json({ success: false, error: "Could not send your message — please try again later" });
+    }
+
+    adminDb.collection("system_logs").add({
+      action: "Contact Message",
+      details: `Website contact from ${String(name).trim()} (${String(email || phone).trim()}): ${String(message).trim().slice(0, 200)}`,
+      category: "system",
+      userEmail: "contact-form",
+      userId: "contact-form",
+      timestamp: new Date().toISOString(),
+    }).catch(() => {});
+
+    return res.json({ success: true });
   });
 
   // ── LINE Push Message ─────────────────────────────────────────────
@@ -571,4 +660,3 @@ Rules:
 }
 
 startServer().catch(console.error);
-
