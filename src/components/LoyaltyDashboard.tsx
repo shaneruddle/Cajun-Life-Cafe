@@ -85,11 +85,15 @@ export default function LoyaltyDashboard() {
   useEffect(() => {
     const q = query(
       collection(db, 'crm_customers'),
-      where('loyaltyEnabled', '==', true),
-      orderBy('updatedAt', 'desc')
+      where('loyaltyEnabled', '==', true)
     );
     const unsub = onSnapshot(q, (snapshot) => {
-      const members = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as CRMCustomer[];
+      const members = (snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as CRMCustomer[])
+        .sort((a, b) => {
+          const aTime = a.updatedAt ?? a.createdAt ?? '';
+          const bTime = b.updatedAt ?? b.createdAt ?? '';
+          return bTime.localeCompare(aTime);
+        });
       setLoyaltyMembers(members);
       // Keep selected customer in sync with live data
       setCustomer(prev => {
