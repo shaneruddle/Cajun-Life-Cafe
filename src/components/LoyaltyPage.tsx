@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Loader2,
 } from "lucide-react";
+import { useT } from "../i18n";
 
 const TOP_UP_EXAMPLES = [
   { topUp: 500, bonus: 50 },
@@ -23,46 +24,7 @@ const TOP_UP_EXAMPLES = [
   { topUp: 2000, bonus: 200 },
 ];
 
-const STEPS = [
-  {
-    icon: UserPlus,
-    title: "1. Sign Up",
-    text: "Fill in the form below — it takes 30 seconds. No app to download, no card to carry.",
-  },
-  {
-    icon: Store,
-    title: "2. Top Up at the Till",
-    text: "On your next visit, top up your wallet with any amount and we instantly add a 10% bonus on top.",
-  },
-  {
-    icon: Utensils,
-    title: "3. Eat & Enjoy",
-    text: "Pay straight from your wallet balance. Get a LINE message with your new balance after every visit.",
-  },
-];
-
-const FAQS = [
-  {
-    q: "How does the 10% bonus work?",
-    a: "Every time you top up your wallet, we add 10% extra credit on the spot. Top up ฿1,000 and you get ฿1,100 to spend — on every single top-up, not just the first one.",
-  },
-  {
-    q: "Does my balance expire?",
-    a: "No. Your wallet balance never expires — use it whenever you like.",
-  },
-  {
-    q: "How do I check my balance?",
-    a: "Connect with us on LINE and you'll receive your updated balance automatically after every top-up and payment. You can also ask our staff at the till any time.",
-  },
-  {
-    q: "What can I spend it on?",
-    a: "Anything on the menu — food, drinks, custom meals. Your wallet works exactly like cash at Cajun Life Cafe.",
-  },
-  {
-    q: "Can I get a refund on my balance?",
-    a: "Wallet credit can't be exchanged back to cash, but it never expires, so there's no rush to use it.",
-  },
-];
+const STEP_ICONS = [UserPlus, Store, Utensils];
 
 const FaqItem = ({ q, a }: { q: string; a: string }) => {
   const [open, setOpen] = useState(false);
@@ -89,11 +51,12 @@ const SignupForm = () => {
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "existing" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [activationUrl, setActivationUrl] = useState("");
+  const t = useT();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.firstName.trim() || !form.lastName.trim() || !form.mobile.trim()) {
-      setErrorMsg("Please fill in your name and mobile number.");
+      setErrorMsg(t("loy.errFill"));
       return;
     }
     setErrorMsg("");
@@ -106,7 +69,7 @@ const SignupForm = () => {
       });
       const data = await resp.json();
       if (!resp.ok || !data.success) {
-        setErrorMsg(data.error || "Something went wrong. Please try again.");
+        setErrorMsg(data.error || t("contact.errGeneric"));
         setStatus("idle");
         return;
       }
@@ -117,7 +80,7 @@ const SignupForm = () => {
         setStatus("done");
       }
     } catch {
-      setErrorMsg("Could not connect. Please check your internet and try again.");
+      setErrorMsg(t("contact.errConnect"));
       setStatus("idle");
     }
   };
@@ -129,19 +92,17 @@ const SignupForm = () => {
           <CheckCircle2 size={32} className="text-green-600" />
         </div>
         <h3 className="text-2xl font-display font-bold text-ink mb-3">
-          {status === "existing" ? "You're already with us!" : `Welcome, ${form.firstName}!`}
+          {status === "existing" ? t("loy.existingTitle") : t("loy.welcome").replace("{name}", form.firstName)}
         </h3>
         <p className="text-gray-500 mb-8 max-w-md mx-auto">
-          {status === "existing"
-            ? "We found you in our system. Just visit the cafe and ask our staff about your loyalty wallet."
-            : "You're signed up. Connect on LINE to get balance updates, then visit us to make your first top-up and claim your 10% bonus."}
+          {status === "existing" ? t("loy.existingBody") : t("loy.doneBody")}
         </p>
         {status === "done" && activationUrl && (
           <a
             href={activationUrl}
             className="inline-flex items-center gap-2 bg-[#06C755] text-white rounded-full px-8 py-3 font-bold hover:opacity-90 transition-all"
           >
-            <MessageCircle size={20} /> Connect on LINE
+            <MessageCircle size={20} /> {t("loy.connectLine")}
           </a>
         )}
       </div>
@@ -152,7 +113,7 @@ const SignupForm = () => {
     <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-8 md:p-10 shadow-lg">
       <div className="grid md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label className="block text-sm font-bold text-ink mb-2">First Name *</label>
+          <label className="block text-sm font-bold text-ink mb-2">{t("loy.firstName")} *</label>
           <input
             type="text"
             value={form.firstName}
@@ -162,7 +123,7 @@ const SignupForm = () => {
           />
         </div>
         <div>
-          <label className="block text-sm font-bold text-ink mb-2">Last Name *</label>
+          <label className="block text-sm font-bold text-ink mb-2">{t("loy.lastName")} *</label>
           <input
             type="text"
             value={form.lastName}
@@ -173,7 +134,7 @@ const SignupForm = () => {
         </div>
       </div>
       <div className="mb-4">
-        <label className="block text-sm font-bold text-ink mb-2">Mobile Number *</label>
+        <label className="block text-sm font-bold text-ink mb-2">{t("loy.mobile")} *</label>
         <input
           type="tel"
           value={form.mobile}
@@ -183,7 +144,7 @@ const SignupForm = () => {
         />
       </div>
       <div className="mb-6">
-        <label className="block text-sm font-bold text-ink mb-2">Email <span className="font-normal text-gray-400">(optional)</span></label>
+        <label className="block text-sm font-bold text-ink mb-2">{t("contact.email")} <span className="font-normal text-gray-400">{t("loy.emailOpt")}</span></label>
         <input
           type="email"
           value={form.email}
@@ -210,20 +171,36 @@ const SignupForm = () => {
       >
         {status === "submitting" ? (
           <>
-            <Loader2 size={20} className="animate-spin" /> Signing you up…
+            <Loader2 size={20} className="animate-spin" /> {t("loy.signing")}
           </>
         ) : (
-          "Join the Loyalty Program"
+          t("loy.join")
         )}
       </button>
       <p className="text-xs text-gray-400 mt-4 text-center">
-        We only use your details for your loyalty wallet and balance updates. No spam, ever.
+        {t("loy.privacy")}
       </p>
     </form>
   );
 };
 
 export default function LoyaltyPage() {
+  const t = useT();
+
+  const steps = [
+    { icon: STEP_ICONS[0], title: t("loy.step1t"), text: t("loy.step1x") },
+    { icon: STEP_ICONS[1], title: t("loy.step2t"), text: t("loy.step2x") },
+    { icon: STEP_ICONS[2], title: t("loy.step3t"), text: t("loy.step3x") },
+  ];
+
+  const faqs = [
+    { q: t("loy.faq1q"), a: t("loy.faq1a") },
+    { q: t("loy.faq2q"), a: t("loy.faq2a") },
+    { q: t("loy.faq3q"), a: t("loy.faq3a") },
+    { q: t("loy.faq4q"), a: t("loy.faq4a") },
+    { q: t("loy.faq5q"), a: t("loy.faq5a") },
+  ];
+
   return (
     <div className="min-h-screen bg-cream">
       {/* Hero */}
@@ -233,16 +210,16 @@ export default function LoyaltyPage() {
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
             <div className="inline-flex items-center gap-2 bg-terracotta/15 text-terracotta px-5 py-2 rounded-full font-bold text-sm uppercase tracking-wider mb-8">
-              <Wallet size={16} /> Loyalty Wallet
+              <Wallet size={16} /> {t("loy.badge")}
             </div>
             <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-6">
-              Get 10% Extra,<br />Every Time You Top Up
+              {t("loy.heroTitle1")}<br />{t("loy.heroTitle2")}
             </h1>
             <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-10">
-              Join the Cajun Life Cafe loyalty program. Top up your wallet at the till and we add 10% bonus credit on the spot — top up ฿1,000, spend ฿1,100.
+              {t("loy.heroSub")}
             </p>
             <a href="#join" className="terracotta-button px-10 py-4 text-lg inline-block">
-              Join Free Today
+              {t("loy.joinFree")}
             </a>
           </motion.div>
         </div>
@@ -252,8 +229,8 @@ export default function LoyaltyPage() {
       <section className="py-20 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-ink mb-4">Your Money Goes Further</h2>
-            <p className="text-gray-500 max-w-xl mx-auto">A 10% bonus on every top-up — not just the first one.</p>
+            <h2 className="text-3xl md:text-4xl font-display font-bold text-ink mb-4">{t("loy.moneyTitle")}</h2>
+            <p className="text-gray-500 max-w-xl mx-auto">{t("loy.moneySub")}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {TOP_UP_EXAMPLES.map(({ topUp, bonus }, i) => (
@@ -268,12 +245,12 @@ export default function LoyaltyPage() {
                 <div className="w-14 h-14 bg-terracotta/10 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Gift size={26} className="text-terracotta" />
                 </div>
-                <p className="text-gray-400 font-medium mb-1">Top up</p>
+                <p className="text-gray-400 font-medium mb-1">{t("loy.topUp")}</p>
                 <p className="text-3xl font-display font-bold text-ink mb-4">฿{topUp.toLocaleString()}</p>
                 <div className="bg-cream rounded-2xl py-4">
-                  <p className="text-sm text-gray-500 mb-1">You get to spend</p>
+                  <p className="text-sm text-gray-500 mb-1">{t("loy.youSpend")}</p>
                   <p className="text-2xl font-bold text-terracotta">฿{(topUp + bonus).toLocaleString()}</p>
-                  <p className="text-xs text-green-600 font-bold mt-1">+฿{bonus.toLocaleString()} free</p>
+                  <p className="text-xs text-green-600 font-bold mt-1">{t("loy.freeBonus").replace("{amt}", bonus.toLocaleString())}</p>
                 </div>
               </motion.div>
             ))}
@@ -285,11 +262,11 @@ export default function LoyaltyPage() {
       <section className="py-20 px-6 bg-white">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-ink mb-4">How It Works</h2>
-            <p className="text-gray-500">Three steps. No app, no card, no catch.</p>
+            <h2 className="text-3xl md:text-4xl font-display font-bold text-ink mb-4">{t("loy.howTitle")}</h2>
+            <p className="text-gray-500">{t("loy.howSub")}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-10">
-            {STEPS.map(({ icon: Icon, title, text }, i) => (
+            {steps.map(({ icon: Icon, title, text }, i) => (
               <motion.div
                 key={title}
                 initial={{ opacity: 0, y: 20 }}
@@ -314,9 +291,9 @@ export default function LoyaltyPage() {
         <div className="max-w-4xl mx-auto bg-[#06C755] rounded-3xl p-10 md:p-14 text-center text-white relative overflow-hidden">
           <div className="absolute -top-16 -right-16 w-64 h-64 bg-white/10 rounded-full" />
           <MessageCircle size={48} className="mx-auto mb-6" />
-          <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">Your Balance, Right in LINE</h2>
+          <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">{t("loy.lineTitle")}</h2>
           <p className="text-white/90 max-w-xl mx-auto mb-2 text-lg">
-            Connect your LINE account and get an instant message with your new balance after every top-up and every meal. No app to install — it all happens in LINE.
+            {t("loy.lineBody")}
           </p>
         </div>
       </section>
@@ -325,8 +302,8 @@ export default function LoyaltyPage() {
       <section id="join" className="py-20 px-6 bg-white">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-ink mb-4">Join in 30 Seconds</h2>
-            <p className="text-gray-500">Sign up now, top up on your next visit, and your 10% bonus is waiting.</p>
+            <h2 className="text-3xl md:text-4xl font-display font-bold text-ink mb-4">{t("loy.joinTitle")}</h2>
+            <p className="text-gray-500">{t("loy.joinSub")}</p>
           </div>
           <SignupForm />
         </div>
@@ -335,9 +312,9 @@ export default function LoyaltyPage() {
       {/* FAQ */}
       <section className="py-20 px-6">
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-display font-bold text-ink mb-10 text-center">Questions & Answers</h2>
+          <h2 className="text-3xl md:text-4xl font-display font-bold text-ink mb-10 text-center">{t("loy.faqTitle")}</h2>
           <div className="space-y-4">
-            {FAQS.map((f) => (
+            {faqs.map((f) => (
               <FaqItem key={f.q} {...f} />
             ))}
           </div>
