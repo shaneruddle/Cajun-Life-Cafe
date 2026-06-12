@@ -130,7 +130,6 @@ const Navbar = ({
                   <Receipt size={16} /> Staff Portal
                 </Link>
               )}
-              <Auth onUserChange={setUser} />
             </>
           ) : (
             <div className="flex items-center gap-4">
@@ -155,7 +154,6 @@ const Navbar = ({
                 ))}
                 <Link to="/loyalty" className="text-lg font-medium text-ink" onClick={() => setIsOpen(false)}>{t("nav.loyalty")}</Link>
                 <LanguageSwitcher language={language} setLanguage={setLanguage} />
-                <Auth onUserChange={setUser} />
                 {canAccessDashboard && (
                   <Link to="/dashboard" className="flex items-center gap-2 text-lg font-medium text-olive" onClick={() => setIsOpen(false)}>
                     <Settings size={18} /> Dashboard
@@ -580,7 +578,7 @@ const Contact = () => {
   );
 };
 
-const Footer = () => {
+const Footer = ({ setUser }: { setUser: (user: any) => void }) => {
   const t = useT();
   return (
     <footer className="bg-ink text-white py-16 px-6">
@@ -617,12 +615,15 @@ const Footer = () => {
       </div>
       <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-gray-800 text-center text-gray-500 text-sm">
         <p>&copy; {new Date().getFullYear()} {BUSINESS.name}. {t("footer.rights")}</p>
+        <div className="mt-6 flex justify-center">
+          <Auth onUserChange={setUser} />
+        </div>
       </div>
     </footer>
   );
 };
 
-const MainSite = ({ isAdmin }: { isAdmin: boolean }) => (
+const MainSite = ({ isAdmin, setUser }: { isAdmin: boolean; setUser: (user: any) => void }) => (
   <div className="min-h-screen">
     <Hero />
     <About />
@@ -630,7 +631,7 @@ const MainSite = ({ isAdmin }: { isAdmin: boolean }) => (
     <CustomMeals />
     <Location />
     <Contact />
-    <Footer />
+    <Footer setUser={setUser} />
   </div>
 );
 
@@ -678,7 +679,7 @@ function AppContent({ user, setUser }: any) {
       )}
       {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && <Navbar canAccessDashboard={isMarketing} canAccessStaffPortal={isCashier || isManager} setUser={setUser} />}
       <Routes>
-        <Route path="/" element={<MainSite isAdmin={isAdmin} />} />
+        <Route path="/" element={<MainSite isAdmin={isAdmin} setUser={setUser} />} />
         <Route path="/menu" element={<DigitalMenuDisplay />} />
         <Route path="/digital-menu" element={<DigitalMenuDisplay />} />
         <Route path="/dashboard" element={isAdmin || isMarketing || isStaff ? <DashboardLayout user={user} /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>}>
@@ -694,15 +695,12 @@ function AppContent({ user, setUser }: any) {
         </Route>
         <Route path="/import" element={isAdmin || isMarketing ? <BulkImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
         <Route path="/cashier" element={<CashierPortal />} />
-        <Route path="/loyalty" element={<><LoyaltyPage /><Footer /></>} />
+        <Route path="/loyalty" element={<><LoyaltyPage /><Footer setUser={setUser} /></>} />
         <Route path="/import-custom-meals" element={isAdmin || isMarketing ? <BulkCustomMealsImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
       <Route path="/activate/:token" element={<ActivatePage />} />
         <Route path="/activate/success" element={<ActivateSuccess />} />
         <Route path="/activate/error" element={<ActivateError />} />
       </Routes>
-      {!isDigitalMenu && !isDashboard && !isActivate && !user && (
-        <div className="fixed bottom-4 right-4 z-[60]"><Auth onUserChange={setUser} /></div>
-      )}
     </div>
   );
 }
