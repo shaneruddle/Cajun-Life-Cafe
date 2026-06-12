@@ -8,6 +8,7 @@ import { MenuItem, CustomMealItem, Category } from "../types";
 import { handleFirestoreError } from "../utils/firestore";
 import { normalizeImageUrl } from "../utils/images";
 import { FirebaseImage } from "./ui/FirebaseImage";
+import { useLanguage } from "../i18n";
 
 // Optimized Sub-components
 import MenuItemCard from "./menu/MenuItemCard";
@@ -21,8 +22,6 @@ const SimpleListMember = ({ item, getLocalizedName }: { item: MenuItem; getLocal
     <span className="font-black text-terracotta text-sm sm:text-base">฿{item.price?.replace('฿', '').trim()}</span>
   </div>
 );
-
-type Language = 'en' | 'zh' | 'ru' | 'th';
 
 interface SelectedIngredient {
   itemId: string;
@@ -45,7 +44,7 @@ const DigitalMenuDisplay = () => {
   const [loading, setLoading] = useState({ menu: true, meals: true });
   const [activeCategory, setActiveCategory] = useState<string>("");
   const [activeCustomType, setActiveCustomType] = useState<string>("All");
-  const [language, setLanguage] = useState<Language>('en');
+  const { language, setLanguage } = useLanguage();
   const [selectedIngredients, setSelectedIngredients] = useState<SelectedIngredient[]>([]);
   const [showSummary, setShowSummary] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -80,10 +79,10 @@ const DigitalMenuDisplay = () => {
     if (isPreview && authLoading) return;
 
     console.log("Fetching menu items, preview mode:", isPreview, "User:", user?.email);
-    
+
     // If in preview mode, we MUST be an admin. If not logged in, we might get permission denied.
     // However, we'll try the query anyway as Firestore will handle the state.
-    const q = isPreview 
+    const q = isPreview
       ? query(collection(db, 'menu'))
       : query(collection(db, 'menu'), where("published", "==", true));
 
@@ -93,10 +92,10 @@ const DigitalMenuDisplay = () => {
         id: doc.id,
         ...doc.data()
       })) as MenuItem[];
-      
+
       const sortedItems = menuItems.sort((a, b) => (a.order || 0) - (b.order || 0));
       setItems(sortedItems);
-      
+
       setLoading(prev => ({ ...prev, menu: false }));
     }, (err) => {
       console.error("Menu snapshot error:", err);
@@ -109,7 +108,7 @@ const DigitalMenuDisplay = () => {
   useEffect(() => {
     if (!initialCategorySet.current && !isLoading && (items.length > 0 || customMeals.length > 0)) {
       if (items.length > 0) {
-        const firstCat = categoryList.length > 0 
+        const firstCat = categoryList.length > 0
           ? categoryList.find(c => items.some(i => i.category === c.name))?.name || items[0].category
           : items[0].category;
         setActiveCategory(firstCat);
@@ -141,7 +140,7 @@ const DigitalMenuDisplay = () => {
   const categories = useMemo(() => {
     const itemCats = Array.from(new Set<string>(items.map(item => item.category)));
     let cats: string[] = [];
-    
+
     if (categoryList.length > 0) {
       const definedCats = categoryList.map(c => c.name);
       // Include defined categories first, then any other categories found in items
@@ -263,9 +262,9 @@ const DigitalMenuDisplay = () => {
           transition={{ repeat: Infinity, duration: 2 }}
           className="w-32 h-32"
         >
-          <FirebaseImage 
-            src={normalizeImageUrl("/logo.png")} 
-            alt="Loading..." 
+          <FirebaseImage
+            src={normalizeImageUrl("/logo.png")}
+            alt="Loading..."
             className="w-32 h-32 rounded-full object-cover border-4 border-terracotta shadow-xl"
           />
         </motion.div>
@@ -300,8 +299,8 @@ const DigitalMenuDisplay = () => {
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full font-bold text-xs sm:text-sm transition-all border-2 ${
-                  activeCategory === cat 
-                  ? "bg-terracotta border-terracotta text-white shadow-lg shadow-terracotta/20 scale-105" 
+                  activeCategory === cat
+                  ? "bg-terracotta border-terracotta text-white shadow-lg shadow-terracotta/20 scale-105"
                   : "bg-white border-gray-200 text-gray-600 hover:border-terracotta hover:text-terracotta active:scale-95"
                 }`}
               >
@@ -313,7 +312,7 @@ const DigitalMenuDisplay = () => {
 
         <div className="min-h-[60vh] scroll-mt-32">
           <AnimatePresence mode="wait">
-            <motion.div 
+            <motion.div
               key={activeCategory + language}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -321,7 +320,7 @@ const DigitalMenuDisplay = () => {
               transition={{ duration: 0.4, ease: "easeOut" }}
             >
               {activeCategory === "Build Your Own" ? (
-                <BuildYourOwn 
+                <BuildYourOwn
                   customMealTypes={customMealTypes}
                   activeCustomType={activeCustomType}
                   setActiveCustomType={setActiveCustomType}
@@ -333,13 +332,13 @@ const DigitalMenuDisplay = () => {
                 <div className={activeCategory === "More Add Ons" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "grid grid-cols-1 lg:grid-cols-2 gap-6"}>
                   {filteredItems.map((item, index) => (
                     activeCategory === "More Add Ons" ? (
-                      <SimpleListMember 
-                        key={item.id} 
-                        item={item} 
-                        getLocalizedName={getLocalizedName} 
+                      <SimpleListMember
+                        key={item.id}
+                        item={item}
+                        getLocalizedName={getLocalizedName}
                       />
                     ) : (
-                      <MenuItemCard 
+                      <MenuItemCard
                         key={item.id}
                         item={item}
                         language={language}
@@ -362,7 +361,7 @@ const DigitalMenuDisplay = () => {
         </div>
 
 
-        <MealSummary 
+        <MealSummary
           selectedIngredients={selectedIngredients}
           mealTotals={mealTotals}
           showSummary={showSummary}
