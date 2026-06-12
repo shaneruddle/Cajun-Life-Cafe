@@ -22,6 +22,7 @@ import {
   LogOut,
   Users,
   MessageCircle,
+  Send,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import {
@@ -105,7 +106,7 @@ const Navbar = ({
         <div className="hidden lg:flex space-x-8 items-center">
           {!isDashboard ? (
             <>
-              {["Menu", "About", "Location"].map((item) => (
+              {["Menu", "About", "Location", "Contact"].map((item) => (
                 <a key={item} href={`/#${item.toLowerCase()}`} className={`font-medium hover:text-terracotta transition-colors ${scrolled ? "text-ink" : "text-white"}`}>{item}</a>
               ))}
               <Link to="/loyalty" className={`font-medium hover:text-terracotta transition-colors ${scrolled ? "text-ink" : "text-white"}`}>Loyalty</Link>
@@ -139,7 +140,7 @@ const Navbar = ({
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="lg:hidden bg-white absolute top-full left-0 w-full shadow-xl p-6 flex flex-col space-y-4">
             {!isDashboard ? (
               <>
-                {["Menu", "About", "Location"].map((item) => (
+                {["Menu", "About", "Location", "Contact"].map((item) => (
                   <a key={item} href={`/#${item.toLowerCase()}`} className="text-lg font-medium text-ink" onClick={() => setIsOpen(false)}>{item}</a>
                 ))}
                 <Link to="/loyalty" className="text-lg font-medium text-ink" onClick={() => setIsOpen(false)}>Loyalty</Link>
@@ -439,6 +440,127 @@ const Location = () => (
   </section>
 );
 
+const Contact = () => {
+  const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
+  const [honeypot, setHoneypot] = useState("");
+  const [status, setStatus] = useState<"idle" | "submitting" | "done">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.message.trim()) {
+      setErrorMsg("Please tell us your name and a message.");
+      return;
+    }
+    if (!form.email.trim() && !form.phone.trim()) {
+      setErrorMsg("Please give us an email or phone number so we can reply.");
+      return;
+    }
+    setErrorMsg("");
+    setStatus("submitting");
+    try {
+      const resp = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, website: honeypot }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.success) {
+        setErrorMsg(data.error || "Something went wrong. Please try again.");
+        setStatus("idle");
+        return;
+      }
+      setStatus("done");
+    } catch {
+      setErrorMsg("Could not connect. Please check your internet and try again.");
+      setStatus("idle");
+    }
+  };
+
+  return (
+    <section id="contact" className="py-24 px-6 bg-cream">
+      <div className="max-w-2xl mx-auto">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl md:text-5xl font-display font-bold mb-4">Get in Touch</h2>
+          <p className="text-lg text-gray-600 italic">Questions, bookings, or special requests — drop us a line and we'll get back to you.</p>
+        </div>
+        {status === "done" ? (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-10 shadow-lg text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Send size={28} className="text-green-600" />
+            </div>
+            <h3 className="text-2xl font-display font-bold text-ink mb-3">Message Sent!</h3>
+            <p className="text-gray-500">Thanks, {form.name.split(" ")[0]} — we'll get back to you as soon as we can.</p>
+          </motion.div>
+        ) : (
+          <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-8 md:p-10 shadow-lg">
+            <div className="grid md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-bold text-ink mb-2">Name *</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all"
+                  placeholder="Your name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-ink mb-2">Phone</label>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all"
+                  placeholder="086 123 4567"
+                />
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-bold text-ink mb-2">Email</label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all"
+                placeholder="you@example.com"
+              />
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-ink mb-2">Message *</label>
+              <textarea
+                value={form.message}
+                onChange={(e) => setForm({ ...form, message: e.target.value })}
+                rows={5}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all resize-y"
+                placeholder="How can we help?"
+              />
+            </div>
+            {/* Honeypot — hidden from real users */}
+            <input
+              type="text"
+              value={honeypot}
+              onChange={(e) => setHoneypot(e.target.value)}
+              className="hidden"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+            />
+            {errorMsg && <p className="text-red-600 text-sm mb-4">{errorMsg}</p>}
+            <button
+              type="submit"
+              disabled={status === "submitting"}
+              className="terracotta-button w-full text-lg font-bold flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {status === "submitting" ? "Sending…" : <><Send size={18} /> Send Message</>}
+            </button>
+          </form>
+        )}
+      </div>
+    </section>
+  );
+};
+
 const Footer = () => (
   <footer className="bg-ink text-white py-16 px-6">
     <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-12">
@@ -467,6 +589,7 @@ const Footer = () => (
           <li><a href="#about" className="hover:text-white transition-colors">Our Story</a></li>
           <li><Link to="/loyalty" className="hover:text-white transition-colors">Loyalty Program</Link></li>
           <li><a href="#location" className="hover:text-white transition-colors">Location</a></li>
+          <li><a href="#contact" className="hover:text-white transition-colors">Contact</a></li>
           <li><a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">LINE: @cajunlifecafe</a></li>
         </ul>
       </div>
@@ -484,6 +607,7 @@ const MainSite = ({ isAdmin }: { isAdmin: boolean }) => (
     <Menu />
     <CustomMeals />
     <Location />
+    <Contact />
     <Footer />
   </div>
 );
