@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth';
 import {
   collection, addDoc, query, where, orderBy, onSnapshot,
-  doc, getDoc, setDoc, updateDoc, deleteDoc, limit, Timestamp
+  doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, limit, Timestamp
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '../firebase';
@@ -139,6 +139,22 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
     if (suPassword !== suConfirm) { toast.error('Passwords do not match'); return; }
     setSuLoading(true);
     try {
+      // Block re-registration: if a Firestore doc already exists for this email,
+      // they have an existing account — direct them to forgot-password instead.
+      const _emailCheck = await getDocs(query(collection(db, 'users'), where('email', '==', suEmail.trim())));
+      if (_emailCheck.empty) {
+        // Also try lowercase in case stored with different casing
+        const _emailCheckLower = await getDocs(query(collection(db, 'users'), where('email', '==', suEmail.trim().toLowerCase())));
+        if (!_emailCheckLower.empty) {
+          toast.error('An account already exists with this email. Use \u201cForgot password?\u201d to regain access.');
+          setSuLoading(false);
+          return;
+        }
+      } else {
+        toast.error('An account already exists with this email. Use \u201cForgot password?\u201d to regain access.');
+        setSuLoading(false);
+        return;
+      }
       const cred = await createUserWithEmailAndPassword(auth, suEmail.trim(), suPassword);
       // Don't await anything else — just mark done and sign out in background
       setSuDone(true);
