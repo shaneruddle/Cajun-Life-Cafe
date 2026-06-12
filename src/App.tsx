@@ -57,6 +57,7 @@ import FinanceDashboard from "./components/finance/FinanceDashboard";
 import CashierPortal from "./components/CashierPortal";
 import { Toaster } from "sonner";
 import ActivatePage from "./components/ActivatePage";
+import LoyaltyPage from "./components/LoyaltyPage";
 import ActivateSuccess from "./components/ActivateSuccess";
 import ActivateError from "./components/ActivateError";
 
@@ -105,8 +106,9 @@ const Navbar = ({
           {!isDashboard ? (
             <>
               {["Menu", "About", "Location"].map((item) => (
-                <a key={item} href={`#${item.toLowerCase()}`} className={`font-medium hover:text-terracotta transition-colors ${scrolled ? "text-ink" : "text-white"}`}>{item}</a>
+                <a key={item} href={`/#${item.toLowerCase()}`} className={`font-medium hover:text-terracotta transition-colors ${scrolled ? "text-ink" : "text-white"}`}>{item}</a>
               ))}
+              <Link to="/loyalty" className={`font-medium hover:text-terracotta transition-colors ${scrolled ? "text-ink" : "text-white"}`}>Loyalty</Link>
               {canAccessDashboard && (
                 <Link to="/dashboard" className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all ${scrolled ? "bg-cream text-olive hover:bg-olive hover:text-white" : "bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"}`}>
                   <Settings size={16} /> Dashboard
@@ -138,8 +140,9 @@ const Navbar = ({
             {!isDashboard ? (
               <>
                 {["Menu", "About", "Location"].map((item) => (
-                  <a key={item} href={`#${item.toLowerCase()}`} className="text-lg font-medium text-ink" onClick={() => setIsOpen(false)}>{item}</a>
+                  <a key={item} href={`/#${item.toLowerCase()}`} className="text-lg font-medium text-ink" onClick={() => setIsOpen(false)}>{item}</a>
                 ))}
+                <Link to="/loyalty" className="text-lg font-medium text-ink" onClick={() => setIsOpen(false)}>Loyalty</Link>
                 <Auth onUserChange={setUser} />
                 {canAccessDashboard && (
                   <Link to="/dashboard" className="flex items-center gap-2 text-lg font-medium text-olive" onClick={() => setIsOpen(false)}>
@@ -462,6 +465,7 @@ const Footer = () => (
           <li><a href="#menu" className="hover:text-white transition-colors">Menu</a></li>
           <li><Link to="/menu" className="hover:text-white transition-colors">Digital Menu</Link></li>
           <li><a href="#about" className="hover:text-white transition-colors">Our Story</a></li>
+          <li><Link to="/loyalty" className="hover:text-white transition-colors">Loyalty Program</Link></li>
           <li><a href="#location" className="hover:text-white transition-colors">Location</a></li>
           <li><a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">LINE: @cajunlifecafe</a></li>
         </ul>
@@ -542,6 +546,7 @@ function AppContent({ user, setUser }: any) {
         </Route>
         <Route path="/import" element={isAdmin || isMarketing ? <BulkImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
         <Route path="/cashier" element={<CashierPortal />} />
+        <Route path="/loyalty" element={<><LoyaltyPage /><Footer /></>} />
         <Route path="/import-custom-meals" element={isAdmin || isMarketing ? <BulkCustomMealsImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
       <Route path="/activate/:token" element={<ActivatePage />} />
         <Route path="/activate/success" element={<ActivateSuccess />} />
