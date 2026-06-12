@@ -312,6 +312,84 @@ Rules:
     }
   });
 
+
+  // ── Loyalty Signup (public, from /loyalty page) ───────────────────
+  app.post("/api/loyalty-signup", async (req, res) => {
+    const { firstName, lastName, email, mobile, website } = req.body || {};
+
+    // Honeypot — bots fill hidden fields
+    if (website) return res.json({ success: true });
+
+    if (!firstName?.trim() || !lastName?.trim() || !mobile?.trim()) {
+      return res.status(400).json({ success: false, error: "Name and mobile number are required" });
+    }
+
+    // Normalise mobile to +66 format (matches CRM convention)
+    const digits = String(mobile).replace(/[\s\-()]/g, "");
+    let fullMobile = digits;
+    if (digits.startsWith("0")) fullMobile = `+66${digits.slice(1)}`;
+    else if (!digits.startsWith("+")) fullMobile = `+66${digits}`;
+    if (!/^\+\d{8,15}$/.test(fullMobile)) {
+      return res.status(400).json({ success: false, error: "Please enter a valid mobile number" });
+    }
+
+    try {
+      // Dedupe by mobile
+      const existing = await adminDb.collection("crm_customers")
+        .where("mobile", "==", fullMobile)
+        .limit(1)
+        .get();
+      if (!existing.empty) {
+        return res.json({ success: true, existing: true });
+      }
+
+      const now = new Date().toISOString();
+      const docRef = await adminDb.collection("crm_customers").add({
+        firstName: String(firstName).trim(),
+        lastName: String(lastName).trim(),
+        email: String(email || "").trim(),
+        mobile: fullMobile,
+        notes: "Signed up via loyalty page",
+        status: "active",
+        lineUserId: "",
+        address: "",
+        deliveryLat: null,
+        deliveryLng: null,
+        deliveryNotes: "",
+        totalSpend: 0,
+        uid: "loyalty-signup",
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      // Activation token so the new member can link LINE immediately
+      const token = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+      await adminDb.collection("activation_tokens").add({
+        token,
+        crmCustomerId: docRef.id,
+        firstName: String(firstName).trim(),
+        lastName: String(lastName).trim(),
+        mobile: fullMobile,
+        used: false,
+        createdAt: now,
+      });
+
+      await adminDb.collection("system_logs").add({
+        action: "Loyalty Signup",
+        details: `Self-signup via loyalty page: ${String(firstName).trim()} ${String(lastName).trim()} (${fullMobile})`,
+        category: "loyalty",
+        userEmail: "loyalty-page",
+        userId: "loyalty-signup",
+        timestamp: now,
+      });
+
+      return res.json({ success: true, activationUrl: `${ACTIVATION_BASE_URL}/activate/${token}` });
+    } catch (err) {
+      console.error("Loyalty signup error:", err);
+      return res.status(500).json({ success: false, error: "Server error — please try again" });
+    }
+  });
+
   // ── LINE Push Message ─────────────────────────────────────────────
   // Sends an outbound push message to a customer's LINE account
   app.post("/api/line-push", async (req, res) => {
@@ -493,5 +571,4 @@ Rules:
 }
 
 startServer().catch(console.error);
-
 
