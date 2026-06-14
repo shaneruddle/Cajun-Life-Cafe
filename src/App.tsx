@@ -64,6 +64,7 @@ import ActivateError from "./components/ActivateError";
 import InfluencerPage from "./components/InfluencerPage";
 import CareersPage from "./components/CareersPage";
 import CustomMealsPage from "./components/CustomMealsPage";
+import MealPrepPage from "./components/MealPrepPage";
 
 const BUSINESS = {
   name: "Cajun Life Cafe",
@@ -518,6 +519,7 @@ const Footer = () => (
           <li><a href="#about" className="hover:text-white transition-colors">Our Story</a></li>
           <li><Link to="/loyalty" className="hover:text-white transition-colors">Loyalty Program</Link></li>
           <li><Link to="/custom-meals" className="hover:text-white transition-colors">Custom Meals</Link></li>
+          <li><Link to="/meal-prep" className="hover:text-white transition-colors">Meal Prep</Link></li>
           <li><Link to="/careers" className="hover:text-white transition-colors">Careers</Link></li>
           <li><a href="#location" className="hover:text-white transition-colors">Location</a></li>
           <li><a href="#contact" className="hover:text-white transition-colors">Contact</a></li>
@@ -605,6 +607,7 @@ function AppContent({ user, setUser }: any) {
         <Route path="/influencers" element={<><InfluencerPage /><Footer /></>} />
         <Route path="/careers" element={<><CareersPage /><Footer /></>} />
         <Route path="/custom-meals" element={<><CustomMealsPage /><Footer /></>} />
+        <Route path="/meal-prep" element={<><MealPrepPage /><Footer /></>} />
         <Route path="/import-custom-meals" element={isAdmin || isMarketing ? <BulkCustomMealsImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
         <Route path="/activate/:token" element={<ActivatePage />} />
         <Route path="/activate/success" element={<ActivateSuccess />} />
