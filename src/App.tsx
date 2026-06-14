@@ -61,8 +61,6 @@ import ActivatePage from "./components/ActivatePage";
 import LoyaltyPage from "./components/LoyaltyPage";
 import ActivateSuccess from "./components/ActivateSuccess";
 import ActivateError from "./components/ActivateError";
-import LanguageSwitcher from "./components/menu/LanguageSwitcher";
-import { LanguageProvider, useLanguage, useT, Language } from "./i18n";
 
 const BUSINESS = {
   name: "Cajun Life Cafe",
@@ -76,6 +74,8 @@ const BUSINESS = {
   mapsEmbed: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3888.9527165100435!2d100.85711997507538!3d12.91076058739904!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3102975c05c028d1%3A0xa178d3cf54569695!2sCajun%20Life%20Cafe!5e0!3m2!1sen!2sth!4v1780393736349!5m2!1sen!2sth",
 };
 
+type Language = "en" | "zh" | "ru" | "th";
+
 const Navbar = ({
   canAccessDashboard,
   canAccessStaffPortal = false,
@@ -88,19 +88,10 @@ const Navbar = ({
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
-  const { language, setLanguage } = useLanguage();
-  const t = useT();
   const isDashboard =
     location.pathname.startsWith("/dashboard") ||
     location.pathname === "/import" ||
     location.pathname === "/import-custom-meals";
-
-  const navItems = [
-    { id: "menu", label: t("nav.menu") },
-    { id: "about", label: t("nav.about") },
-    { id: "location", label: t("nav.location") },
-    { id: "contact", label: t("nav.contact") },
-  ];
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -115,11 +106,10 @@ const Navbar = ({
         <div className="hidden lg:flex space-x-8 items-center">
           {!isDashboard ? (
             <>
-              {navItems.map((item) => (
-                <a key={item.id} href={`/#${item.id}`} className={`font-medium hover:text-terracotta transition-colors ${scrolled ? "text-ink" : "text-white"}`}>{item.label}</a>
+              {["Menu", "About", "Location", "Contact"].map((item) => (
+                <a key={item} href={`/#${item.toLowerCase()}`} className={`font-medium hover:text-terracotta transition-colors ${scrolled ? "text-ink" : "text-white"}`}>{item}</a>
               ))}
-              <Link to="/loyalty" className={`font-medium hover:text-terracotta transition-colors ${scrolled ? "text-ink" : "text-white"}`}>{t("nav.loyalty")}</Link>
-              <LanguageSwitcher language={language} setLanguage={setLanguage} />
+              <Link to="/loyalty" className={`font-medium hover:text-terracotta transition-colors ${scrolled ? "text-ink" : "text-white"}`}>Loyalty</Link>
               {canAccessDashboard && (
                 <Link to="/dashboard" className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all ${scrolled ? "bg-cream text-olive hover:bg-olive hover:text-white" : "bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"}`}>
                   <Settings size={16} /> Dashboard
@@ -130,6 +120,7 @@ const Navbar = ({
                   <Receipt size={16} /> Staff Portal
                 </Link>
               )}
+              <Auth onUserChange={setUser} />
             </>
           ) : (
             <div className="flex items-center gap-4">
@@ -149,11 +140,11 @@ const Navbar = ({
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="lg:hidden bg-white absolute top-full left-0 w-full shadow-xl p-6 flex flex-col space-y-4">
             {!isDashboard ? (
               <>
-                {navItems.map((item) => (
-                  <a key={item.id} href={`/#${item.id}`} className="text-lg font-medium text-ink" onClick={() => setIsOpen(false)}>{item.label}</a>
+                {["Menu", "About", "Location", "Contact"].map((item) => (
+                  <a key={item} href={`/#${item.toLowerCase()}`} className="text-lg font-medium text-ink" onClick={() => setIsOpen(false)}>{item}</a>
                 ))}
-                <Link to="/loyalty" className="text-lg font-medium text-ink" onClick={() => setIsOpen(false)}>{t("nav.loyalty")}</Link>
-                <LanguageSwitcher language={language} setLanguage={setLanguage} />
+                <Link to="/loyalty" className="text-lg font-medium text-ink" onClick={() => setIsOpen(false)}>Loyalty</Link>
+                <Auth onUserChange={setUser} />
                 {canAccessDashboard && (
                   <Link to="/dashboard" className="flex items-center gap-2 text-lg font-medium text-olive" onClick={() => setIsOpen(false)}>
                     <Settings size={18} /> Dashboard
@@ -178,7 +169,6 @@ const Navbar = ({
 };
 
 const Hero = () => {
-  const t = useT();
   const heroImage = "gs://cajun-life-cafe.firebasestorage.app/assets/hero_image.webp";
   return (
     <section className="relative h-screen flex items-center justify-center overflow-hidden bg-cream">
@@ -188,10 +178,10 @@ const Hero = () => {
           <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center p-6 text-center">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.8 }} className="flex flex-col items-center">
               <h1 className="text-5xl md:text-8xl font-display font-bold text-white mb-6 drop-shadow-2xl">{BUSINESS.name}</h1>
-              <p className="text-xl md:text-2xl text-white/90 font-medium italic tracking-widest uppercase drop-shadow-lg">{t("hero.tagline")}</p>
+              <p className="text-xl md:text-2xl text-white/90 font-medium italic tracking-widest uppercase drop-shadow-lg">Authentic Louisiana & Thai Soul Food</p>
               <div className="mt-12 flex gap-6">
-                <a href="#menu" className="terracotta-button px-10 py-4 text-lg">{t("hero.viewMenu")}</a>
-                <a href="#location" className="bg-white text-ink hover:bg-cream px-10 py-4 rounded-full font-bold text-lg transition-all shadow-xl">{t("hero.visitUs")}</a>
+                <a href="#menu" className="terracotta-button px-10 py-4 text-lg">View Menu</a>
+                <a href="#location" className="bg-white text-ink hover:bg-cream px-10 py-4 rounded-full font-bold text-lg transition-all shadow-xl">Visit Us</a>
               </div>
             </motion.div>
           </div>
@@ -202,7 +192,6 @@ const Hero = () => {
 };
 
 const About = () => {
-  const t = useT();
   const images = {
     shrimp: "gs://cajun-life-cafe.firebasestorage.app/menu-items/shrimp-etouffee/direct_primary_1778068163771_Shrimp_Etouffee.webp",
     cornbread: "gs://cajun-life-cafe.firebasestorage.app/menu-items/cajun-spicy-cornbread/direct_primary_1778068202432_Cajun_Spicy_Cornbread.webp",
@@ -213,9 +202,9 @@ const About = () => {
       <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
         <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
           <h2 className="text-4xl md:text-5xl font-display font-bold mb-2 text-terracotta">Cajun Life Café</h2>
-          <h3 className="text-2xl font-serif italic text-olive mb-8">{t("about.subtitle")}</h3>
-          <p className="text-lg text-gray-600 mb-6 leading-relaxed">{t("about.p1")}</p>
-          <p className="text-lg text-gray-600 mb-8 leading-relaxed">{t("about.p2")}</p>
+          <h3 className="text-2xl font-serif italic text-olive mb-8">Where Healthy Tastes Good</h3>
+          <p className="text-lg text-gray-600 mb-6 leading-relaxed">Our healthy meals are cooked with fresh and clean ingredients that are infused with the flavors that embody the traditional taste of Cajun and Creole Cuisine that creates a rich bold taste.</p>
+          <p className="text-lg text-gray-600 mb-8 leading-relaxed">Cajun Food is a robust, rustic food found along the bayous of Louisiana, a combination of Southern cuisines. Cajun Food is not always spicy, BUT IT ALWAYS HAS SPICE. The Cajun "Holy Trinity" of onions, celery and bell pepper contribute to the flavor along with spices like salt, pepper and cayenne.</p>
         </motion.div>
 
         <div className="relative">
@@ -228,7 +217,7 @@ const About = () => {
             </motion.div>
           </div>
           <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-olive rounded-full flex items-center justify-center text-white text-center p-4 transform rotate-12 shadow-xl z-10">
-            <span className="font-serif italic text-sm">{t("about.badge")}</span>
+            <span className="font-serif italic text-sm">Authentic & Fresh</span>
           </div>
         </div>
       </div>
@@ -240,8 +229,7 @@ const Menu = () => {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [categoryList, setCategoryList] = useState<Category[]>([]);
   const [activeCategory, setActiveCategory] = useState("Smoothie Bowls");
-  const { language, setLanguage } = useLanguage();
-  const t = useT();
+  const [language, setLanguage] = useState<Language>("en");
 
   useEffect(() => {
     const q = query(collection(db, 'categories'), orderBy("order", "asc"));
@@ -307,8 +295,8 @@ const Menu = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-center mb-16 gap-8">
           <div className="text-center md:text-left">
-            <h2 className="text-4xl md:text-5xl font-display font-bold mb-4">{t("menu.title")}</h2>
-            <p className="text-lg text-gray-600 italic">{t("menu.subtitle")}</p>
+            <h2 className="text-4xl md:text-5xl font-display font-bold mb-4">Our Menu</h2>
+            <p className="text-lg text-gray-600 italic">A curated selection of Louisiana and Thai favorites, prepared with love and tradition.</p>
           </div>
           <div className="flex bg-white p-1 rounded-full shadow-sm border border-gray-100">
             {[{ code: "en", label: "EN" }, { code: "zh", label: "中文" }, { code: "ru", label: "RU" }, { code: "th", label: "TH" }].map((lang) => (
@@ -328,7 +316,7 @@ const Menu = () => {
         </motion.div>
         {filteredItems.length === 0 && (
           <div className="text-center py-24 bg-white rounded-[32px] border-2 border-dashed border-gray-100">
-            <p className="text-gray-400 italic">{t("menu.empty")}</p>
+            <p className="text-gray-400 italic">No items found in this category.</p>
           </div>
         )}
       </div>
@@ -339,7 +327,6 @@ const Menu = () => {
 const CustomMeals = () => {
   const [items, setItems] = useState<CustomMealItem[]>([]);
   const [activeType, setActiveType] = useState<string>("Protein");
-  const t = useT();
 
   useEffect(() => {
     const q = query(collection(db, 'custom_meals'), orderBy("order", "asc"));
@@ -358,8 +345,8 @@ const CustomMeals = () => {
     <section id="custom-meals" className="py-24 px-6 bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-display font-bold mb-4">{t("custom.title")}</h2>
-          <p className="text-lg text-gray-600 italic max-w-2xl mx-auto">{t("custom.subtitle")}</p>
+          <h2 className="text-4xl md:text-5xl font-display font-bold mb-4">Build Your Own Meal</h2>
+          <p className="text-lg text-gray-600 italic max-w-2xl mx-auto">Choose your favorite ingredients and build a meal that fits your macros perfectly.</p>
           <div className="h-1 w-24 bg-terracotta mx-auto mt-6 rounded-full" />
         </div>
         <div className="flex flex-wrap justify-center gap-3 mb-12">
@@ -406,71 +393,67 @@ const CustomMeals = () => {
   );
 };
 
-const Location = () => {
-  const t = useT();
-  return (
-    <section id="location" className="py-24 px-6 bg-white">
-      <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="rounded-[32px] overflow-hidden h-[500px] shadow-xl">
-          <iframe
-            width="100%"
-            height="100%"
-            style={{ border: 0 }}
-            loading="lazy"
-            allowFullScreen
-            referrerPolicy="no-referrer-when-downgrade"
-            src={BUSINESS.mapsEmbed}
-          />
-        </motion.div>
-        <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
-          <h2 className="text-4xl md:text-5xl font-display font-bold mb-8">{t("loc.title")}</h2>
-          <div className="space-y-8">
-            {[
-              { icon: <MapPin size={24} />, title: t("loc.address"), content: BUSINESS.address },
-              { icon: <Phone size={24} />, title: t("loc.phone"), content: BUSINESS.phone },
-              { icon: <Clock size={24} />, title: t("loc.hours"), content: t("loc.hoursValue") },
-            ].map(({ icon, title, content }) => (
-              <div key={title} className="flex items-start gap-4">
-                <div className="bg-cream p-3 rounded-full text-terracotta">{icon}</div>
-                <div>
-                  <h4 className="font-bold text-lg mb-1 text-ink">{title}</h4>
-                  <p className="text-gray-600 whitespace-pre-line">{content}</p>
-                </div>
+const Location = () => (
+  <section id="location" className="py-24 px-6 bg-white">
+    <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="rounded-[32px] overflow-hidden h-[500px] shadow-xl">
+        <iframe
+          width="100%"
+          height="100%"
+          style={{ border: 0 }}
+          loading="lazy"
+          allowFullScreen
+          referrerPolicy="no-referrer-when-downgrade"
+          src={BUSINESS.mapsEmbed}
+        />
+      </motion.div>
+      <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
+        <h2 className="text-4xl md:text-5xl font-display font-bold mb-8">Visit Us</h2>
+        <div className="space-y-8">
+          {[
+            { icon: <MapPin size={24} />, title: "Address", content: BUSINESS.address },
+            { icon: <Phone size={24} />, title: "Phone", content: BUSINESS.phone },
+            { icon: <Clock size={24} />, title: "Hours", content: BUSINESS.hours.join("\n") },
+          ].map(({ icon, title, content }) => (
+            <div key={title} className="flex items-start gap-4">
+              <div className="bg-cream p-3 rounded-full text-terracotta">{icon}</div>
+              <div>
+                <h4 className="font-bold text-lg mb-1 text-ink">{title}</h4>
+                <p className="text-gray-600 whitespace-pre-line">{content}</p>
               </div>
-            ))}
-          </div>
-          <div className="mt-12 flex gap-4">
-            <a href={BUSINESS.instagram} target="_blank" rel="noopener noreferrer" className="bg-cream p-4 rounded-full text-olive hover:bg-olive hover:text-white transition-all" title="Instagram">
-              <Instagram size={24} />
-            </a>
-            <a href={BUSINESS.facebook} target="_blank" rel="noopener noreferrer" className="bg-cream p-4 rounded-full text-olive hover:bg-olive hover:text-white transition-all" title="Facebook">
-              <Facebook size={24} />
-            </a>
-            <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="bg-cream p-4 rounded-full text-olive hover:bg-olive hover:text-white transition-all font-bold text-sm flex items-center justify-center w-14 h-14" title="LINE">
-              LINE
-            </a>
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  );
-};
+            </div>
+          ))}
+        </div>
+        <div className="mt-12 flex gap-4">
+          <a href={BUSINESS.instagram} target="_blank" rel="noopener noreferrer" className="bg-cream p-4 rounded-full text-olive hover:bg-olive hover:text-white transition-all" title="Instagram">
+            <Instagram size={24} />
+          </a>
+          <a href={BUSINESS.facebook} target="_blank" rel="noopener noreferrer" className="bg-cream p-4 rounded-full text-olive hover:bg-olive hover:text-white transition-all" title="Facebook">
+            <Facebook size={24} />
+          </a>
+          <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="bg-cream p-4 rounded-full text-olive hover:bg-olive hover:text-white transition-all font-bold text-sm flex items-center justify-center w-14 h-14" title="LINE">
+            LINE
+          </a>
+        </div>
+      </motion.div>
+    </div>
+  </section>
+);
 
 const Contact = () => {
   const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
   const [honeypot, setHoneypot] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "done">("idle");
   const [errorMsg, setErrorMsg] = useState("");
-  const t = useT();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.message.trim()) {
-      setErrorMsg(t("contact.errNameMsg"));
+      setErrorMsg("Please tell us your name and a message.");
       return;
     }
     if (!form.email.trim() && !form.phone.trim()) {
-      setErrorMsg(t("contact.errReach"));
+      setErrorMsg("Please give us an email or phone number so we can reply.");
       return;
     }
     setErrorMsg("");
@@ -483,13 +466,13 @@ const Contact = () => {
       });
       const data = await resp.json();
       if (!resp.ok || !data.success) {
-        setErrorMsg(data.error || t("contact.errGeneric"));
+        setErrorMsg(data.error || "Something went wrong. Please try again.");
         setStatus("idle");
         return;
       }
       setStatus("done");
     } catch {
-      setErrorMsg(t("contact.errConnect"));
+      setErrorMsg("Could not connect. Please check your internet and try again.");
       setStatus("idle");
     }
   };
@@ -498,32 +481,32 @@ const Contact = () => {
     <section id="contact" className="py-24 px-6 bg-cream">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-display font-bold mb-4">{t("contact.title")}</h2>
-          <p className="text-lg text-gray-600 italic">{t("contact.subtitle")}</p>
+          <h2 className="text-4xl md:text-5xl font-display font-bold mb-4">Get in Touch</h2>
+          <p className="text-lg text-gray-600 italic">Questions, bookings, or special requests — drop us a line and we'll get back to you.</p>
         </div>
         {status === "done" ? (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-10 shadow-lg text-center">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Send size={28} className="text-green-600" />
             </div>
-            <h3 className="text-2xl font-display font-bold text-ink mb-3">{t("contact.sentTitle")}</h3>
-            <p className="text-gray-500">{t("contact.sentBody").replace("{name}", form.name.split(" ")[0])}</p>
+            <h3 className="text-2xl font-display font-bold text-ink mb-3">Message Sent!</h3>
+            <p className="text-gray-500">Thanks, {form.name.split(" ")[0]} — we'll get back to you as soon as we can.</p>
           </motion.div>
         ) : (
           <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-8 md:p-10 shadow-lg">
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-bold text-ink mb-2">{t("contact.name")} *</label>
+                <label className="block text-sm font-bold text-ink mb-2">Name *</label>
                 <input
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all"
-                  placeholder={t("contact.phName")}
+                  placeholder="Your name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-ink mb-2">{t("loc.phone")}</label>
+                <label className="block text-sm font-bold text-ink mb-2">Phone</label>
                 <input
                   type="tel"
                   value={form.phone}
@@ -534,7 +517,7 @@ const Contact = () => {
               </div>
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-bold text-ink mb-2">{t("contact.email")}</label>
+              <label className="block text-sm font-bold text-ink mb-2">Email</label>
               <input
                 type="email"
                 value={form.email}
@@ -544,13 +527,13 @@ const Contact = () => {
               />
             </div>
             <div className="mb-6">
-              <label className="block text-sm font-bold text-ink mb-2">{t("contact.message")} *</label>
+              <label className="block text-sm font-bold text-ink mb-2">Message *</label>
               <textarea
                 value={form.message}
                 onChange={(e) => setForm({ ...form, message: e.target.value })}
                 rows={5}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all resize-y"
-                placeholder={t("contact.phMessage")}
+                placeholder="How can we help?"
               />
             </div>
             {/* Honeypot — hidden from real users */}
@@ -569,7 +552,7 @@ const Contact = () => {
               disabled={status === "submitting"}
               className="terracotta-button w-full text-lg font-bold flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              {status === "submitting" ? t("contact.sending") : <><Send size={18} /> {t("contact.send")}</>}
+              {status === "submitting" ? "Sending…" : <><Send size={18} /> Send Message</>}
             </button>
           </form>
         )}
@@ -578,52 +561,46 @@ const Contact = () => {
   );
 };
 
-const Footer = ({ setUser }: { setUser: (user: any) => void }) => {
-  const t = useT();
-  return (
-    <footer className="bg-ink text-white py-16 px-6">
-      <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-12">
-        <div className="col-span-2">
-          <h3 className="text-3xl font-display font-bold mb-6">{BUSINESS.name}</h3>
-          <p className="text-gray-400 max-w-sm mb-8">{t("footer.blurb")}</p>
-          <div className="flex flex-col gap-4">
-            <div className="flex gap-4">
-              <a href={BUSINESS.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors"><Instagram size={24} /></a>
-              <a href={BUSINESS.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors"><Facebook size={24} /></a>
-              <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm font-bold flex items-center">LINE</a>
-            </div>
-            <a href={`tel:${BUSINESS.phone.replace(/\s/g, "")}`} className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
-              <Phone size={16} /> {BUSINESS.phone}
-            </a>
-            <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
-              <MessageCircle size={16} /> @cajunlifecafe
-            </a>
+const Footer = () => (
+  <footer className="bg-ink text-white py-16 px-6">
+    <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-12">
+      <div className="col-span-2">
+        <h3 className="text-3xl font-display font-bold mb-6">{BUSINESS.name}</h3>
+        <p className="text-gray-400 max-w-sm mb-8">Bringing the authentic heart and soul of Louisiana cooking to your neighbourhood. Join us for a taste of the bayou.</p>
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-4">
+            <a href={BUSINESS.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors"><Instagram size={24} /></a>
+            <a href={BUSINESS.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors"><Facebook size={24} /></a>
+            <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm font-bold flex items-center">LINE</a>
           </div>
-        </div>
-        <div>
-          <h4 className="font-bold mb-6 text-terracotta uppercase tracking-wider text-sm">{t("footer.quickLinks")}</h4>
-          <ul className="space-y-4 text-gray-400">
-            <li><a href="#menu" className="hover:text-white transition-colors">{t("nav.menu")}</a></li>
-            <li><Link to="/menu" className="hover:text-white transition-colors">{t("footer.digitalMenu")}</Link></li>
-            <li><a href="#about" className="hover:text-white transition-colors">{t("footer.ourStory")}</a></li>
-            <li><Link to="/loyalty" className="hover:text-white transition-colors">{t("footer.loyaltyProgram")}</Link></li>
-            <li><a href="#location" className="hover:text-white transition-colors">{t("nav.location")}</a></li>
-            <li><a href="#contact" className="hover:text-white transition-colors">{t("nav.contact")}</a></li>
-            <li><a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">LINE: @cajunlifecafe</a></li>
-          </ul>
+          <a href={`tel:${BUSINESS.phone.replace(/\s/g, "")}`} className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
+            <Phone size={16} /> {BUSINESS.phone}
+          </a>
+          <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
+            <MessageCircle size={16} /> @cajunlifecafe
+          </a>
         </div>
       </div>
-      <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-gray-800 text-center text-gray-500 text-sm">
-        <p>&copy; {new Date().getFullYear()} {BUSINESS.name}. {t("footer.rights")}</p>
-        <div className="mt-6 flex justify-center">
-          <Auth onUserChange={setUser} />
-        </div>
+      <div>
+        <h4 className="font-bold mb-6 text-terracotta uppercase tracking-wider text-sm">Quick Links</h4>
+        <ul className="space-y-4 text-gray-400">
+          <li><a href="#menu" className="hover:text-white transition-colors">Menu</a></li>
+          <li><Link to="/menu" className="hover:text-white transition-colors">Digital Menu</Link></li>
+          <li><a href="#about" className="hover:text-white transition-colors">Our Story</a></li>
+          <li><Link to="/loyalty" className="hover:text-white transition-colors">Loyalty Program</Link></li>
+          <li><a href="#location" className="hover:text-white transition-colors">Location</a></li>
+          <li><a href="#contact" className="hover:text-white transition-colors">Contact</a></li>
+          <li><a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">LINE: @cajunlifecafe</a></li>
+        </ul>
       </div>
-    </footer>
-  );
-};
+    </div>
+    <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-gray-800 text-center text-gray-500 text-sm">
+      <p>&copy; {new Date().getFullYear()} {BUSINESS.name}. All rights reserved.</p>
+    </div>
+  </footer>
+);
 
-const MainSite = ({ isAdmin, setUser }: { isAdmin: boolean; setUser: (user: any) => void }) => (
+const MainSite = ({ isAdmin }: { isAdmin: boolean }) => (
   <div className="min-h-screen">
     <Hero />
     <About />
@@ -631,7 +608,7 @@ const MainSite = ({ isAdmin, setUser }: { isAdmin: boolean; setUser: (user: any)
     <CustomMeals />
     <Location />
     <Contact />
-    <Footer setUser={setUser} />
+    <Footer />
   </div>
 );
 
@@ -639,10 +616,8 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   return (
     <Router>
-      <LanguageProvider>
-        <Toaster position="top-center" richColors />
-        <AppContent user={user} setUser={setUser} />
-      </LanguageProvider>
+      <Toaster position="top-center" richColors />
+      <AppContent user={user} setUser={setUser} />
     </Router>
   );
 }
@@ -679,7 +654,7 @@ function AppContent({ user, setUser }: any) {
       )}
       {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && <Navbar canAccessDashboard={isMarketing} canAccessStaffPortal={isCashier || isManager} setUser={setUser} />}
       <Routes>
-        <Route path="/" element={<MainSite isAdmin={isAdmin} setUser={setUser} />} />
+        <Route path="/" element={<MainSite isAdmin={isAdmin} />} />
         <Route path="/menu" element={<DigitalMenuDisplay />} />
         <Route path="/digital-menu" element={<DigitalMenuDisplay />} />
         <Route path="/dashboard" element={isAdmin || isMarketing || isStaff ? <DashboardLayout user={user} /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>}>
@@ -688,19 +663,22 @@ function AppContent({ user, setUser }: any) {
           <Route path="custom-meals" element={isAdmin || isMarketing ? <CustomMealsDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="users" element={isAdmin ? <UserManagement /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="finance" element={canAccessFinance ? <FinanceDashboard user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
-          <Route path="loyalty" element={isAdmin || isStaff ? <LoyaltyDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="loyalty" element={isAdmin || isStaff ? <LoyaltyDashboard isAdmin={isAdmin} /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="crm" element={isAdmin || isMarketing ? <CRMDirectory user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="images" element={isAdmin || isMarketing ? <ImageManagement /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="logs" element={isAdmin ? <SystemLogs /> : <div className="p-20 text-center">Access Denied</div>} />
         </Route>
         <Route path="/import" element={isAdmin || isMarketing ? <BulkImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
         <Route path="/cashier" element={<CashierPortal />} />
-        <Route path="/loyalty" element={<><LoyaltyPage /><Footer setUser={setUser} /></>} />
+        <Route path="/loyalty" element={<><LoyaltyPage /><Footer /></>} />
         <Route path="/import-custom-meals" element={isAdmin || isMarketing ? <BulkCustomMealsImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
       <Route path="/activate/:token" element={<ActivatePage />} />
         <Route path="/activate/success" element={<ActivateSuccess />} />
         <Route path="/activate/error" element={<ActivateError />} />
       </Routes>
+      {!isDigitalMenu && !isDashboard && !isActivate && !user && (
+        <div className="fixed bottom-4 right-4 z-[60]"><Auth onUserChange={setUser} /></div>
+      )}
     </div>
   );
 }
