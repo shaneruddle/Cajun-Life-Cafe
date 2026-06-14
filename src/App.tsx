@@ -541,7 +541,6 @@ const Contact = () => {
                 placeholder="How can we help?"
               />
             </div>
-            {/* Honeypot — hidden from real users */}
             <input
               type="text"
               value={honeypot}
@@ -569,7 +568,7 @@ const Contact = () => {
 const Footer = () => (
   <footer className="bg-ink text-white py-16 px-6">
     <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-12">
-      <div className="col-span-2">
+      <div>
         <h3 className="text-3xl font-display font-bold mb-6">{BUSINESS.name}</h3>
         <p className="text-gray-400 max-w-sm mb-8">Bringing the authentic heart and soul of Louisiana cooking to your neighbourhood. Join us for a taste of the bayou.</p>
         <div className="flex flex-col gap-4">
@@ -595,6 +594,11 @@ const Footer = () => (
           <li><Link to="/loyalty" className="hover:text-white transition-colors">Loyalty Program</Link></li>
           <li><Link to="/custom-meals" className="hover:text-white transition-colors">Custom Meals</Link></li>
           <li><Link to="/meal-prep" className="hover:text-white transition-colors">Meal Prep</Link></li>
+        </ul>
+      </div>
+      <div>
+        <h4 className="font-bold mb-6 text-terracotta uppercase tracking-wider text-sm">More</h4>
+        <ul className="space-y-4 text-gray-400">
           <li><Link to="/feedback" className="hover:text-white transition-colors">Leave Feedback</Link></li>
           <li><Link to="/careers" className="hover:text-white transition-colors">Careers</Link></li>
           <li><a href="#location" className="hover:text-white transition-colors">Location</a></li>
@@ -686,7 +690,7 @@ function AppContent({ user, setUser }: any) {
         <Route path="/meal-prep" element={<><MealPrepPage /><Footer /></>} />
         <Route path="/feedback" element={<><FeedbackPage /><Footer /></>} />
         <Route path="/import-custom-meals" element={isAdmin || isMarketing ? <BulkCustomMealsImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
-      <Route path="/activate/:token" element={<ActivatePage />} />
+        <Route path="/activate/:token" element={<ActivatePage />} />
         <Route path="/activate/success" element={<ActivateSuccess />} />
         <Route path="/activate/error" element={<ActivateError />} />
       </Routes>
