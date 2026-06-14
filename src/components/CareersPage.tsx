@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Send, CheckCircle, Paperclip, X } from 'lucide-react';
+import { FirebaseImage } from './ui/FirebaseImage';
+import { normalizeImageUrl } from '../utils/images';
 
 const ROLES = [
   'Kitchen / Chef',
@@ -75,10 +77,10 @@ export default function CareersPage() {
   return (
     <div className="min-h-screen bg-cream">
       {/* Hero */}
-      <section className="relative bg-ink text-white py-32 px-6 overflow-hidden">
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-10 right-10 w-96 h-96 rounded-full bg-terracotta" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-olive" />
+      <section className="relative text-white py-32 px-6 overflow-hidden">
+        <div className="absolute inset-0">
+          <FirebaseImage src={normalizeImageUrl("gs://cajun-life-cafe.firebasestorage.app/assets/careers-hero.webp")} alt="Careers hero" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/55" />
         </div>
         <div className="max-w-3xl mx-auto text-center relative z-10">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
