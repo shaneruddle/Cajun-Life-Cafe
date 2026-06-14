@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import fs from "fs";
 import { createRequire } from "module";
+import multer from "multer";
 const require = createRequire(import.meta.url);
 import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
@@ -645,6 +646,81 @@ Rules:
     await sendLoyaltyDigest();
   });
 
+
+  // ── Careers Application (multipart — CV file upload) ─────────────
+  const cvUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max
+    fileFilter: (_req, file, cb) => {
+      const allowed = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+      cb(null, allowed.includes(file.mimetype));
+    }
+  });
+
+  app.post("/api/careers", cvUpload.single("cv"), async (req, res) => {
+    const { name, email, role, experience, website } = req.body || {};
+    const cvFile = req.file;
+
+    // Honeypot
+    if (website) return res.json({ success: true });
+
+    if (!name?.trim() || !email?.trim()) {
+      return res.status(400).json({ success: false, error: "Name and email are required" });
+    }
+
+    const smtpHost = process.env.SMTP_HOST || "";
+    const smtpPort = parseInt(process.env.SMTP_PORT || "587");
+    const smtpUser = process.env.SMTP_USER || "";
+    const smtpPass = process.env.SMTP_PASS || "";
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      return res.status(500).json({ success: false, error: "Mail service not configured" });
+    }
+
+    const html = `<div style="font-family:Arial,sans-serif;max-width:560px">
+      <h2 style="color:#A64B2A;margin-bottom:4px">New Job Application</h2>
+      <p style="color:#666;margin-top:0">Submitted via the careers page.</p>
+      <table style="border-collapse:collapse">
+        <tr><td style="padding:6px 16px 6px 0;color:#999">Name</td><td style="padding:6px 0;font-weight:700">${escapeHtml(name)}</td></tr>
+        <tr><td style="padding:6px 16px 6px 0;color:#999">Email</td><td style="padding:6px 0">${escapeHtml(email)}</td></tr>
+        <tr><td style="padding:6px 16px 6px 0;color:#999">Role interest</td><td style="padding:6px 0">${escapeHtml(role) || "&ndash;"}</td></tr>
+      </table>
+      ${experience ? `<div style="margin-top:16px"><strong style="color:#333">Experience / cover note:</strong><p style="white-space:pre-wrap;background:#f7f7f7;padding:16px;border-radius:8px;color:#333;margin-top:8px">${escapeHtml(experience)}</p></div>` : ""}
+      ${cvFile ? `<p style="color:#666">CV attached: <strong>${escapeHtml(cvFile.originalname)}</strong></p>` : "<p style=\"color:#999\">No CV attached.</p>"}
+    </div>`;
+
+    try {
+      const nodemailer = require("nodemailer");
+      const transporter = nodemailer.createTransport({ host: smtpHost, port: smtpPort, secure: false, auth: { user: smtpUser, pass: smtpPass } });
+      await transporter.sendMail({
+        from: `"Cajun Life Cafe" <${smtpUser}>`,
+        to: "info@cajunlifecafe.com",
+        replyTo: String(email).trim(),
+        subject: `Job Application — ${escapeHtml(name)}${role ? ` (${escapeHtml(role)})` : ""}`,
+        html,
+        ...(cvFile ? {
+          attachments: [{
+            filename: cvFile.originalname,
+            content: cvFile.buffer,
+            contentType: cvFile.mimetype,
+          }]
+        } : {})
+      });
+
+      adminDb.collection("system_logs").add({
+        action: "Careers Application",
+        details: `Application from ${String(name).trim()} <${String(email).trim()}>${role ? ` — ${String(role).trim()}` : ""}`,
+        category: "system",
+        userEmail: "careers-page",
+        userId: "careers-page",
+        timestamp: new Date().toISOString(),
+      }).catch(() => {});
+
+      return res.json({ success: true });
+    } catch (err) {
+      console.error("Careers application email error:", err);
+      return res.status(500).json({ success: false, error: "Could not send your application — please try again later" });
+    }
+  });
 
   // ── Serve React app (production) ──────────────────────────────────
   if (fs.existsSync(distDir)) {
