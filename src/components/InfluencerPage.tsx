@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Send, CheckCircle } from 'lucide-react';
+import { Send, Instagram, Youtube, CheckCircle } from 'lucide-react';
 
 export default function InfluencerPage() {
   const [form, setForm] = useState({
@@ -83,8 +83,8 @@ export default function InfluencerPage() {
             </h1>
             <p className="text-xl text-white/70 max-w-xl mx-auto leading-relaxed">
               If you're a creator based in Pattaya or love sharing fitness and food content,
-              join our loyalty program and get <span className="text-olive font-bold">20% bonus</span> on
-              every top-up — double our standard rate.
+              join our loyalty program and get <span className="text-olive font-bold">up to 25% bonus</span> on
+              every top-up — more than double our standard rate.
             </p>
           </motion.div>
         </div>
@@ -103,13 +103,13 @@ export default function InfluencerPage() {
               },
               {
                 step: '02',
-                title: 'Get enrolled',
-                desc: "We'll add you to our loyalty program with a 20% bonus rate. You'll hear from us within 48 hours.",
+                title: 'We get back to you',
+                desc: "We'll review your application and reply within 48 hours with your personal bonus rate — up to 25%. The more your influence shows, the more we reward it over time.",
               },
               {
                 step: '03',
                 title: 'Top up & enjoy',
-                desc: 'Every time you top up your wallet, you get 20% extra to spend. Come eat, share if you love it.',
+                desc: 'Every time you top up your wallet, you get your bonus extra to spend. Come eat, share if you love it.',
               },
             ].map(({ step, title, desc }) => (
               <motion.div
@@ -160,7 +160,7 @@ export default function InfluencerPage() {
         <div className="max-w-2xl mx-auto">
           <div className="bg-ink rounded-[40px] p-10 text-white text-center">
             <h2 className="text-3xl font-display font-bold mb-4">The deal</h2>
-            <p className="text-white/60 mb-8">Standard loyalty members get 10% bonus on every top-up. As an influencer partner you get:</p>
+            <p className="text-white/60 mb-8">Standard loyalty members get 10% bonus on every top-up. As an influencer partner you start higher — and your bonus can grow over time as your influence shows.</p>
             <div className="flex items-center justify-center gap-8 mb-8">
               <div>
                 <p className="text-gray-500 text-sm font-bold uppercase tracking-widest mb-1">Standard</p>
@@ -169,12 +169,13 @@ export default function InfluencerPage() {
               <div className="text-gray-600 text-2xl">→</div>
               <div>
                 <p className="text-olive text-sm font-bold uppercase tracking-widest mb-1">Influencer</p>
-                <p className="text-6xl font-display font-bold text-olive">20%</p>
+                <p className="text-6xl font-display font-bold text-olive">25%</p>
+                <p className="text-olive/60 text-xs mt-1">up to</p>
               </div>
             </div>
             <p className="text-white/50 text-sm">
-              Top up ฿1,000 → get ฿1,200 to spend.<br />
-              Top up ฿5,000 → get ฿6,000 to spend.
+              Top up ฿1,000 → get up to ฿1,250 to spend.<br />
+              Top up ฿5,000 → get up to ฿6,250 to spend.
             </p>
           </div>
         </div>
@@ -185,7 +186,7 @@ export default function InfluencerPage() {
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-10">
             <h2 className="text-3xl font-display font-bold text-ink mb-3">Apply now</h2>
-            <p className="text-gray-500">Takes 2 minutes. We'll be in touch within 48 hours.</p>
+            <p className="text-gray-500">Takes 2 minutes. Apply and we'll get back to you with your personal bonus rate within 48 hours.</p>
           </div>
 
           {status === 'done' ? (
@@ -199,8 +200,8 @@ export default function InfluencerPage() {
               </div>
               <h3 className="text-2xl font-display font-bold text-ink mb-3">Application received!</h3>
               <p className="text-gray-500">
-                Thanks {form.name.split(' ')[0]} — we'll review your application and get back to you within 48 hours.
-                Once approved, we'll enroll you with your 20% bonus rate.
+                Thanks {form.name.split(' ')[0]} — we'll review your application and get back to you within 48 hours with your personal bonus rate.
+                As your influence grows, so can your bonus.
               </p>
             </motion.div>
           ) : (
@@ -291,6 +292,9 @@ export default function InfluencerPage() {
               </p>
             </form>
           )}
+          <p className="text-center text-gray-400 text-xs mt-6 max-w-lg mx-auto leading-relaxed">
+            * Bonus rates are personalised and may be adjusted up or down over time at our discretion based on activity and engagement. We reserve the right to modify or withdraw the influencer bonus at any time.
+          </p>
         </div>
       </section>
     </div>
