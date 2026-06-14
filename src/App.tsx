@@ -63,6 +63,7 @@ import ActivateSuccess from "./components/ActivateSuccess";
 import ActivateError from "./components/ActivateError";
 import InfluencerPage from "./components/InfluencerPage";
 import CareersPage from "./components/CareersPage";
+import CustomMealsPage from "./components/CustomMealsPage";
 
 const BUSINESS = {
   name: "Cajun Life Cafe",
@@ -399,15 +400,7 @@ const Location = () => (
   <section id="location" className="py-24 px-6 bg-white">
     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
       <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="rounded-[32px] overflow-hidden h-[500px] shadow-xl">
-        <iframe
-          width="100%"
-          height="100%"
-          style={{ border: 0 }}
-          loading="lazy"
-          allowFullScreen
-          referrerPolicy="no-referrer-when-downgrade"
-          src={BUSINESS.mapsEmbed}
-        />
+        <iframe width="100%" height="100%" style={{ border: 0 }} loading="lazy" allowFullScreen referrerPolicy="no-referrer-when-downgrade" src={BUSINESS.mapsEmbed} />
       </motion.div>
       <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
         <h2 className="text-4xl md:text-5xl font-display font-bold mb-8">Visit Us</h2>
@@ -427,15 +420,9 @@ const Location = () => (
           ))}
         </div>
         <div className="mt-12 flex gap-4">
-          <a href={BUSINESS.instagram} target="_blank" rel="noopener noreferrer" className="bg-cream p-4 rounded-full text-olive hover:bg-olive hover:text-white transition-all" title="Instagram">
-            <Instagram size={24} />
-          </a>
-          <a href={BUSINESS.facebook} target="_blank" rel="noopener noreferrer" className="bg-cream p-4 rounded-full text-olive hover:bg-olive hover:text-white transition-all" title="Facebook">
-            <Facebook size={24} />
-          </a>
-          <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="bg-cream p-4 rounded-full text-olive hover:bg-olive hover:text-white transition-all font-bold text-sm flex items-center justify-center w-14 h-14" title="LINE">
-            LINE
-          </a>
+          <a href={BUSINESS.instagram} target="_blank" rel="noopener noreferrer" className="bg-cream p-4 rounded-full text-olive hover:bg-olive hover:text-white transition-all" title="Instagram"><Instagram size={24} /></a>
+          <a href={BUSINESS.facebook} target="_blank" rel="noopener noreferrer" className="bg-cream p-4 rounded-full text-olive hover:bg-olive hover:text-white transition-all" title="Facebook"><Facebook size={24} /></a>
+          <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="bg-cream p-4 rounded-full text-olive hover:bg-olive hover:text-white transition-all font-bold text-sm flex items-center justify-center w-14 h-14" title="LINE">LINE</a>
         </div>
       </motion.div>
     </div>
@@ -450,33 +437,16 @@ const Contact = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.message.trim()) {
-      setErrorMsg("Please tell us your name and a message.");
-      return;
-    }
-    if (!form.email.trim() && !form.phone.trim()) {
-      setErrorMsg("Please give us an email or phone number so we can reply.");
-      return;
-    }
+    if (!form.name.trim() || !form.message.trim()) { setErrorMsg("Please tell us your name and a message."); return; }
+    if (!form.email.trim() && !form.phone.trim()) { setErrorMsg("Please give us an email or phone number so we can reply."); return; }
     setErrorMsg("");
     setStatus("submitting");
     try {
-      const resp = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, website: honeypot }),
-      });
+      const resp = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, website: honeypot }) });
       const data = await resp.json();
-      if (!resp.ok || !data.success) {
-        setErrorMsg(data.error || "Something went wrong. Please try again.");
-        setStatus("idle");
-        return;
-      }
+      if (!resp.ok || !data.success) { setErrorMsg(data.error || "Something went wrong. Please try again."); setStatus("idle"); return; }
       setStatus("done");
-    } catch {
-      setErrorMsg("Could not connect. Please check your internet and try again.");
-      setStatus("idle");
-    }
+    } catch { setErrorMsg("Could not connect. Please check your internet and try again."); setStatus("idle"); }
   };
 
   return (
@@ -488,9 +458,7 @@ const Contact = () => {
         </div>
         {status === "done" ? (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-10 shadow-lg text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Send size={28} className="text-green-600" />
-            </div>
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"><Send size={28} className="text-green-600" /></div>
             <h3 className="text-2xl font-display font-bold text-ink mb-3">Message Sent!</h3>
             <p className="text-gray-500">Thanks, {form.name.split(" ")[0]} — we'll get back to you as soon as we can.</p>
           </motion.div>
@@ -499,60 +467,24 @@ const Contact = () => {
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-bold text-ink mb-2">Name *</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all"
-                  placeholder="Your name"
-                />
+                <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all" placeholder="Your name" />
               </div>
               <div>
                 <label className="block text-sm font-bold text-ink mb-2">Phone</label>
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all"
-                  placeholder="086 123 4567"
-                />
+                <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all" placeholder="086 123 4567" />
               </div>
             </div>
             <div className="mb-4">
               <label className="block text-sm font-bold text-ink mb-2">Email</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all"
-                placeholder="you@example.com"
-              />
+              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all" placeholder="you@example.com" />
             </div>
             <div className="mb-6">
               <label className="block text-sm font-bold text-ink mb-2">Message *</label>
-              <textarea
-                value={form.message}
-                onChange={(e) => setForm({ ...form, message: e.target.value })}
-                rows={5}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all resize-y"
-                placeholder="How can we help?"
-              />
+              <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={5} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all resize-y" placeholder="How can we help?" />
             </div>
-            <input
-              type="text"
-              value={honeypot}
-              onChange={(e) => setHoneypot(e.target.value)}
-              className="hidden"
-              tabIndex={-1}
-              autoComplete="off"
-              aria-hidden="true"
-            />
+            <input type="text" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
             {errorMsg && <p className="text-red-600 text-sm mb-4">{errorMsg}</p>}
-            <button
-              type="submit"
-              disabled={status === "submitting"}
-              className="terracotta-button w-full text-lg font-bold flex items-center justify-center gap-2 disabled:opacity-60"
-            >
+            <button type="submit" disabled={status === "submitting"} className="terracotta-button w-full text-lg font-bold flex items-center justify-center gap-2 disabled:opacity-60">
               {status === "submitting" ? "Sending…" : <><Send size={18} /> Send Message</>}
             </button>
           </form>
@@ -574,12 +506,8 @@ const Footer = () => (
             <a href={BUSINESS.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors"><Facebook size={24} /></a>
             <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm font-bold flex items-center">LINE</a>
           </div>
-          <a href={`tel:${BUSINESS.phone.replace(/\s/g, "")}`} className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
-            <Phone size={16} /> {BUSINESS.phone}
-          </a>
-          <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
-            <MessageCircle size={16} /> @cajunlifecafe
-          </a>
+          <a href={`tel:${BUSINESS.phone.replace(/\s/g, "")}`} className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"><Phone size={16} /> {BUSINESS.phone}</a>
+          <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"><MessageCircle size={16} /> @cajunlifecafe</a>
         </div>
       </div>
       <div>
@@ -589,6 +517,7 @@ const Footer = () => (
           <li><Link to="/menu" className="hover:text-white transition-colors">Digital Menu</Link></li>
           <li><a href="#about" className="hover:text-white transition-colors">Our Story</a></li>
           <li><Link to="/loyalty" className="hover:text-white transition-colors">Loyalty Program</Link></li>
+          <li><Link to="/custom-meals" className="hover:text-white transition-colors">Custom Meals</Link></li>
           <li><Link to="/careers" className="hover:text-white transition-colors">Careers</Link></li>
           <li><a href="#location" className="hover:text-white transition-colors">Location</a></li>
           <li><a href="#contact" className="hover:text-white transition-colors">Contact</a></li>
@@ -675,8 +604,9 @@ function AppContent({ user, setUser }: any) {
         <Route path="/loyalty" element={<><LoyaltyPage /><Footer /></>} />
         <Route path="/influencers" element={<><InfluencerPage /><Footer /></>} />
         <Route path="/careers" element={<><CareersPage /><Footer /></>} />
+        <Route path="/custom-meals" element={<><CustomMealsPage /><Footer /></>} />
         <Route path="/import-custom-meals" element={isAdmin || isMarketing ? <BulkCustomMealsImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
-      <Route path="/activate/:token" element={<ActivatePage />} />
+        <Route path="/activate/:token" element={<ActivatePage />} />
         <Route path="/activate/success" element={<ActivateSuccess />} />
         <Route path="/activate/error" element={<ActivateError />} />
       </Routes>
