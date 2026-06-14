@@ -46,11 +46,14 @@ const sendLinePush = async (lineUserId: string, message: string) => {
   }
 };
 
-export default function LoyaltyDashboard() {
+export default function LoyaltyDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [customer, setCustomer] = useState<CRMCustomer | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [loyaltyMembers, setLoyaltyMembers] = useState<CRMCustomer[]>([]);
+
+  // Bonus percentage — per-customer, default 10%, admins can set 10–30%
+  const [bonusPct, setBonusPct] = useState(10);
 
   // Wallet state
   const [cashTopUpAmount, setCashTopUpAmount] = useState('');
@@ -130,6 +133,7 @@ export default function LoyaltyDashboard() {
       if (match) {
         setCustomer(match);
         fetchTransactions(match.id!);
+        setBonusPct(match.bonusPct ?? 10);
         toast.success(`Found: ${match.firstName} ${match.lastName}`);
       } else {
         toast.error('No loyalty member found');
@@ -145,7 +149,7 @@ export default function LoyaltyDashboard() {
     if (isNaN(cash) || cash <= 0) return;
     setIsProcessingTopUp(true);
 
-    const bonus = Math.round(cash * 0.1 * 100) / 100;
+    const bonus = Math.round(cash * (bonusPct / 100) * 100) / 100;
     const totalPoints = cash + bonus;
     const prevBalance = customer.balance ?? 0;
     const newBalance = prevBalance + totalPoints;
@@ -153,6 +157,7 @@ export default function LoyaltyDashboard() {
     try {
       await updateDoc(doc(db, 'crm_customers', customer.id), {
         balance: newBalance,
+        bonusPct,
         updatedAt: new Date().toISOString(),
       });
       await addDoc(collection(db, 'crm_customers', customer.id, 'transactions'), {
@@ -160,12 +165,12 @@ export default function LoyaltyDashboard() {
         amount: cash,
         bonus,
         timestamp: serverTimestamp(),
-        details: `Cash top-up ฿${cash} + 10% bonus ฿${bonus}`,
+        details: `Cash top-up ฿${cash} + ${bonusPct}% bonus ฿${bonus}`,
       });
       await logActivity('Wallet Top Up', `${customer.firstName} ${customer.lastName} (${customer.mobile}) | Cash: ฿${cash} | Bonus: ฿${bonus} | Total: ฿${totalPoints} | Before: ฿${prevBalance} | After: ฿${newBalance} | Staff: ${adminEmail}`, 'loyalty');
 
       if (customer.lineUserId) {
-        await sendLinePush(customer.lineUserId, `Cajun Life Cafe\n\n💰 Wallet topped up: +฿${totalPoints.toLocaleString()} (incl. ฿${bonus.toLocaleString()} bonus)\nNew balance: ฿${newBalance.toLocaleString()}`);
+        await sendLinePush(customer.lineUserId, `Cajun Life Cafe\n\n💰 Wallet topped up: +฿${totalPoints.toLocaleString()} (incl. ฿${bonus.toLocaleString()} ${bonusPct}% bonus)\nNew balance: ฿${newBalance.toLocaleString()}`);
       }
 
       setCashTopUpAmount('');
@@ -322,6 +327,28 @@ export default function LoyaltyDashboard() {
                   </div>
                 </div>
 
+                {/* Admin bonus rate control */}
+                {isAdmin && (
+                  <div className="bg-white border border-gray-100 p-5 rounded-[24px] shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Bonus Rate (Admin)</span>
+                      <span className="text-lg font-display font-bold text-terracotta">{bonusPct}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={10}
+                      max={30}
+                      step={1}
+                      value={bonusPct}
+                      onChange={(e) => setBonusPct(parseInt(e.target.value))}
+                      className="w-full accent-terracotta"
+                    />
+                    <div className="flex justify-between text-[10px] text-gray-400 font-bold mt-1">
+                      <span>10%</span><span>Default</span><span>30%</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Top Up card */}
                 <div className="bg-ink p-8 rounded-[32px] text-white shadow-xl relative overflow-hidden">
                   <div className="absolute top-0 right-0 p-4 opacity-5">
@@ -351,13 +378,13 @@ export default function LoyaltyDashboard() {
                           <span className="font-mono">฿{parseFloat(cashTopUpAmount).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between text-sm text-olive">
-                          <span>10% Bonus</span>
-                          <span className="font-mono">+฿{(parseFloat(cashTopUpAmount) * 0.1).toLocaleString()}</span>
+                          <span>{bonusPct}% Bonus</span>
+                          <span className="font-mono">+฿{(parseFloat(cashTopUpAmount) * bonusPct / 100).toLocaleString()}</span>
                         </div>
                         <div className="mt-2 pt-2 border-t border-white/10 flex justify-between">
                           <span className="font-bold">Total Added</span>
                           <span className="text-xl font-display font-bold text-olive">
-                            ฿{(parseFloat(cashTopUpAmount) * 1.1).toLocaleString()}
+                            ฿{(parseFloat(cashTopUpAmount) * (1 + bonusPct / 100)).toLocaleString()}
                           </span>
                         </div>
                       </motion.div>
@@ -544,7 +571,7 @@ export default function LoyaltyDashboard() {
                 {filteredMembers.map((member) => (
                   <button
                     key={member.id}
-                    onClick={() => { setCustomer(member); fetchTransactions(member.id!); }}
+                    onClick={() => { setCustomer(member); fetchTransactions(member.id!); setBonusPct(member.bonusPct ?? 10); }}
                     className="w-full p-4 flex items-center justify-between hover:bg-cream/30 transition-colors group"
                   >
                     <div className="flex items-center gap-4">
@@ -552,9 +579,14 @@ export default function LoyaltyDashboard() {
                         {member.firstName[0]}{member.lastName?.[0] ?? ''}
                       </div>
                       <div className="text-left">
-                        <p className="font-bold text-ink group-hover:text-terracotta transition-colors">
-                          {member.firstName} {member.lastName}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-ink group-hover:text-terracotta transition-colors">
+                            {member.firstName} {member.lastName}
+                          </p>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-olive/10 text-olive">
+                            +{member.bonusPct ?? 10}%
+                          </span>
+                        </div>
                         <p className="text-gray-400 text-xs font-mono">{member.mobile}</p>
                       </div>
                     </div>
