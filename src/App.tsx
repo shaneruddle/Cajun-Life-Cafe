@@ -62,6 +62,7 @@ import LoyaltyPage from "./components/LoyaltyPage";
 import ActivateSuccess from "./components/ActivateSuccess";
 import ActivateError from "./components/ActivateError";
 import InfluencerPage from "./components/InfluencerPage";
+import CareersPage from "./components/CareersPage";
 
 const BUSINESS = {
   name: "Cajun Life Cafe",
@@ -537,7 +538,6 @@ const Contact = () => {
                 placeholder="How can we help?"
               />
             </div>
-            {/* Honeypot — hidden from real users */}
             <input
               type="text"
               value={honeypot}
@@ -589,6 +589,7 @@ const Footer = () => (
           <li><Link to="/menu" className="hover:text-white transition-colors">Digital Menu</Link></li>
           <li><a href="#about" className="hover:text-white transition-colors">Our Story</a></li>
           <li><Link to="/loyalty" className="hover:text-white transition-colors">Loyalty Program</Link></li>
+          <li><Link to="/careers" className="hover:text-white transition-colors">Careers</Link></li>
           <li><a href="#location" className="hover:text-white transition-colors">Location</a></li>
           <li><a href="#contact" className="hover:text-white transition-colors">Contact</a></li>
           <li><a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">LINE: @cajunlifecafe</a></li>
@@ -673,6 +674,7 @@ function AppContent({ user, setUser }: any) {
         <Route path="/cashier" element={<CashierPortal />} />
         <Route path="/loyalty" element={<><LoyaltyPage /><Footer /></>} />
         <Route path="/influencers" element={<><InfluencerPage /><Footer /></>} />
+        <Route path="/careers" element={<><CareersPage /><Footer /></>} />
         <Route path="/import-custom-meals" element={isAdmin || isMarketing ? <BulkCustomMealsImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
       <Route path="/activate/:token" element={<ActivatePage />} />
         <Route path="/activate/success" element={<ActivateSuccess />} />
