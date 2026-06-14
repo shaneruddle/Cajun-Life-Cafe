@@ -156,6 +156,7 @@ export interface CRMCustomer {
   // Loyalty fields — present once enrolled
   loyaltyEnabled?: boolean;
   balance?: number;
+  bonusPct?: number;
   lineUserId?: string;
   isVerified?: boolean;
 }
