@@ -76,9 +76,10 @@ interface SortableRowProps {
   onCosting: (item: MenuItem) => void;
   handleDelete: (id: string) => Promise<void>;
   togglePublished: (item: MenuItem) => Promise<void>;
+  costingComplete?: boolean;
 }
 
-const SortableRow: React.FC<SortableRowProps> = ({ item, startEdit, handleDelete, togglePublished, onCosting }) => {
+const SortableRow: React.FC<SortableRowProps> = ({ item, startEdit, handleDelete, togglePublished, onCosting, costingComplete }) => {
   const {
     attributes,
     listeners,
@@ -156,8 +157,8 @@ const SortableRow: React.FC<SortableRowProps> = ({ item, startEdit, handleDelete
         <div className="flex justify-end gap-2">
           <button
             onClick={() => onCosting(item)}
-            className="p-2 text-gray-400 hover:text-terracotta transition-colors"
-            title="Recipe & Food Cost"
+            className={`p-2 transition-colors ${costingComplete ? 'text-olive hover:text-olive/70' : 'text-gray-400 hover:text-terracotta'}`}
+            title={costingComplete ? 'Recipe & Food Cost (Complete)' : 'Recipe & Food Cost'}
           >
             <Calculator size={18} />
           </button>
@@ -308,6 +309,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [costingItem, setCostingItem] = useState<MenuItem | null>(null);
+  const [costingCompleteIds, setCostingCompleteIds] = useState<Set<string>>(new Set());
   const [isAdding, setIsAdding] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -397,9 +399,18 @@ export default function Dashboard() {
       handleFirestoreError(err, 'list', 'categories');
     });
 
+    const unsubscribeRecipes = onSnapshot(collection(db, 'menu_recipes'), (snapshot) => {
+      const ids = new Set<string>();
+      snapshot.docs.forEach(d => {
+        if (d.data().costingComplete === true) ids.add(d.id);
+      });
+      setCostingCompleteIds(ids);
+    });
+
     return () => {
       unsubscribe();
       unsubscribeCategories();
+      unsubscribeRecipes();
       clearTimeout(timer);
     };
   }, []);
@@ -1462,6 +1473,7 @@ export default function Dashboard() {
                     onCosting={setCostingItem}
                         handleDelete={handleDelete}
                         togglePublished={togglePublished}
+                        costingComplete={costingCompleteIds.has(item.id!)}
                       />
                     ))}
                   </SortableContext>
