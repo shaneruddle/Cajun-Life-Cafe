@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   collection, doc, onSnapshot, query,
-  setDoc, where,
+  setDoc, updateDoc, where,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { MenuItem } from '../../types';
@@ -71,6 +71,9 @@ export default function MenuItemCosting({ item, onClose }: Props) {
   const [recipe, setRecipe] = useState<RecipeLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [costingComplete, setCostingComplete] = useState(false);
+  const [notes, setNotes] = useState(item.notes || '');
+  const [notesSaved, setNotesSaved] = useState(false);
+  const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [newLine, setNewLine] = useState({ purchase_id: '', portion_g: '' });
   const [ingQuery, setIngQuery] = useState('');
   const [ingOpen, setIngOpen] = useState(false);
@@ -112,6 +115,19 @@ export default function MenuItemCosting({ item, onClose }: Props) {
     try {
       await setDoc(recipeDocRef, { menu_item_id: docId, costingComplete: next }, { merge: true });
     } catch { toast.error('Failed to update status'); }
+  };
+
+  const handleNotesChange = (value: string) => {
+    setNotes(value);
+    setNotesSaved(false);
+    if (notesTimer.current) clearTimeout(notesTimer.current);
+    notesTimer.current = setTimeout(async () => {
+      try {
+        await updateDoc(doc(db, 'menu', docId), { notes: value });
+        setNotesSaved(true);
+        setTimeout(() => setNotesSaved(false), 2000);
+      } catch { toast.error('Failed to save notes'); }
+    }, 800);
   };
 
   const totalCost = () => {
@@ -268,7 +284,7 @@ export default function MenuItemCosting({ item, onClose }: Props) {
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Add Ingredient</p>
             <div className="relative">
           <input
-            value={ingOpen ? ingQuery : (() => { const s = starredIngredients.find(i => i.id === newLine.purchase_id); return s ? s.ingredient_name + ' — ฿' + s.unit_cost + '/' + s.unit : ingQuery; })()}
+            value={ingOpen ? ingQuery : (() => { const s = starredIngredients.find(i => i.id === newLine.purchase_id); return s ? s.ingredient_name + ' \u2014 \u0E3F' + s.unit_cost + '/' + s.unit : ingQuery; })()}
             onChange={e => { setIngQuery(e.target.value); setIngOpen(true); }}
             onFocus={() => { setIngOpen(true); setIngQuery(''); }}
             onBlur={() => setTimeout(() => setIngOpen(false), 150)}
@@ -285,7 +301,7 @@ export default function MenuItemCosting({ item, onClose }: Props) {
                   className="w-full text-left px-4 py-2.5 text-sm hover:bg-amber-50 border-b border-gray-50 last:border-0"
                 >
                   <span className="font-medium">{i.ingredient_name}</span>
-                  <span className="text-gray-400"> {'— ฿'}{i.unit_cost}/{i.unit}</span>
+                  <span className="text-gray-400"> {'\u2014 \u0E3F'}{i.unit_cost}/{i.unit}</span>
                 </button>
               ))}
               {starredIngredients.filter(i => !ingQuery || (i.ingredient_name || '').toLowerCase().includes(ingQuery.toLowerCase())).length === 0 && (
@@ -316,6 +332,21 @@ export default function MenuItemCosting({ item, onClose }: Props) {
               Enter grams for solid ingredients, ml for liquids, or count for items like eggs.
               {starredIngredients.length === 0 && ' Star ingredients in Finance → Ingredients first.'}
             </p>
+          </div>
+
+          {/* Notes */}
+          <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Costing Notes</p>
+              {notesSaved && <span className="text-xs text-olive font-semibold">Saved ✓</span>}
+            </div>
+            <textarea
+              value={notes}
+              onChange={e => handleNotesChange(e.target.value)}
+              placeholder="Add notes about ingredients, suppliers, seasonal pricing..."
+              rows={4}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta bg-white resize-none leading-relaxed text-gray-700 placeholder:text-gray-300"
+            />
           </div>
 
         </div>
