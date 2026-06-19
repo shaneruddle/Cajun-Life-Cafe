@@ -5,7 +5,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { MenuItem } from '../../types';
-import { X, Plus, Trash2, TrendingUp, TrendingDown, Minus, Calculator } from 'lucide-react';
+import { X, Plus, Trash2, TrendingUp, TrendingDown, Minus, Calculator, CheckCircle2, Circle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface StarredIngredient {
@@ -70,6 +70,7 @@ export default function MenuItemCosting({ item, onClose }: Props) {
   const [starredIngredients, setStarredIngredients] = useState<StarredIngredient[]>([]);
   const [recipe, setRecipe] = useState<RecipeLine[]>([]);
   const [loading, setLoading] = useState(true);
+  const [costingComplete, setCostingComplete] = useState(false);
   const [newLine, setNewLine] = useState({ purchase_id: '', portion_g: '' });
   const [ingQuery, setIngQuery] = useState('');
   const [ingOpen, setIngOpen] = useState(false);
@@ -94,14 +95,24 @@ export default function MenuItemCosting({ item, onClose }: Props) {
   useEffect(() => {
     const unsub = onSnapshot(recipeDocRef, snap => {
       if (snap.exists()) {
-        setRecipe((snap.data().lines || []) as RecipeLine[]);
+        const data = snap.data();
+        setRecipe((data.lines || []) as RecipeLine[]);
+        setCostingComplete(data.costingComplete === true);
       } else {
         setRecipe([]);
+        setCostingComplete(false);
       }
       setLoading(false);
     });
     return unsub;
   }, [docId]);
+
+  const toggleComplete = async () => {
+    const next = !costingComplete;
+    try {
+      await setDoc(recipeDocRef, { menu_item_id: docId, costingComplete: next }, { merge: true });
+    } catch { toast.error('Failed to update status'); }
+  };
 
   const totalCost = () => {
     let sum = 0;
@@ -195,6 +206,21 @@ export default function MenuItemCosting({ item, onClose }: Props) {
             {unknownCost && (
               <p className="text-xs text-amber-500 mt-3">⚠ Some ingredient costs not yet known</p>
             )}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <button
+                onClick={toggleComplete}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                  costingComplete
+                    ? 'bg-olive text-white hover:bg-olive/90'
+                    : 'bg-white border-2 border-gray-200 text-gray-400 hover:border-olive hover:text-olive'
+                }`}
+              >
+                {costingComplete
+                  ? <><CheckCircle2 size={16} /> Costing Complete</>
+                  : <><Circle size={16} /> Mark as Complete</>
+                }
+              </button>
+            </div>
           </div>
 
           {/* Recipe lines */}
@@ -242,7 +268,7 @@ export default function MenuItemCosting({ item, onClose }: Props) {
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Add Ingredient</p>
             <div className="relative">
           <input
-            value={ingOpen ? ingQuery : (() => { const s = starredIngredients.find(i => i.id === newLine.purchase_id); return s ? s.ingredient_name + ' \u2014 \u0E3F' + s.unit_cost + '/' + s.unit : ingQuery; })()}
+            value={ingOpen ? ingQuery : (() => { const s = starredIngredients.find(i => i.id === newLine.purchase_id); return s ? s.ingredient_name + ' — ฿' + s.unit_cost + '/' + s.unit : ingQuery; })()}
             onChange={e => { setIngQuery(e.target.value); setIngOpen(true); }}
             onFocus={() => { setIngOpen(true); setIngQuery(''); }}
             onBlur={() => setTimeout(() => setIngOpen(false), 150)}
@@ -259,7 +285,7 @@ export default function MenuItemCosting({ item, onClose }: Props) {
                   className="w-full text-left px-4 py-2.5 text-sm hover:bg-amber-50 border-b border-gray-50 last:border-0"
                 >
                   <span className="font-medium">{i.ingredient_name}</span>
-                  <span className="text-gray-400"> {'\u2014 \u0E3F'}{i.unit_cost}/{i.unit}</span>
+                  <span className="text-gray-400"> {'— ฿'}{i.unit_cost}/{i.unit}</span>
                 </button>
               ))}
               {starredIngredients.filter(i => !ingQuery || (i.ingredient_name || '').toLowerCase().includes(ingQuery.toLowerCase())).length === 0 && (
