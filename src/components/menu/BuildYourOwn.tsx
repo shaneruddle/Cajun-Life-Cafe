@@ -58,12 +58,15 @@ const BuildYourOwn: React.FC<BuildYourOwnProps> = React.memo(({
             )}
             
             <div className="space-y-3 sm:space-y-4">
-              {[...item.options].sort((a, b) => a.price - b.price).map((opt, oIdx) => {
-                const selected = isSelected(item.id!, oIdx);
+              {[...item.options]
+                .map((opt, originalIdx) => ({ opt, originalIdx }))
+                .sort((a, b) => a.opt.price - b.opt.price)
+                .map(({ opt, originalIdx }) => {
+                const selected = isSelected(item.id!, originalIdx);
                 return (
-                  <button 
-                    key={oIdx} 
-                    onClick={() => toggleIngredient(item, oIdx)}
+                  <button
+                    key={originalIdx}
+                    onClick={() => toggleIngredient(item, originalIdx)}
                     className={`w-full text-left p-4 sm:p-6 rounded-2xl sm:rounded-3xl border transition-all ${
                       selected 
                       ? "bg-terracotta border-terracotta shadow-md ring-2 ring-terracotta/20" 
