@@ -3,17 +3,32 @@ import { motion } from 'motion/react';
 import { Send, CheckCircle, Paperclip, X } from 'lucide-react';
 import { FirebaseImage } from './ui/FirebaseImage';
 import { normalizeImageUrl } from '../utils/images';
+import { useLanguage, useT } from '../i18n';
+import LanguageSwitcher from './menu/LanguageSwitcher';
 
-const ROLES = [
-  'Kitchen / Chef',
-  'Front of House / Waiter',
-  'Bar Staff / Bartender',
-  'Delivery Driver',
-  'Management',
-  'Other / Open to anything',
+const ROLE_KEYS = [
+  'careers.role1',
+  'careers.role2',
+  'careers.role3',
+  'careers.role4',
+  'careers.role5',
+  'careers.role6',
 ];
 
+// English values are sent to the backend / included in the notification email,
+// so the submitted value stays stable regardless of the UI language.
+const ROLE_VALUES: Record<string, string> = {
+  'careers.role1': 'Kitchen / Chef',
+  'careers.role2': 'Front of House / Waiter',
+  'careers.role3': 'Bar Staff / Bartender',
+  'careers.role4': 'Delivery Driver',
+  'careers.role5': 'Management',
+  'careers.role6': 'Other / Open to anything',
+};
+
 export default function CareersPage() {
+  const { language, setLanguage } = useLanguage();
+  const t = useT();
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -30,7 +45,7 @@ export default function CareersPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      setErrorMsg('CV file must be under 10 MB.');
+      setErrorMsg(t('careers.errCvSize'));
       return;
     }
     setErrorMsg('');
@@ -45,7 +60,7 @@ export default function CareersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.email.trim()) {
-      setErrorMsg('Please enter your name and email.');
+      setErrorMsg(t('careers.errNameEmail'));
       return;
     }
     setErrorMsg('');
@@ -63,13 +78,13 @@ export default function CareersPage() {
       const resp = await fetch('/api/careers', { method: 'POST', body: data });
       const json = await resp.json();
       if (!resp.ok || !json.success) {
-        setErrorMsg(json.error || 'Something went wrong. Please try again.');
+        setErrorMsg(json.error || t('careers.errGeneric'));
         setStatus('idle');
         return;
       }
       setStatus('done');
     } catch {
-      setErrorMsg('Could not connect. Please try again.');
+      setErrorMsg(t('careers.errConnect'));
       setStatus('idle');
     }
   };
@@ -84,14 +99,17 @@ export default function CareersPage() {
         </div>
         <div className="max-w-3xl mx-auto text-center relative z-10">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
+            <div className="flex justify-center mb-6">
+              <LanguageSwitcher language={language} setLanguage={setLanguage} />
+            </div>
             <span className="inline-block bg-terracotta/20 text-terracotta font-bold text-xs uppercase tracking-widest px-4 py-2 rounded-full mb-6">
-              We're Hiring
+              {t('careers.badge')}
             </span>
             <h1 className="text-4xl md:text-6xl font-display font-bold mb-6 leading-tight">
-              Come work<br />with us.
+              {t('careers.heroTitle')}
             </h1>
             <p className="text-xl text-white/70 max-w-xl mx-auto leading-relaxed">
-              We're always on the lookout for great people. Good energy, love of food, and good vibes are pretty much the only requirements.
+              {t('careers.heroSub')}
             </p>
           </motion.div>
         </div>
@@ -100,23 +118,23 @@ export default function CareersPage() {
       {/* Why work here */}
       <section className="py-20 px-6 bg-white">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-display font-bold text-center text-ink mb-12">Why Cajun Life</h2>
+          <h2 className="text-3xl font-display font-bold text-center text-ink mb-12">{t('careers.whyTitle')}</h2>
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
                 emoji: '🍔',
-                title: 'Real food, real team',
-                desc: "We cook scratch Cajun food and we take it seriously. You'll work with people who actually care about what comes out of the kitchen.",
+                title: t('careers.why1Title'),
+                desc: t('careers.why1Desc'),
               },
               {
                 emoji: '🌴',
-                title: 'Pattaya lifestyle',
-                desc: 'Work in one of the most vibrant cities in Thailand. Sun, sea, and a solid paycheck — it could be worse.',
+                title: t('careers.why2Title'),
+                desc: t('careers.why2Desc'),
               },
               {
                 emoji: '🤝',
-                title: 'Good vibes only',
-                desc: "Small team, flat structure, no drama. We look after our people and expect the same in return.",
+                title: t('careers.why3Title'),
+                desc: t('careers.why3Desc'),
               },
             ].map(({ emoji, title, desc }) => (
               <motion.div
@@ -141,8 +159,8 @@ export default function CareersPage() {
       <section id="apply" className="py-20 px-6 bg-cream">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-10">
-            <h2 className="text-3xl font-display font-bold text-ink mb-3">Send us your CV</h2>
-            <p className="text-gray-500">No specific openings listed — we hire when we find the right person. Drop us your details and we'll be in touch.</p>
+            <h2 className="text-3xl font-display font-bold text-ink mb-3">{t('careers.applyTitle')}</h2>
+            <p className="text-gray-500">{t('careers.applySub')}</p>
           </div>
 
           {status === 'done' ? (
@@ -154,26 +172,26 @@ export default function CareersPage() {
               <div className="w-20 h-20 bg-olive/10 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle className="text-olive" size={40} />
               </div>
-              <h3 className="text-2xl font-display font-bold text-ink mb-3">Got it — thanks!</h3>
+              <h3 className="text-2xl font-display font-bold text-ink mb-3">{t('careers.doneTitle')}</h3>
               <p className="text-gray-500">
-                We'll take a look and get back to you if there's a good fit. Good luck {form.name.split(' ')[0]}!
+                {t('careers.doneBody').replace('{name}', form.name.split(' ')[0])}
               </p>
             </motion.div>
           ) : (
             <form onSubmit={handleSubmit} className="bg-white rounded-[32px] p-8 md:p-10 shadow-sm border border-gray-100 space-y-5">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Name *</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">{t('careers.labelName')} *</label>
                   <input
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Your name"
+                    placeholder={t('careers.phName')}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Email *</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">{t('careers.labelEmail')} *</label>
                   <input
                     type="email"
                     value={form.email}
@@ -185,31 +203,37 @@ export default function CareersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Role interest</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">{t('careers.labelRole')}</label>
                 <select
                   value={form.role}
                   onChange={(e) => setForm({ ...form, role: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all text-gray-700 bg-white"
                 >
-                  <option value="">Select a role…</option>
-                  {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                  <option value="">{t('careers.selectRole')}</option>
+                  {ROLE_KEYS.map((key) => (
+                    <option key={key} value={ROLE_VALUES[key]}>{t(key)}</option>
+                  ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Experience / cover note <span className="normal-case font-normal text-gray-400">(optional)</span></label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+                  {t('careers.labelExperience')} <span className="normal-case font-normal text-gray-400">{t('loy.emailOpt')}</span>
+                </label>
                 <textarea
                   value={form.experience}
                   onChange={(e) => setForm({ ...form, experience: e.target.value })}
                   rows={4}
-                  placeholder="Tell us a bit about yourself and what you've done…"
+                  placeholder={t('careers.phExperience')}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all resize-none text-sm"
                 />
               </div>
 
               {/* CV upload */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">CV / Résumé <span className="normal-case font-normal text-gray-400">(PDF or Word, max 10 MB)</span></label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+                  {t('careers.labelCv')} <span className="normal-case font-normal text-gray-400">{t('careers.cvHint')}</span>
+                </label>
                 {cv ? (
                   <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-olive/40 bg-olive/5">
                     <Paperclip size={16} className="text-olive shrink-0" />
@@ -225,7 +249,7 @@ export default function CareersPage() {
                     className="w-full flex items-center justify-center gap-2 px-4 py-4 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-terracotta hover:text-terracotta transition-all text-sm font-medium"
                   >
                     <Paperclip size={16} />
-                    Attach your CV
+                    {t('careers.attachCv')}
                   </button>
                 )}
                 <input
@@ -247,11 +271,11 @@ export default function CareersPage() {
                 disabled={status === 'submitting'}
                 className="w-full py-4 bg-terracotta text-white rounded-2xl font-bold text-lg hover:bg-terracotta/90 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg"
               >
-                {status === 'submitting' ? 'Sending…' : <><Send size={18} /> Send Application</>}
+                {status === 'submitting' ? t('careers.sending') : <><Send size={18} /> {t('careers.submit')}</>}
               </button>
 
               <p className="text-center text-gray-400 text-xs">
-                We'll only use your details to consider your application. No spam.
+                {t('careers.footerNote')}
               </p>
             </form>
           )}
