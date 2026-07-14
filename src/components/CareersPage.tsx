@@ -3,8 +3,12 @@ import { motion } from 'motion/react';
 import { Send, CheckCircle, Paperclip, X } from 'lucide-react';
 import { FirebaseImage } from './ui/FirebaseImage';
 import { normalizeImageUrl } from '../utils/images';
-import { useLanguage, useT } from '../i18n';
-import LanguageSwitcher from './menu/LanguageSwitcher';
+import { translate } from '../i18n';
+
+// This page only supports English and Thai (its main audience is local
+// applicants), and defaults to Thai on load — independent of the site-wide
+// language preference used on other pages.
+type CareerLanguage = 'en' | 'th';
 
 const ROLE_KEYS = [
   'careers.role1',
@@ -27,8 +31,8 @@ const ROLE_VALUES: Record<string, string> = {
 };
 
 export default function CareersPage() {
-  const { language, setLanguage } = useLanguage();
-  const t = useT();
+  const [language, setLanguage] = useState<CareerLanguage>('th');
+  const t = (key: string) => translate(language, key);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -100,7 +104,21 @@ export default function CareersPage() {
         <div className="max-w-3xl mx-auto text-center relative z-10">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
             <div className="flex justify-center mb-6">
-              <LanguageSwitcher language={language} setLanguage={setLanguage} />
+              <div className="flex bg-white/50 backdrop-blur-sm p-1 rounded-full shadow-sm border border-gray-100 max-w-fit">
+                {[{ code: 'en', label: 'EN' }, { code: 'th', label: 'TH' }].map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => setLanguage(lang.code as CareerLanguage)}
+                    className={`px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-full text-[10px] sm:text-sm font-bold transition-all ${
+                      language === lang.code
+                        ? "bg-terracotta text-white shadow-lg scale-105"
+                        : "text-gray-400 hover:text-ink"
+                    }`}
+                  >
+                    {lang.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <span className="inline-block bg-terracotta/20 text-terracotta font-bold text-xs uppercase tracking-widest px-4 py-2 rounded-full mb-6">
               {t('careers.badge')}
