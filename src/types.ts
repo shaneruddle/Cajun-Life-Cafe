@@ -65,7 +65,7 @@ export interface UserProfile {
   id?: string;
   email: string;
   displayName?: string;
-  role: 'admin' | 'marketing' | 'cashier' | 'employee';
+  role: 'admin' | 'marketing' | 'cashier' | 'manager' | 'employee';
   createdAt: string;
   lastLogin?: string;
   uid: string;
@@ -130,7 +130,7 @@ export interface SystemLog {
   userEmail: string;
   userId: string;
   timestamp: string;
-  category: 'menu' | 'category' | 'custom_meal' | 'finance' | 'user' | 'system' | 'image' | 'crm' | 'loyalty';
+  category: 'menu' | 'category' | 'custom_meal' | 'finance' | 'user' | 'system' | 'image' | 'crm' | 'loyalty' | 'job';
 }
 
 // Single unified customer record — lives in crm_customers collection.
@@ -156,7 +156,6 @@ export interface CRMCustomer {
   // Loyalty fields — present once enrolled
   loyaltyEnabled?: boolean;
   balance?: number;
-  bonusPct?: number;
   lineUserId?: string;
   isVerified?: boolean;
 }
@@ -208,4 +207,22 @@ export interface PayrollSummary {
   createdAt: string;
   updatedAt: string;
   uid: string;
+}
+
+// Job postings — managed from /dashboard/jobs (Admin + Manager) and shown
+// publicly on /careers when status is 'open'. `department` uses the same
+// canonical English values as the application form's role dropdown on
+// CareersPage.tsx so a listing can pre-fill that dropdown on "Apply".
+export interface Job {
+  id?: string;
+  title: string;
+  titleThai?: string;
+  department: string;
+  employmentType: 'Full-time' | 'Part-time';
+  description: string;
+  descriptionThai?: string;
+  status: 'open' | 'closed';
+  createdAt: string;
+  updatedAt: string;
+  uid?: string;
 }

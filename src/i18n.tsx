@@ -474,6 +474,22 @@ const STRINGS: Dict = {
   "careers.role4": { en: "Delivery Driver", zh: "外送司机", ru: "Водитель доставки", th: "พนักงานส่งอาหาร" },
   "careers.role5": { en: "Management", zh: "管理岗位", ru: "Менеджмент", th: "ฝ่ายบริหาร" },
   "careers.role6": { en: "Other / Open to anything", zh: "其他 / 均可接受", ru: "Другое / Готов на всё", th: "อื่น ๆ / เปิดรับทุกตำแหน่ง" },
+  "careers.openPositions": { en: "Open Positions", zh: "招聘职位", ru: "Открытые вакансии", th: "ตำแหน่งที่เปิดรับ" },
+  "careers.openPositionsSub": {
+    en: "Here's what we're hiring for right now. Don't see your role? Send us your CV below anyway.",
+    zh: "以下是我们目前正在招聘的职位。没看到合适的职位？也欢迎在下方发送您的简历。",
+    ru: "Вот кого мы ищем прямо сейчас. Не нашли подходящую роль? Всё равно отправьте нам резюме ниже.",
+    th: "นี่คือตำแหน่งที่เรากำลังเปิดรับสมัครอยู่ตอนนี้ ไม่เห็นตำแหน่งที่ใช่? ส่งเรซูเม่มาหาเราด้านล่างได้เลย",
+  },
+  "careers.applySubWithJobs": {
+    en: "Don't see the right role above? Send us your CV anyway — we hire when we find the right person.",
+    zh: "上方没有合适的职位？也欢迎发送简历——我们在找到合适的人时就会招聘。",
+    ru: "Не нашли подходящую роль выше? Всё равно отправьте резюме — мы нанимаем, когда находим нужного человека.",
+    th: "ไม่เห็นตำแหน่งที่ใช่ด้านบน? ส่งเรซูเม่มาได้เลย เรารับสมัครเมื่อเจอคนที่ใช่",
+  },
+  "careers.applyForRole": { en: "Apply for this role", zh: "申请此职位", ru: "Откликнуться на вакансию", th: "สมัครตำแหน่งนี้" },
+  "careers.fullTime": { en: "Full-time", zh: "全职", ru: "Полная занятость", th: "เต็มเวลา" },
+  "careers.partTime": { en: "Part-time", zh: "兼职", ru: "Частичная занятость", th: "พาร์ทไทม์" },
 };
 
 export const translate = (language: Language, key: string): string =>

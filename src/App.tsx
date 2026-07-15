@@ -22,7 +22,6 @@ import {
   LogOut,
   Users,
   MessageCircle,
-  Send,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import {
@@ -56,16 +55,12 @@ import LoyaltyDashboard from "./components/LoyaltyDashboard";
 import CRMDirectory from "./components/CRMDirectory";
 import FinanceDashboard from "./components/finance/FinanceDashboard";
 import CashierPortal from "./components/CashierPortal";
+import JobsDashboard from "./components/JobsDashboard";
+import CareersPage from "./components/CareersPage";
 import { Toaster } from "sonner";
 import ActivatePage from "./components/ActivatePage";
-import LoyaltyPage from "./components/LoyaltyPage";
 import ActivateSuccess from "./components/ActivateSuccess";
 import ActivateError from "./components/ActivateError";
-import InfluencerPage from "./components/InfluencerPage";
-import CareersPage from "./components/CareersPage";
-import CustomMealsPage from "./components/CustomMealsPage";
-import MealPrepPage from "./components/MealPrepPage";
-import FeedbackPage from "./components/FeedbackPage";
 
 const BUSINESS = {
   name: "Cajun Life Cafe",
@@ -111,10 +106,9 @@ const Navbar = ({
         <div className="hidden lg:flex space-x-8 items-center">
           {!isDashboard ? (
             <>
-              {["Menu", "About", "Location", "Contact"].map((item) => (
-                <a key={item} href={`/#${item.toLowerCase()}`} className={`font-medium hover:text-terracotta transition-colors ${scrolled ? "text-ink" : "text-white"}`}>{item}</a>
+              {["Menu", "About", "Location"].map((item) => (
+                <a key={item} href={`#${item.toLowerCase()}`} className={`font-medium hover:text-terracotta transition-colors ${scrolled ? "text-ink" : "text-white"}`}>{item}</a>
               ))}
-              <Link to="/loyalty" className={`font-medium hover:text-terracotta transition-colors ${scrolled ? "text-ink" : "text-white"}`}>Loyalty</Link>
               {canAccessDashboard && (
                 <Link to="/dashboard" className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all ${scrolled ? "bg-cream text-olive hover:bg-olive hover:text-white" : "bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"}`}>
                   <Settings size={16} /> Dashboard
@@ -145,10 +139,9 @@ const Navbar = ({
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="lg:hidden bg-white absolute top-full left-0 w-full shadow-xl p-6 flex flex-col space-y-4">
             {!isDashboard ? (
               <>
-                {["Menu", "About", "Location", "Contact"].map((item) => (
-                  <a key={item} href={`/#${item.toLowerCase()}`} className="text-lg font-medium text-ink" onClick={() => setIsOpen(false)}>{item}</a>
+                {["Menu", "About", "Location"].map((item) => (
+                  <a key={item} href={`#${item.toLowerCase()}`} className="text-lg font-medium text-ink" onClick={() => setIsOpen(false)}>{item}</a>
                 ))}
-                <Link to="/loyalty" className="text-lg font-medium text-ink" onClick={() => setIsOpen(false)}>Loyalty</Link>
                 <Auth onUserChange={setUser} />
                 {canAccessDashboard && (
                   <Link to="/dashboard" className="flex items-center gap-2 text-lg font-medium text-olive" onClick={() => setIsOpen(false)}>
@@ -174,18 +167,14 @@ const Navbar = ({
 };
 
 const Hero = () => {
-  // Direct public URL (storage rules allow public read) instead of a gs:// path.
-    // This skips the async getDownloadURL() round-trip through the Firebase Storage SDK
-    // that was delaying the very first paint of the hero image, and marks it eager/high
-    // priority since it's the largest above-the-fold (LCP) element on the page.
-    const heroImage = "https://firebasestorage.googleapis.com/v0/b/cajun-life-cafe.firebasestorage.app/o/assets%2Fhero_image.webp?alt=media";
-    return (
+  const heroImage = "gs://cajun-life-cafe.firebasestorage.app/assets/hero_image.webp";
+  return (
     <section className="relative h-screen flex items-center justify-center overflow-hidden bg-cream">
       <div className="absolute inset-0 z-0">
         <div className="relative w-full h-full">
-          <FirebaseImage src={normalizeImageUrl(heroImage)} alt="Cajun Food" className="w-full h-full object-cover" priority />
-                    <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center p-6 text-center">
-                                <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.8 }} className="flex flex-col items-center">
+          <FirebaseImage src={normalizeImageUrl(heroImage)} alt="Cajun Food" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center p-6 text-center">
+            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.8 }} className="flex flex-col items-center">
               <h1 className="text-5xl md:text-8xl font-display font-bold text-white mb-6 drop-shadow-2xl">{BUSINESS.name}</h1>
               <p className="text-xl md:text-2xl text-white/90 font-medium italic tracking-widest uppercase drop-shadow-lg">Authentic Louisiana & Thai Soul Food</p>
               <div className="mt-12 flex gap-6">
@@ -449,130 +438,10 @@ const Location = () => (
   </section>
 );
 
-const Contact = () => {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
-  const [honeypot, setHoneypot] = useState("");
-  const [status, setStatus] = useState<"idle" | "submitting" | "done">("idle");
-  const [errorMsg, setErrorMsg] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name.trim() || !form.message.trim()) {
-      setErrorMsg("Please tell us your name and a message.");
-      return;
-    }
-    if (!form.email.trim() && !form.phone.trim()) {
-      setErrorMsg("Please give us an email or phone number so we can reply.");
-      return;
-    }
-    setErrorMsg("");
-    setStatus("submitting");
-    try {
-      const resp = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, website: honeypot }),
-      });
-      const data = await resp.json();
-      if (!resp.ok || !data.success) {
-        setErrorMsg(data.error || "Something went wrong. Please try again.");
-        setStatus("idle");
-        return;
-      }
-      setStatus("done");
-    } catch {
-      setErrorMsg("Could not connect. Please check your internet and try again.");
-      setStatus("idle");
-    }
-  };
-
-  return (
-    <section id="contact" className="py-24 px-6 bg-cream">
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-display font-bold mb-4">Get in Touch</h2>
-          <p className="text-lg text-gray-600 italic">Questions, bookings, or special requests — drop us a line and we'll get back to you.</p>
-        </div>
-        {status === "done" ? (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-10 shadow-lg text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Send size={28} className="text-green-600" />
-            </div>
-            <h3 className="text-2xl font-display font-bold text-ink mb-3">Message Sent!</h3>
-            <p className="text-gray-500">Thanks, {form.name.split(" ")[0]} — we'll get back to you as soon as we can.</p>
-          </motion.div>
-        ) : (
-          <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-8 md:p-10 shadow-lg">
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-bold text-ink mb-2">Name *</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all"
-                  placeholder="Your name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-ink mb-2">Phone</label>
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all"
-                  placeholder="086 123 4567"
-                />
-              </div>
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-bold text-ink mb-2">Email</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all"
-                placeholder="you@example.com"
-              />
-            </div>
-            <div className="mb-6">
-              <label className="block text-sm font-bold text-ink mb-2">Message *</label>
-              <textarea
-                value={form.message}
-                onChange={(e) => setForm({ ...form, message: e.target.value })}
-                rows={5}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 outline-none transition-all resize-y"
-                placeholder="How can we help?"
-              />
-            </div>
-            <input
-              type="text"
-              value={honeypot}
-              onChange={(e) => setHoneypot(e.target.value)}
-              className="hidden"
-              tabIndex={-1}
-              autoComplete="off"
-              aria-hidden="true"
-            />
-            {errorMsg && <p className="text-red-600 text-sm mb-4">{errorMsg}</p>}
-            <button
-              type="submit"
-              disabled={status === "submitting"}
-              className="terracotta-button w-full text-lg font-bold flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              {status === "submitting" ? "Sending…" : <><Send size={18} /> Send Message</>}
-            </button>
-          </form>
-        )}
-      </div>
-    </section>
-  );
-};
-
 const Footer = () => (
   <footer className="bg-ink text-white py-16 px-6">
     <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-12">
-      <div>
+      <div className="col-span-2">
         <h3 className="text-3xl font-display font-bold mb-6">{BUSINESS.name}</h3>
         <p className="text-gray-400 max-w-sm mb-8">Bringing the authentic heart and soul of Louisiana cooking to your neighbourhood. Join us for a taste of the bayou.</p>
         <div className="flex flex-col gap-4">
@@ -595,20 +464,9 @@ const Footer = () => (
           <li><a href="#menu" className="hover:text-white transition-colors">Menu</a></li>
           <li><Link to="/menu" className="hover:text-white transition-colors">Digital Menu</Link></li>
           <li><a href="#about" className="hover:text-white transition-colors">Our Story</a></li>
-          <li><Link to="/loyalty" className="hover:text-white transition-colors">Loyalty Program</Link></li>
-          <li><Link to="/custom-meals" className="hover:text-white transition-colors">Custom Meals</Link></li>
-          <li><Link to="/meal-prep" className="hover:text-white transition-colors">Meal Prep</Link></li>
-        </ul>
-      </div>
-      <div>
-        <h4 className="font-bold mb-6 text-terracotta uppercase tracking-wider text-sm">More</h4>
-        <ul className="space-y-4 text-gray-400">
-          <li><Link to="/feedback" className="hover:text-white transition-colors">Leave Feedback</Link></li>
-          <li><Link to="/careers" className="hover:text-white transition-colors">Careers</Link></li>
           <li><a href="#location" className="hover:text-white transition-colors">Location</a></li>
-          <li><a href="#contact" className="hover:text-white transition-colors">Contact</a></li>
+          <li><Link to="/careers" className="hover:text-white transition-colors">Careers</Link></li>
           <li><a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">LINE: @cajunlifecafe</a></li>
-            <li><Link to="/dashboard" className="hover:text-white transition-colors">Admin Login</Link></li>
         </ul>
       </div>
     </div>
@@ -625,7 +483,6 @@ const MainSite = ({ isAdmin }: { isAdmin: boolean }) => (
     <Menu />
     <CustomMeals />
     <Location />
-    <Contact />
     <Footer />
   </div>
 );
@@ -645,6 +502,7 @@ function AppContent({ user, setUser }: any) {
   const isDigitalMenu = location.pathname === "/menu" || location.pathname === "/digital-menu";
   const isDashboard = location.pathname.startsWith("/dashboard") || location.pathname === "/import" || location.pathname === "/import-custom-meals";
   const isActivate = location.pathname.startsWith("/activate");
+  const isCareers = location.pathname === "/careers";
 
   const isAdmin = useMemo(() => {
     if (!user) return false;
@@ -670,35 +528,34 @@ function AppContent({ user, setUser }: any) {
           </button>
         </div>
       )}
-      {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && <Navbar canAccessDashboard={isMarketing} canAccessStaffPortal={isCashier || isManager} setUser={setUser} />}
+      {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && !isCareers && <Navbar canAccessDashboard={isMarketing} canAccessStaffPortal={isCashier || isManager} setUser={setUser} />}
       <Routes>
         <Route path="/" element={<MainSite isAdmin={isAdmin} />} />
         <Route path="/menu" element={<DigitalMenuDisplay />} />
         <Route path="/digital-menu" element={<DigitalMenuDisplay />} />
-        <Route path="/dashboard" element={isAdmin || isMarketing || isStaff ? <DashboardLayout user={user} /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>}>
-          <Route index element={isAdmin || isMarketing ? <Dashboard /> : <Navigate to="/dashboard/loyalty" />} />
+        <Route path="/careers" element={<><CareersPage /><Footer /></>} />
+        <Route path="/dashboard" element={isAdmin || isMarketing || isStaff || isManager ? <DashboardLayout user={user} /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>}>
+          <Route index element={isAdmin || isMarketing ? <Dashboard /> : (isManager ? <Navigate to="/dashboard/jobs" /> : <Navigate to="/dashboard/loyalty" />)} />
           <Route path="categories" element={isAdmin || isMarketing ? <CategoriesDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="custom-meals" element={isAdmin || isMarketing ? <CustomMealsDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="users" element={isAdmin ? <UserManagement /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="finance" element={canAccessFinance ? <FinanceDashboard user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
-          <Route path="loyalty" element={isAdmin || isStaff ? <LoyaltyDashboard isAdmin={isAdmin} /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="loyalty" element={isAdmin || isStaff ? <LoyaltyDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="jobs" element={isAdmin || isManager ? <JobsDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="crm" element={isAdmin || isMarketing ? <CRMDirectory user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="images" element={isAdmin || isMarketing ? <ImageManagement /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="logs" element={isAdmin ? <SystemLogs /> : <div className="p-20 text-center">Access Denied</div>} />
         </Route>
         <Route path="/import" element={isAdmin || isMarketing ? <BulkImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
         <Route path="/cashier" element={<CashierPortal />} />
-        <Route path="/loyalty" element={<><LoyaltyPage /><Footer /></>} />
-        <Route path="/influencers" element={<><InfluencerPage /><Footer /></>} />
-        <Route path="/careers" element={<><CareersPage /><Footer /></>} />
-        <Route path="/custom-meals" element={<><CustomMealsPage /><Footer /></>} />
-        <Route path="/meal-prep" element={<><MealPrepPage /><Footer /></>} />
-        <Route path="/feedback" element={<><FeedbackPage /><Footer /></>} />
         <Route path="/import-custom-meals" element={isAdmin || isMarketing ? <BulkCustomMealsImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
-        <Route path="/activate/:token" element={<ActivatePage />} />
+      <Route path="/activate/:token" element={<ActivatePage />} />
         <Route path="/activate/success" element={<ActivateSuccess />} />
         <Route path="/activate/error" element={<ActivateError />} />
       </Routes>
+      {!isDigitalMenu && !isDashboard && !isActivate && !isCareers && !user && (
+        <div className="fixed bottom-4 right-4 z-[60]"><Auth onUserChange={setUser} /></div>
+      )}
     </div>
   );
 }
