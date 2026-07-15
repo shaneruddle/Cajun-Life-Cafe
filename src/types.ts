@@ -67,6 +67,11 @@ export interface UserProfile {
   displayName?: string;
   firstName?: string;
   lastName?: string;
+  // Casual/preferred name — optional, purely for display. Shown in brackets
+  // next to the full name wherever staff pick a colleague from a list (e.g.
+  // the "Staff Member" picker on a Salary & Staff Advances expense — see
+  // src/utils/staffDirectory.ts). Doesn't affect displayName / legal name.
+  nickname?: string;
   phone?: string;
   address?: string;
   role: 'admin' | 'marketing' | 'cashier' | 'manager' | 'employee';
