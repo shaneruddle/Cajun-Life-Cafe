@@ -15,7 +15,7 @@ import { db, auth } from '../firebase';
 import { UserProfile, OperationType } from '../types';
 import { handleFirestoreError } from '../utils/firestore';
 import { logActivity } from '../utils/logger';
-import { syncStaffDirectory } from '../utils/staffDirectory';
+import { syncStaffDirectory, removeStaffDirectoryEntry } from '../utils/staffDirectory';
 import {
   Users,
   User as UserIcon,
@@ -211,8 +211,10 @@ export default function UserManagement() {
         // Creating a brand-new pre-provisioned profile — no Firebase Auth
         // account exists yet. It gets linked automatically the first time
         // this person signs up or logs in with a matching email (see
-        // src/utils/userClaim.ts). It's still `pending` at this point, so it
-        // won't show up in staff_directory until it's claimed.
+        // src/utils/userClaim.ts). It's still `pending` at this point, but
+        // it DOES show up in staff_directory immediately (see
+        // syncStaffDirectory) so it can be tagged on payroll expenses even
+        // if this person never logs into the Cashier Portal.
         const existing = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
         const alreadyExists = existing.docs.some((d) => !d.data().superseded);
         if (alreadyExists) {
@@ -238,6 +240,13 @@ export default function UserManagement() {
           notes: formData.notes || '',
           pending: true,
           createdAt: now,
+        });
+        await syncStaffDirectory({
+          uid: newRef.id,
+          role: formData.role || 'employee',
+          disabled: false,
+          displayName,
+          email,
         });
         await logActivity('User Profile Created', `Created pending profile for ${displayName || email}`, 'user');
         setSuccess('Profile created — it will link automatically when they first sign in with this email.');
@@ -283,6 +292,7 @@ export default function UserManagement() {
     if (!window.confirm(`Permanently delete the pending profile for ${user.displayName || user.email}? This cannot be undone.`)) return;
     try {
       await deleteDoc(doc(db, 'users', user.id!));
+      await removeStaffDirectoryEntry(user.id!);
       await logActivity('User Profile Deleted', `Deleted pending profile for ${user.displayName || user.email}`, 'user');
       setSuccess('Pending profile deleted.');
     } catch (err) {
