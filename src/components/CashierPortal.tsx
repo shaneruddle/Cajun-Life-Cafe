@@ -16,7 +16,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '../firebase';
 import { logActivity } from '../utils/logger';
 import { claimPendingProfile } from '../utils/userClaim';
-import { useStaffOptions } from '../utils/staffDirectory';
+import { useStaffOptions, staffLabel } from '../utils/staffDirectory';
 import {
   LogIn, LogOut, Camera, Loader2, Search, User, UserPlus,
   Wallet, ArrowUpCircle, ArrowDownCircle, History, Star,
@@ -1701,12 +1701,12 @@ function ExpenseTab({ user }: { user: any }) {
                 value={formData.employeeId}
                 onChange={e => {
                   const staffMember = staffOptions.find(s => s.uid === e.target.value);
-                  setFormData(p => ({ ...p, employeeId: e.target.value, employeeName: staffMember?.name || '' }));
+                  setFormData(p => ({ ...p, employeeId: e.target.value, employeeName: staffMember ? staffLabel(staffMember) : '' }));
                 }}
                 className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta appearance-none pr-10"
               >
                 <option value="">Select staff member…</option>
-                {staffOptions.map(s => <option key={s.uid} value={s.uid}>{s.name}</option>)}
+                {staffOptions.map(s => <option key={s.uid} value={s.uid}>{staffLabel(s)}</option>)}
               </select>
               <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>

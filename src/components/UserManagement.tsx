@@ -46,6 +46,7 @@ const ROLES: UserProfile['role'][] = ['admin', 'manager', 'marketing', 'cashier'
 const emptyForm: Partial<UserProfile> = {
   firstName: '',
   lastName: '',
+  nickname: '',
   email: '',
   phone: '',
   address: '',
@@ -126,6 +127,7 @@ export default function UserManagement() {
                 displayName: u.displayName,
                 firstName: u.firstName,
                 lastName: u.lastName,
+                nickname: u.nickname,
                 email: u.email,
               })
             )
@@ -185,6 +187,7 @@ export default function UserManagement() {
         await updateDoc(doc(db, 'users', editingUser.id), {
           firstName: formData.firstName || '',
           lastName: formData.lastName || '',
+          nickname: formData.nickname || '',
           displayName,
           email,
           phone: formData.phone || '',
@@ -203,6 +206,7 @@ export default function UserManagement() {
           disabled: editingUser.disabled,
           pending: editingUser.pending,
           displayName,
+          nickname: formData.nickname,
           email,
         });
         await logActivity('User Profile Updated', `Updated profile for ${displayName || email}`, 'user');
@@ -227,6 +231,7 @@ export default function UserManagement() {
           uid: newRef.id,
           firstName: formData.firstName || '',
           lastName: formData.lastName || '',
+          nickname: formData.nickname || '',
           displayName,
           email,
           phone: formData.phone || '',
@@ -246,6 +251,7 @@ export default function UserManagement() {
           role: formData.role || 'employee',
           disabled: false,
           displayName,
+          nickname: formData.nickname,
           email,
         });
         await logActivity('User Profile Created', `Created pending profile for ${displayName || email}`, 'user');
@@ -274,6 +280,7 @@ export default function UserManagement() {
         disabled: nextDisabled,
         pending: user.pending,
         displayName: user.displayName,
+        nickname: user.nickname,
         email: user.email,
       });
       await logActivity(
@@ -311,6 +318,7 @@ export default function UserManagement() {
         disabled: user.disabled,
         pending: user.pending,
         displayName: user.displayName,
+        nickname: user.nickname,
         email: user.email,
       });
       await logActivity('User Role Updated', `${user.displayName || user.email} role set to ${newRole}`, 'user');
@@ -414,7 +422,10 @@ export default function UserManagement() {
                               <UserIcon size={20} />
                             </div>
                             <div>
-                              <div className="font-bold text-ink">{user.displayName || 'Unnamed'}</div>
+                              <div className="font-bold text-ink">
+                                {user.displayName || 'Unnamed'}
+                                {user.nickname && <span className="text-gray-400 font-normal"> ({user.nickname})</span>}
+                              </div>
                               <div className="text-xs text-gray-400 flex items-center gap-1">
                                 <Mail size={12} /> {user.email}
                               </div>
@@ -510,7 +521,7 @@ export default function UserManagement() {
               )}
 
               <form onSubmit={handleSave} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-3 gap-6">
                   <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">First Name</label>
                     <input
@@ -527,6 +538,15 @@ export default function UserManagement() {
                       onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                       className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-terracotta outline-none font-medium"
                       placeholder="e.g. Jaidee"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Nickname</label>
+                    <input
+                      value={formData.nickname || ''}
+                      onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+                      className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-terracotta outline-none font-medium"
+                      placeholder="e.g. Som (optional)"
                     />
                   </div>
                 </div>
@@ -684,7 +704,10 @@ export default function UserManagement() {
                   <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-3 ${roleBadgeClass(viewingUser.role)}`}>
                     {viewingUser.role}
                   </span>
-                  <h2 className="text-2xl font-display font-bold text-ink">{viewingUser.displayName || 'Unnamed'}</h2>
+                  <h2 className="text-2xl font-display font-bold text-ink">
+                    {viewingUser.displayName || 'Unnamed'}
+                    {viewingUser.nickname && <span className="text-gray-400 font-normal"> ({viewingUser.nickname})</span>}
+                  </h2>
                   <p className="text-gray-400 mt-1 flex items-center gap-1 text-sm"><Mail size={14} /> {viewingUser.email}</p>
                 </div>
                 <button onClick={() => setViewingUser(null)} className="p-2 hover:bg-white rounded-full transition-colors">
