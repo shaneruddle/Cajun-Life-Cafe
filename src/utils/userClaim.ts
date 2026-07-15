@@ -1,6 +1,7 @@
 import { collection, query, where, getDocs, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { UserProfile } from '../types';
+import { syncStaffDirectory } from './staffDirectory';
 
 /**
  * Looks for an admin-created "pending" profile (added from the Users
@@ -46,6 +47,10 @@ export async function claimPendingProfile(uid: string, email: string): Promise<U
 
     await setDoc(doc(db, 'users', uid), claimedProfile, { merge: true });
     await updateDoc(doc(db, 'users', pendingDoc.id), { superseded: true, claimedUid: uid });
+    // Now that this profile is a real (non-pending) account, make it visible
+    // in the staff_directory used by staff-name pickers (e.g. tagging a
+    // Salary & Staff Advances expense) if their role is payroll-eligible.
+    await syncStaffDirectory(claimedProfile).catch((err) => console.error('syncStaffDirectory (claim) failed:', err));
 
     return claimedProfile;
   } catch (err) {
