@@ -106,6 +106,17 @@ export default function FinanceLedger({ user, financeRole = 'owner' }: { user: a
     return ['All', ...cats.sort()];
   }, [entries]);
 
+  // Formats a Date using its LOCAL calendar fields (not toISOString, which
+  // converts to UTC first and silently rolls the date back a day for any
+  // timezone ahead of UTC — e.g. Bangkok's UTC+7 turned "1 July local
+  // midnight" into "2026-06-30" once converted to UTC).
+  const toLocalYMD = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
   const applyQuickRange = (days: number | 'month' | null) => {
     if (days === null) {
       setFromDate('');
@@ -113,14 +124,14 @@ export default function FinanceLedger({ user, financeRole = 'owner' }: { user: a
       return;
     }
     const now = new Date();
-    const to = now.toISOString().slice(0, 10);
+    const to = toLocalYMD(now);
     let from: string;
     if (days === 'month') {
-      from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+      from = toLocalYMD(new Date(now.getFullYear(), now.getMonth(), 1));
     } else {
       const d = new Date();
       d.setDate(d.getDate() - days);
-      from = d.toISOString().slice(0, 10);
+      from = toLocalYMD(d);
     }
     setFromDate(from);
     setToDate(to);
