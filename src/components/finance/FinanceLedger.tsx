@@ -1,12 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { logActivity } from '../../utils/logger';
 import { Expense, Income } from './types';
-import { Search, Pencil, Trash2, X, Loader2, ArrowUpDown, TrendingUp, TrendingDown, Scale } from 'lucide-react';
+import { Search, Pencil, Trash2, X, Loader2, ArrowUpDown, TrendingUp, TrendingDown, Scale, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
-const EXPENSE_CATEGORIES = [
+export const EXPENSE_CATEGORIES = [
   { id: 'food', name: 'Food & Ingredients' },
   { id: 'drinks', name: 'Drinks & Beverages' },
   { id: 'packaging', name: 'Packaging' },
@@ -15,7 +15,121 @@ const EXPENSE_CATEGORIES = [
   { id: 'equipment', name: 'Equipment' },
   { id: 'rent', name: 'Rent' },
   { id: 'other', name: 'Other' },
+  { id: 'food_expense', name: 'Food Expense' },
+  { id: 'drink_expense', name: 'Drink Expense' },
+  { id: 'staff_food', name: 'Staff Food' },
+  { id: 'ice', name: 'Ice' },
+  { id: 'salary_staff_advances', name: 'Salary & Staff Advances' },
+  { id: 'tip_transfer', name: 'Tip Transfer' },
+  { id: 'social_security', name: 'Social Security' },
+  { id: 'electricity', name: 'Electricity' },
+  { id: 'water_bill_pea', name: 'Water Bill from PEA' },
+  { id: 'gas', name: 'Gas' },
+  { id: 'internet', name: 'Internet' },
+  { id: 'mobile_phone', name: 'Mobile Phone' },
+  { id: 'cleaning_supplies', name: 'Cleaning & Supplies' },
+  { id: 'subscriptions', name: 'Subscriptions' },
+  { id: 'kitchen_equipment', name: 'Kitchen Equipment' },
+  { id: 'restaurant_equipment', name: 'Restaurant Equipment' },
+  { id: 'computer_hardware', name: 'Computer - Hardware' },
+  { id: 'renovation_costs', name: 'Renovation Costs' },
+  { id: 'repairs_maintenance', name: 'Repairs & Maintenance' },
+  { id: 'rent_expense', name: 'Rent Expense' },
+  { id: 'accounting_services', name: 'Accounting Services' },
+  { id: 'advertising_promotion', name: 'Advertising & Promotion' },
+  { id: 'professional_fees', name: 'Professional Fees' },
+  { id: 'licenses', name: 'Licenses' },
+  { id: 'office_supplies', name: 'Office Supplies' },
+  { id: 'newspapers', name: 'Newspapers' },
+  { id: 'vouchers', name: 'Vouchers' },
+  { id: 'taxi', name: 'Taxi' },
+  { id: 'fuel_petrol', name: 'Fuel & Petrol' },
+  { id: 'dividends', name: 'Dividends' },
+  { id: 'miscellaneous', name: 'Miscellaneous' },
+  { id: 'uncategorized_expense', name: 'Uncategorized Expense' },
 ];
+
+// Small self-contained calendar-grid date picker (no external date-picker
+// dependency) used for the Ledger's From/To filters in place of the native
+// <input type="date">, which renders as a plain text field or wheel-style
+// spinner on some mobile browsers rather than an actual calendar.
+function DatePickerField({ value, onChange, placeholder = 'Any date' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const [open, setOpen] = useState(false);
+  const [viewMonth, setViewMonth] = useState(() => {
+    const d = value ? new Date(value + 'T00:00:00') : new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const toYMD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+  const firstDayOfWeek = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1).getDay();
+  const cells: (number | null)[] = [...Array(firstDayOfWeek).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between border border-gray-200 rounded-xl px-3 py-2 text-sm text-left bg-white focus:outline-none focus:ring-2 focus:ring-terracotta"
+      >
+        <span className={value ? 'text-ink' : 'text-gray-400'}>{value || placeholder}</span>
+        <Calendar size={14} className="text-gray-400 flex-shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 w-64">
+          <div className="flex items-center justify-between mb-3">
+            <button type="button" onClick={() => setViewMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))} className="p-1 rounded-lg hover:bg-gray-100 text-gray-500">
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-sm font-bold text-ink">
+              {viewMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+            </span>
+            <button type="button" onClick={() => setViewMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))} className="p-1 rounded-lg hover:bg-gray-100 text-gray-500">
+              <ChevronRight size={16} />
+            </button>
+          </div>
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-gray-400 mb-1">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <div key={i}>{d}</div>)}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {cells.map((day, i) => {
+              if (day === null) return <div key={i} />;
+              const ymd = toYMD(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day));
+              const isSelected = ymd === value;
+              return (
+                <button
+                  type="button"
+                  key={i}
+                  onClick={() => { onChange(ymd); setOpen(false); }}
+                  className={`h-8 w-8 rounded-lg text-xs flex items-center justify-center transition-all ${
+                    isSelected ? 'bg-terracotta text-white font-bold' : 'text-ink hover:bg-gray-100'
+                  }`}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+          {value && (
+            <button type="button" onClick={() => { onChange(''); setOpen(false); }} className="mt-3 text-xs text-gray-400 hover:text-red-500 w-full text-center">
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const INCOME_CATEGORIES = ['Food', 'Drinks', 'Meal Preps', 'Catering', 'Other'];
 
@@ -275,11 +389,11 @@ export default function FinanceLedger({ user, financeRole = 'owner' }: { user: a
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">From</label>
-            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+            <DatePickerField value={fromDate} onChange={setFromDate} />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">To</label>
-            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
+            <DatePickerField value={toDate} onChange={setToDate} />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
@@ -324,7 +438,14 @@ export default function FinanceLedger({ user, financeRole = 'owner' }: { user: a
               <tbody>
                 {filtered.map(e => (
                   <tr key={`${e.type}-${e.id}`} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
-                    <td className="px-5 py-3 text-gray-500 whitespace-nowrap">{e.date}</td>
+                    <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
+                      <div>{e.date}</div>
+                      {e.created_at && (
+                        <div className="text-[10px] text-gray-400">
+                          {new Date(e.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-5 py-3">
                       <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${
                         e.type === 'income' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'
