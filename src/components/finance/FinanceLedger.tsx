@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { logActivity } from '../../utils/logger';
-import { useStaffOptions } from '../../utils/staffDirectory';
+import { useStaffOptions, staffLabel } from '../../utils/staffDirectory';
 import { Expense, Income } from './types';
 import { Search, Pencil, Trash2, X, Loader2, ArrowUpDown, TrendingUp, TrendingDown, Scale, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
@@ -612,7 +612,7 @@ function EditModal({
                 onChange={e => {
                   const staffMember = staffOptions.find(s => s.uid === e.target.value);
                   setEmployeeId(e.target.value);
-                  setEmployeeName(staffMember?.name || '');
+                  setEmployeeName(staffMember ? staffLabel(staffMember) : '');
                 }}
                 className="w-full border border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-terracotta"
               >
@@ -620,7 +620,7 @@ function EditModal({
                 {employeeId && !staffOptions.some(s => s.uid === employeeId) && (
                   <option value={employeeId}>{employeeName || 'Unknown staff member'}</option>
                 )}
-                {staffOptions.map(s => <option key={s.uid} value={s.uid}>{s.name}</option>)}
+                {staffOptions.map(s => <option key={s.uid} value={s.uid}>{staffLabel(s)}</option>)}
               </select>
             </div>
           )}

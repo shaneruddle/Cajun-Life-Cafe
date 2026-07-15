@@ -4,7 +4,7 @@ import { logActivity } from '../../utils/logger';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase';
 import { ExpenseItem } from './types';
-import { useStaffOptions } from '../../utils/staffDirectory';
+import { useStaffOptions, staffLabel } from '../../utils/staffDirectory';
 import { Camera, Upload, Loader2, Check, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -330,12 +330,12 @@ export default function LogExpense({ user, financeRole = 'owner' }: { user: any;
               value={formData.employeeId}
               onChange={e => {
                 const staffMember = staffOptions.find(s => s.uid === e.target.value);
-                setFormData(p => ({ ...p, employeeId: e.target.value, employeeName: staffMember?.name || '' }));
+                setFormData(p => ({ ...p, employeeId: e.target.value, employeeName: staffMember ? staffLabel(staffMember) : '' }));
               }}
               className="w-full border border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-terracotta"
             >
               <option value="">Select staff member…</option>
-              {staffOptions.map(s => <option key={s.uid} value={s.uid}>{s.name}</option>)}
+              {staffOptions.map(s => <option key={s.uid} value={s.uid}>{staffLabel(s)}</option>)}
             </select>
             {staffOptions.length === 0 && (
               <p className="text-[11px] text-gray-400 mt-1">No staff found — check Users.</p>
