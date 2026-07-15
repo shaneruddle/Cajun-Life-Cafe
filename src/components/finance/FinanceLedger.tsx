@@ -133,6 +133,8 @@ function DatePickerField({ value, onChange, placeholder = 'Any date' }: { value:
 
 const INCOME_CATEGORIES = ['Food', 'Drinks', 'Meal Preps', 'Catering', 'Other'];
 
+const PAGE_SIZE = 50;
+
 type LedgerEntry = {
   id: string;
   type: 'income' | 'expense';
@@ -166,6 +168,7 @@ export default function FinanceLedger({ user, financeRole = 'owner' }: { user: a
   const [toDate, setToDate] = useState('');
   const [search, setSearch] = useState('');
   const [sortAsc, setSortAsc] = useState(false);
+  const [page, setPage] = useState(1);
 
   const [editEntry, setEditEntry] = useState<LedgerEntry | null>(null);
   const [saving, setSaving] = useState(false);
@@ -272,6 +275,20 @@ export default function FinanceLedger({ user, financeRole = 'owner' }: { user: a
     });
     return list;
   }, [entries, typeFilter, categoryFilter, fromDate, toDate, search, sortAsc]);
+
+  // Reset to page 1 whenever the filtered result set changes shape (new
+  // filter/search/sort applied), so the user isn't stranded on a page that
+  // no longer has any rows.
+  useEffect(() => {
+    setPage(1);
+  }, [typeFilter, categoryFilter, fromDate, toDate, search, sortAsc]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paginated = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage]
+  );
 
   const totals = useMemo(() => {
     const income = filtered.filter(e => e.type === 'income').reduce((s, e) => s + (e.amount || 0), 0);
@@ -436,7 +453,7 @@ export default function FinanceLedger({ user, financeRole = 'owner' }: { user: a
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(e => (
+                {paginated.map(e => (
                   <tr key={`${e.type}-${e.id}`} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
                     <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
                       <div>{e.date}</div>
@@ -476,7 +493,34 @@ export default function FinanceLedger({ user, financeRole = 'owner' }: { user: a
           </div>
         )}
         {!loading && filtered.length > 0 && (
-          <div className="px-5 py-3 text-xs text-gray-400 border-t border-gray-50">{filtered.length} {filtered.length === 1 ? 'entry' : 'entries'}</div>
+          <div className="px-5 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-50">
+            <p className="text-xs text-gray-400">
+              Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length} {filtered.length === 1 ? 'entry' : 'entries'}
+            </p>
+            {pageCount > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-terracotta hover:bg-terracotta/10 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                  title="Previous page"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="text-xs font-medium text-gray-500 px-2">
+                  Page {currentPage} of {pageCount}
+                </span>
+                <button
+                  onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+                  disabled={currentPage === pageCount}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-terracotta hover:bg-terracotta/10 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                  title="Next page"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
