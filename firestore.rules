@@ -91,7 +91,11 @@ service cloud.firestore {
     match /finance_expenses/{id} {
       allow read, write: if isCashier();
     }
-    match /finance_incomes/{id} {
+    // NOTE: the app actually reads/writes the singular "finance_income"
+    // collection (see LogIncome.tsx / FinanceOverview.tsx / FinanceLedger.tsx)
+    // — this was previously named "finance_incomes" here and silently blocked
+    // non-admin (manager/cashier) reads and writes to that collection.
+    match /finance_income/{id} {
       allow read, write: if isCashier();
     }
     match /finance_ingredients/{id} {
