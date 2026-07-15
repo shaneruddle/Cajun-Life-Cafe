@@ -1,6 +1,7 @@
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { claimPendingProfile } from '../utils/userClaim';
 import { useState, useEffect } from 'react';
 import { LogIn, LogOut, User as UserIcon, ShieldCheck, Loader2 } from 'lucide-react';
 import { FirebaseImage } from './ui/FirebaseImage';
@@ -23,6 +24,13 @@ export default function Auth({ onUserChange }: { onUserChange: (user: any) => vo
 
           if (userSnap.exists()) {
             const existingData = userSnap.data();
+            if (existingData.disabled) {
+              await signOut(auth);
+              setUser(null);
+              setUserData(null);
+              onUserChange(null);
+              return;
+            }
             // Only update non-role fields — NEVER touch role
             await setDoc(userRef, {
               lastLogin: new Date().toISOString(),
@@ -52,11 +60,21 @@ export default function Auth({ onUserChange }: { onUserChange: (user: any) => vo
               setUserData(adminProfile);
               onUserChange(adminProfile);
             } else {
-              // Unknown user — no doc, not admin. Don't create anything, don't interfere.
-              // CashierPortal handles its own signOut after sign-up.
-              setUser(null);
-              setUserData(null);
-              onUserChange(null);
+              // Not the hardcoded admin — but they may have a pending profile an admin
+              // pre-created for them in the Users dashboard (e.g. a manager/marketing
+              // hire). Try to claim it before treating them as unknown.
+              const claimed = user.email ? await claimPendingProfile(user.uid, user.email) : null;
+              if (claimed && !claimed.disabled) {
+                setUser(user);
+                setUserData(claimed);
+                onUserChange(claimed);
+              } else {
+                // Unknown user (or a deactivated one) — no doc, not admin. Don't create
+                // anything, don't interfere. CashierPortal handles its own signOut after sign-up.
+                setUser(null);
+                setUserData(null);
+                onUserChange(null);
+              }
             }
           }
         } catch (err) {

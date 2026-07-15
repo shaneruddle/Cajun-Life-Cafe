@@ -10,11 +10,12 @@ import {
 } from 'firebase/auth';
 import {
   collection, addDoc, query, where, orderBy, onSnapshot,
-  doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, limit, Timestamp
+  doc, getDoc, setDoc, updateDoc, deleteDoc, limit, Timestamp
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '../firebase';
 import { logActivity } from '../utils/logger';
+import { claimPendingProfile } from '../utils/userClaim';
 import {
   LogIn, LogOut, Camera, Loader2, Search, User, UserPlus,
   Wallet, ArrowUpCircle, ArrowDownCircle, History, Star,
@@ -22,7 +23,7 @@ import {
   Receipt, ClipboardList, Plus, Trash2, Pencil, ChevronDown, Upload, MapPin, Save
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { CRMCustomer, LoyaltyTransaction, LineItem } from '../types';
+import { CRMCustomer, LoyaltyTransaction } from '../types';
 const DeliveryMap = React.lazy(() => import('./DeliveryMap'));
 
 // ── LINE push helper ───────────────────────────────────────────────────────────
@@ -73,6 +74,10 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
         toast.error('Your account is pending approval. Ask your manager to grant access.');
         await signOut(auth); return;
       }
+      if (data.disabled) {
+        toast.error('This account has been deactivated. Contact your manager.');
+        await signOut(auth); return;
+      }
       await setDoc(doc(db, 'users', cred.user.uid), { lastLogin: new Date().toISOString() }, { merge: true });
       await logActivity('Staff Sign In', `${data.displayName || suEmail || cred.user.email} signed in via email`, 'user');
       onLogin({ ...data, uid: cred.user.uid });
@@ -111,12 +116,30 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
       const cred = await signInWithPopup(auth, provider);
       const snap = await getDoc(doc(db, 'users', cred.user.uid));
       if (!snap.exists()) {
-        toast.error('No staff account found for this Google account. Contact your manager.');
-        await signOut(auth); return;
+        const claimed = cred.user.email ? await claimPendingProfile(cred.user.uid, cred.user.email) : null;
+        if (!claimed) {
+          toast.error('No staff account found for this Google account. Contact your manager.');
+          await signOut(auth); return;
+        }
+        if (!['cashier', 'manager', 'admin'].includes(claimed.role)) {
+          toast.error('Your account is pending approval. Ask your manager to grant access.');
+          await signOut(auth); return;
+        }
+        if (claimed.disabled) {
+          toast.error('This account has been deactivated. Contact your manager.');
+          await signOut(auth); return;
+        }
+        await logActivity('Staff Sign In', `${claimed.displayName || cred.user.email} signed in via Google (claimed profile)`, 'user');
+        onLogin({ ...claimed, uid: cred.user.uid });
+        return;
       }
       const data = snap.data();
       if (!['cashier', 'manager', 'admin'].includes(data.role)) {
         toast.error('Your account is pending approval. Ask your manager to grant access.');
+        await signOut(auth); return;
+      }
+      if (data.disabled) {
+        toast.error('This account has been deactivated. Contact your manager.');
         await signOut(auth); return;
       }
       await setDoc(doc(db, 'users', cred.user.uid), { lastLogin: new Date().toISOString() }, { merge: true });
@@ -139,34 +162,30 @@ function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
     if (suPassword !== suConfirm) { toast.error('Passwords do not match'); return; }
     setSuLoading(true);
     try {
-      // Block re-registration: if a Firestore doc already exists for this email,
-      // they have an existing account — direct them to forgot-password instead.
-      const _emailCheck = await getDocs(query(collection(db, 'users'), where('email', '==', suEmail.trim())));
-      if (_emailCheck.empty) {
-        // Also try lowercase in case stored with different casing
-        const _emailCheckLower = await getDocs(query(collection(db, 'users'), where('email', '==', suEmail.trim().toLowerCase())));
-        if (!_emailCheckLower.empty) {
-          toast.error('An account already exists with this email. Use \u201cForgot password?\u201d to regain access.');
-          setSuLoading(false);
-          return;
-        }
-      } else {
-        toast.error('An account already exists with this email. Use \u201cForgot password?\u201d to regain access.');
-        setSuLoading(false);
-        return;
-      }
       const cred = await createUserWithEmailAndPassword(auth, suEmail.trim(), suPassword);
       // Don't await anything else — just mark done and sign out in background
       setSuDone(true);
       // Write doc and sign out in background without blocking UI
-      setDoc(doc(db, 'users', cred.user.uid), {
-        uid: cred.user.uid,
-        email: suEmail.trim(),
-        displayName: suName.trim(),
-        role: 'employee',
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-      }).catch(console.error);
+      (async () => {
+        try {
+          const claimed = await claimPendingProfile(cred.user.uid, suEmail.trim());
+          if (!claimed) {
+            await setDoc(doc(db, 'users', cred.user.uid), {
+              uid: cred.user.uid,
+              email: suEmail.trim(),
+              displayName: suName.trim(),
+              role: 'employee',
+              createdAt: new Date().toISOString(),
+              lastLogin: new Date().toISOString(),
+            });
+          } else if (!claimed.displayName) {
+            // Pending profile had no name set yet — fill it in from the sign-up form.
+            await setDoc(doc(db, 'users', cred.user.uid), { displayName: suName.trim() }, { merge: true });
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      })();
       signOut(auth).catch(console.error);
     } catch (err: any) {
       const code = err.code || err.message || '';
@@ -1467,9 +1486,6 @@ function ExpenseTab({ user }: { user: any }) {
     total: '',
     notes: '',
   });
-  const [lineItems, setLineItems] = useState<LineItem[]>([]);
-  const [editingIdx, setEditingIdx] = useState<number | null>(null);
-  const [editBuf, setEditBuf] = useState<LineItem>({ description: '', amount: 0 });
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -1480,8 +1496,6 @@ function ExpenseTab({ user }: { user: any }) {
   const reset = () => {
     setStep('capture'); setImageFile(null); setImagePreview(null);
     setFormData({ date: new Date().toISOString().slice(0, 10), supplier: '', category_id: 'food', category_name: 'Food & Ingredients', total: '', notes: '' });
-    setLineItems([]);
-    setEditingIdx(null);
   };
 
   const handleImageSelected = async (file: File) => {
@@ -1498,18 +1512,6 @@ function ExpenseTab({ user }: { user: any }) {
       if (result.success && result.data) {
         const d = result.data;
         setFormData(prev => ({ ...prev, supplier: d.supplier || prev.supplier, date: d.date || prev.date, total: d.total ? String(d.total) : prev.total }));
-        const rawItems = d.line_items || d.items || [];
-        if (Array.isArray(rawItems) && rawItems.length > 0) {
-          setLineItems(rawItems
-            .filter((item: any) => (item.name || item.description) && (item.total_cost != null || item.unit_cost != null || item.total_price != null || item.unit_price != null))
-            .map((item: any): LineItem => ({
-              description: item.name || item.description || '',
-              amount: item.total_cost ?? item.total_price ?? item.unit_cost ?? item.unit_price ?? 0,
-              quantity: item.quantity ?? undefined,
-              weight: item.unit || undefined,
-            }))
-          );
-        }
         toast.success('Receipt scanned ✓');
       } else { toast.error('Could not read receipt — fill in manually'); }
     } catch { toast.error('Scan failed — fill in manually'); }
@@ -1526,43 +1528,11 @@ function ExpenseTab({ user }: { user: any }) {
         await uploadBytes(storageRef, imageFile);
         receipt_url = await getDownloadURL(storageRef);
       }
-      const expenseRef = await addDoc(collection(db, 'finance_expenses'), {
+      await addDoc(collection(db, 'finance_expenses'), {
         date: formData.date, supplier: formData.supplier, category_id: formData.category_id,
         category_name: formData.category_name, total: parseFloat(formData.total), currency: 'THB',
         receipt_url, notes: formData.notes, logged_by: user?.email || 'unknown', created_at: new Date().toISOString(),
-        ...(lineItems.length > 0 && { line_items: lineItems }),
       });
-      if (lineItems.length > 0) {
-        await Promise.all(lineItems.filter(item => item.description).map(item =>
-          addDoc(collection(db, 'ingredient_purchases'), {
-            ingredient_name: item.description,
-            supplier: formData.supplier,
-            quantity: item.quantity ?? 1,
-            unit: item.weight || 'pcs',
-            unit_cost: item.quantity ? Math.round((item.amount / item.quantity) * 100) / 100 : item.amount,
-            total_cost: item.amount,
-            date: formData.date,
-            expense_id: expenseRef.id,
-            receipt_url,
-            logged_by: user?.email || 'unknown',
-            created_at: new Date().toISOString(),
-          })
-        ));
-      } else {
-        await addDoc(collection(db, 'ingredient_purchases'), {
-          ingredient_name: formData.supplier || 'Unknown',
-          supplier: formData.supplier || '',
-          quantity: 1,
-          unit: 'pcs',
-          unit_cost: parseFloat(formData.total) || 0,
-          total_cost: parseFloat(formData.total) || 0,
-          date: formData.date,
-          expense_id: expenseRef.id,
-          receipt_url,
-          logged_by: user?.email || 'unknown',
-          created_at: new Date().toISOString(),
-        });
-      }
       await logActivity('Expense Logged', `฿${parseFloat(formData.total).toLocaleString()} · ${formData.category_name} · ${formData.supplier || 'no supplier'} · ${formData.date}`, 'finance');
       setStep('done');
     } catch { toast.error('Failed to save'); setStep('review'); }
@@ -1639,43 +1609,6 @@ function ExpenseTab({ user }: { user: any }) {
           <label className="block text-sm font-semibold text-gray-700 mb-1.5">Total Amount (฿)</label>
           <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-400">฿</span><input type="number" inputMode="decimal" value={formData.total} onChange={e => setFormData(p => ({ ...p, total: e.target.value }))} placeholder="0.00" className="w-full border-2 border-gray-200 rounded-2xl pl-10 pr-4 py-4 text-3xl font-bold focus:outline-none focus:ring-2 focus:ring-terracotta" /></div>
         </div>
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-semibold text-gray-700">Line Items{lineItems.length > 0 ? ` (${lineItems.length})` : ''}</label>
-            {lineItems.length > 0 && editingIdx === null && (
-              <button type="button" onClick={() => setLineItems([])} className="text-xs text-gray-400 hover:text-red-500">Clear all</button>
-            )}
-          </div>
-          <div className="border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100">
-            {lineItems.map((item, i) => (
-              editingIdx === i ? (
-                <div key={i} className="p-3 space-y-2 bg-gray-50">
-                  <input autoFocus value={editBuf.description} onChange={e => setEditBuf(p => ({...p, description: e.target.value}))} placeholder="Description" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
-                  <div className="flex gap-2">
-                    <input value={editBuf.quantity ?? ''} onChange={e => setEditBuf(p => ({...p, quantity: e.target.value ? Number(e.target.value) : undefined}))} placeholder="Qty" type="number" inputMode="numeric" className="w-16 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
-                    <input value={editBuf.weight ?? ''} onChange={e => setEditBuf(p => ({...p, weight: e.target.value || undefined}))} placeholder="Unit (kg…)" className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
-                    <input value={editBuf.amount || ''} onChange={e => setEditBuf(p => ({...p, amount: Number(e.target.value)}))} placeholder="Amount" type="number" inputMode="decimal" className="w-24 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta" />
-                  </div>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => { setLineItems(prev => prev.map((it, idx) => idx === i ? {...editBuf} : it)); setEditingIdx(null); }} className="flex-1 py-2 bg-terracotta text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1"><Check size={14} /> Save</button>
-                    <button type="button" onClick={() => { if (!item.description) setLineItems(prev => prev.filter((_, idx) => idx !== i)); setEditingIdx(null); }} className="px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-500">Cancel</button>
-                    <button type="button" onClick={() => { setLineItems(prev => prev.filter((_, idx) => idx !== i)); setEditingIdx(null); }} className="px-3 py-2 border border-red-100 text-red-400 rounded-xl text-sm"><Trash2 size={14} /></button>
-                  </div>
-                </div>
-              ) : (
-                <div key={i} className="flex items-center gap-2 px-3 py-2.5 cursor-pointer active:bg-gray-50" onClick={() => { setEditBuf({...item}); setEditingIdx(i); }}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{item.description || <span className="text-gray-400 italic">untitled</span>}</p>
-                    {(item.quantity || item.weight) && <p className="text-xs text-gray-400">{[item.quantity, item.weight].filter(Boolean).join(' ')}</p>}
-                  </div>
-                  <span className="text-sm font-semibold text-gray-900 shrink-0">&#3647;{item.amount.toLocaleString()}</span>
-                  <Pencil size={12} className="text-gray-300 shrink-0" />
-                </div>
-              )
-            ))}
-            <button type="button" onClick={() => { const blank: LineItem = { description: '', amount: 0 }; setLineItems(prev => [...prev, blank]); setEditBuf(blank); setEditingIdx(lineItems.length); }} className="w-full py-2.5 text-sm text-terracotta font-medium flex items-center justify-center gap-1 hover:bg-gray-50"><Plus size={14} /> Add item</button>
-          </div>
-        </div>
         <div><label className="block text-sm font-semibold text-gray-700 mb-1.5">Notes (optional)</label><input type="text" value={formData.notes} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} placeholder="Any extra details" className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta" /></div>
       </div>
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-100 p-4 max-w-lg mx-auto">
@@ -1699,7 +1632,7 @@ export default function CashierPortal() {
         const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
         if (snap.exists()) {
           const data = snap.data();
-          if (['cashier', 'manager', 'admin'].includes(data.role)) {
+          if (['cashier', 'manager', 'admin'].includes(data.role) && !data.disabled) {
             setUser({ ...data, uid: firebaseUser.uid });
           } else {
             await signOut(auth); setUser(null);
