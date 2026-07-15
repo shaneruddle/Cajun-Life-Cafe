@@ -4,7 +4,8 @@ import LogExpense from './LogExpense';
 import LogIncome from './LogIncome';
 import Ingredients from './Ingredients';
 import FinanceReports from './FinanceReports';
-import { LayoutDashboard, Receipt, TrendingUp, Scale, FileBarChart } from 'lucide-react';
+import FinanceLedger from './FinanceLedger';
+import { LayoutDashboard, Receipt, TrendingUp, Scale, FileBarChart, List } from 'lucide-react';
 
 type FinanceRole = 'owner' | 'manager' | 'cashier';
 
@@ -19,6 +20,7 @@ const ALL_TABS = [
   { id: 'overview',     label: 'Overview',     icon: <LayoutDashboard size={16} />, roles: ['owner', 'manager'] },
   { id: 'expense',      label: 'Log Expense',  icon: <Receipt size={16} />,         roles: ['owner', 'manager', 'cashier'] },
   { id: 'income',       label: 'Log Income',   icon: <TrendingUp size={16} />,      roles: ['owner', 'manager', 'cashier'] },
+  { id: 'ledger',       label: 'Ledger',       icon: <List size={16} />,            roles: ['owner', 'manager'] },
   { id: 'ingredients',  label: 'Ingredients',  icon: <Scale size={16} />,           roles: ['owner', 'manager'] },
   { id: 'reports',      label: 'Reports',      icon: <FileBarChart size={16} />,    roles: ['owner'] },
 ];
@@ -55,6 +57,7 @@ export default function FinanceDashboard({ user }: { user: any }) {
         {activeTab === 'overview'    && <FinanceOverview financeRole={financeRole} />}
         {activeTab === 'expense'     && <LogExpense user={user} financeRole={financeRole} />}
         {activeTab === 'income'      && <LogIncome user={user} financeRole={financeRole} />}
+        {activeTab === 'ledger'      && <FinanceLedger user={user} financeRole={financeRole} />}
         {activeTab === 'ingredients' && <Ingredients />}
         {activeTab === 'reports'     && <FinanceReports />}
       </div>
