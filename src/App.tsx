@@ -57,6 +57,9 @@ import FinanceDashboard from "./components/finance/FinanceDashboard";
 import CashierPortal from "./components/CashierPortal";
 import JobsDashboard from "./components/JobsDashboard";
 import CareersPage from "./components/CareersPage";
+import BlogDashboard from "./components/BlogDashboard";
+import BlogPage from "./components/BlogPage";
+import BlogPostPage from "./components/BlogPostPage";
 import { Toaster } from "sonner";
 import ActivatePage from "./components/ActivatePage";
 import ActivateSuccess from "./components/ActivateSuccess";
@@ -465,6 +468,7 @@ const Footer = () => (
           <li><Link to="/menu" className="hover:text-white transition-colors">Digital Menu</Link></li>
           <li><a href="#about" className="hover:text-white transition-colors">Our Story</a></li>
           <li><a href="#location" className="hover:text-white transition-colors">Location</a></li>
+          <li><Link to="/blog" className="hover:text-white transition-colors">Blog</Link></li>
           <li><Link to="/careers" className="hover:text-white transition-colors">Careers</Link></li>
           <li><a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">LINE: @cajunlifecafe</a></li>
         </ul>
@@ -503,6 +507,7 @@ function AppContent({ user, setUser }: any) {
   const isDashboard = location.pathname.startsWith("/dashboard") || location.pathname === "/import" || location.pathname === "/import-custom-meals";
   const isActivate = location.pathname.startsWith("/activate");
   const isCareers = location.pathname === "/careers";
+  const isBlog = location.pathname === "/blog" || location.pathname.startsWith("/blog/");
 
   const isAdmin = useMemo(() => {
     if (!user) return false;
@@ -528,12 +533,14 @@ function AppContent({ user, setUser }: any) {
           </button>
         </div>
       )}
-      {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && !isCareers && <Navbar canAccessDashboard={isMarketing} canAccessStaffPortal={isCashier || isManager} setUser={setUser} />}
+      {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && !isCareers && !isBlog && <Navbar canAccessDashboard={isMarketing} canAccessStaffPortal={isCashier || isManager} setUser={setUser} />}
       <Routes>
         <Route path="/" element={<MainSite isAdmin={isAdmin} />} />
         <Route path="/menu" element={<DigitalMenuDisplay />} />
         <Route path="/digital-menu" element={<DigitalMenuDisplay />} />
         <Route path="/careers" element={<><CareersPage /><Footer /></>} />
+        <Route path="/blog" element={<><BlogPage /><Footer /></>} />
+        <Route path="/blog/:slug" element={<><BlogPostPage /><Footer /></>} />
         <Route path="/dashboard" element={isAdmin || isMarketing || isStaff || isManager ? <DashboardLayout user={user} /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>}>
           <Route index element={isAdmin || isMarketing ? <Dashboard /> : (isManager ? <Navigate to="/dashboard/jobs" /> : <Navigate to="/dashboard/loyalty" />)} />
           <Route path="categories" element={isAdmin || isMarketing ? <CategoriesDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
@@ -542,6 +549,7 @@ function AppContent({ user, setUser }: any) {
           <Route path="finance" element={canAccessFinance ? <FinanceDashboard user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="loyalty" element={isAdmin || isStaff ? <LoyaltyDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="jobs" element={isAdmin || isManager ? <JobsDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="blog" element={isAdmin || isMarketing ? <BlogDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="crm" element={isAdmin || isMarketing ? <CRMDirectory user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="images" element={isAdmin || isMarketing ? <ImageManagement /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="logs" element={isAdmin ? <SystemLogs /> : <div className="p-20 text-center">Access Denied</div>} />
@@ -553,7 +561,7 @@ function AppContent({ user, setUser }: any) {
         <Route path="/activate/success" element={<ActivateSuccess />} />
         <Route path="/activate/error" element={<ActivateError />} />
       </Routes>
-      {!isDigitalMenu && !isDashboard && !isActivate && !isCareers && !user && (
+      {!isDigitalMenu && !isDashboard && !isActivate && !isCareers && !isBlog && !user && (
         <div className="fixed bottom-4 right-4 z-[60]"><Auth onUserChange={setUser} /></div>
       )}
     </div>

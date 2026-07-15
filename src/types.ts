@@ -155,7 +155,7 @@ export interface SystemLog {
   userEmail: string;
   userId: string;
   timestamp: string;
-  category: 'menu' | 'category' | 'custom_meal' | 'finance' | 'user' | 'system' | 'image' | 'crm' | 'loyalty' | 'job';
+  category: 'menu' | 'category' | 'custom_meal' | 'finance' | 'user' | 'system' | 'image' | 'crm' | 'loyalty' | 'job' | 'blog';
 }
 
 // Single unified customer record — lives in crm_customers collection.
@@ -250,4 +250,26 @@ export interface Job {
   createdAt: string;
   updatedAt: string;
   uid?: string;
+}
+
+// Blog posts — managed from /dashboard/blog (Admin + Marketing) and shown
+// publicly at /blog (listing, published only) and /blog/:slug (single post).
+// `body` is Markdown, written with the MarkdownEditor component and rendered
+// on the public post page with the already-installed `react-markdown`.
+export interface BlogPost {
+  id?: string;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  body: string;
+  coverImage?: string;
+  category?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  status: 'draft' | 'published';
+  authorName?: string;
+  uid?: string;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string;
 }
