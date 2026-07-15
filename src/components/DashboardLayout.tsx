@@ -17,7 +17,8 @@ import {
   Receipt,
   Database,
   Image as ImageIcon,
-  Briefcase
+  Briefcase,
+  Newspaper
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../firebase';
@@ -250,6 +251,16 @@ export default function DashboardLayout({ user }: { user: any }) {
               to="/dashboard/images"
               isCollapsed={isCollapsed}
               isActive={isActive('/dashboard/images')}
+            />
+          )}
+
+          {(user?.role === 'admin' || user?.role === 'marketing') && (
+            <SidebarItem
+              icon={<Newspaper size={20} />}
+              label="Blog"
+              to="/dashboard/blog"
+              isCollapsed={isCollapsed}
+              isActive={isActive('/dashboard/blog')}
             />
           )}
 
