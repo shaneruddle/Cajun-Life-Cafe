@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Link, useLocation, Outlet } from 'react-router-dom';
+import { Link, useLocation, useSearchParams, Outlet } from 'react-router-dom';
+import { getFinanceRole, FINANCE_TABS } from './finance/FinanceDashboard';
 import {
   LayoutGrid,
   Tag,
@@ -110,8 +111,13 @@ const SidebarSubItem: React.FC<{ label: string; to: string; isActive: boolean }>
 export default function DashboardLayout({ user }: { user: any }) {
   const isAdmin = user?.email?.toLowerCase() === 'info@cajunlifecafe.com' || user?.role === 'admin';
   const canSeeFinance = isAdmin || user?.role === 'manager' || user?.role === 'cashier';
+  const financeRole = getFinanceRole(user);
+  const financeTabs = FINANCE_TABS.filter(t => t.roles.includes(financeRole));
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const currentFinanceTab = searchParams.get('tab') || financeTabs[0]?.id;
   const [isMenuOpen, setIsMenuOpen] = useState(true);
+  const [isFinanceOpen, setIsFinanceOpen] = useState(location.pathname.startsWith('/dashboard/finance'));
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleSignOut = async () => {
@@ -194,14 +200,25 @@ export default function DashboardLayout({ user }: { user: any }) {
             </SidebarItem>
           )}
 
-          {user?.role === 'admin' && (
+          {canSeeFinance && (
             <SidebarItem
               icon={<span className="text-[20px] font-bold leading-none">฿</span>}
               label="Finance"
-              to="/dashboard/finance"
+              hasSubmenu
+              isOpen={isFinanceOpen}
               isCollapsed={isCollapsed}
+              onClick={() => setIsFinanceOpen(!isFinanceOpen)}
               isActive={isSubActive('/dashboard/finance')}
-            />
+            >
+              {!isCollapsed && financeTabs.map(tab => (
+                <SidebarSubItem
+                  key={tab.id}
+                  label={tab.label}
+                  to={`/dashboard/finance?tab=${tab.id}`}
+                  isActive={isActive('/dashboard/finance') && currentFinanceTab === tab.id}
+                />
+              ))}
+            </SidebarItem>
           )}
 
           {(user?.role === 'admin' || user?.role === 'cashier') && (
