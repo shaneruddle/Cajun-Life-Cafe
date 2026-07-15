@@ -80,6 +80,17 @@ service cloud.firestore {
       );
     }
 
+    // Staff directory — a deliberately narrow view of `users`: just uid,
+    // name, and role, no salary/bank fields. Lets cashier/manager staff read
+    // the full staff list (e.g. to populate a "which staff member" picker on
+    // a Salary & Staff Advances expense) without exposing anyone's payroll
+    // details. Kept in sync from UserManagement.tsx / userClaim.ts — see
+    // src/utils/staffDirectory.ts. Only admins write it directly.
+    match /staff_directory/{id} {
+      allow read: if isCashier();
+      allow write: if isAdmin();
+    }
+
     // Finance
     match /finance_categories/{id} {
       allow read: if isAuthenticated();
