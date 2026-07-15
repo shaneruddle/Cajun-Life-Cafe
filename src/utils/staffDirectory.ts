@@ -9,6 +9,16 @@ export interface StaffDirectoryEntry {
   uid: string;
   name: string;
   role: string;
+  // Casual/preferred name, e.g. what coworkers actually call them — optional.
+  // Displayed as "Name (Nickname)" via staffLabel() below.
+  nickname?: string;
+}
+
+// Formats a staff_directory entry for display: "Full Name (Nickname)" when a
+// nickname is set, otherwise just the full name. Used everywhere the Staff
+// Member picker renders an option (CashierPortal, LogExpense, FinanceLedger).
+export function staffLabel(entry: Pick<StaffDirectoryEntry, 'name' | 'nickname'>): string {
+  return entry.nickname?.trim() ? `${entry.name} (${entry.nickname.trim()})` : entry.name;
 }
 
 // Keeps the lightweight `staff_directory` collection (uid + name + role only
@@ -35,7 +45,7 @@ export async function syncStaffDirectory(profile: Partial<UserProfile> & { uid: 
       [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim() ||
       profile.email ||
       'Unnamed';
-    await setDoc(ref, { uid: profile.uid, name, role: profile.role });
+    await setDoc(ref, { uid: profile.uid, name, role: profile.role, nickname: profile.nickname?.trim() || '' });
   } else {
     // Not (or no longer) eligible — e.g. deactivated, or an admin/marketing
     // account. Remove any stale directory entry.
