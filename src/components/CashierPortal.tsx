@@ -1357,6 +1357,38 @@ const EXPENSE_CATEGORIES = [
   { id: 'equipment', name: 'Equipment' },
   { id: 'rent',      name: 'Rent' },
   { id: 'other',     name: 'Other' },
+  { id: 'food_expense', name: 'Food Expense' },
+  { id: 'drink_expense', name: 'Drink Expense' },
+  { id: 'staff_food', name: 'Staff Food' },
+  { id: 'ice', name: 'Ice' },
+  { id: 'salary_staff_advances', name: 'Salary & Staff Advances' },
+  { id: 'tip_transfer', name: 'Tip Transfer' },
+  { id: 'social_security', name: 'Social Security' },
+  { id: 'electricity', name: 'Electricity' },
+  { id: 'water_bill_pea', name: 'Water Bill from PEA' },
+  { id: 'gas', name: 'Gas' },
+  { id: 'internet', name: 'Internet' },
+  { id: 'mobile_phone', name: 'Mobile Phone' },
+  { id: 'cleaning_supplies', name: 'Cleaning & Supplies' },
+  { id: 'subscriptions', name: 'Subscriptions' },
+  { id: 'kitchen_equipment', name: 'Kitchen Equipment' },
+  { id: 'restaurant_equipment', name: 'Restaurant Equipment' },
+  { id: 'computer_hardware', name: 'Computer - Hardware' },
+  { id: 'renovation_costs', name: 'Renovation Costs' },
+  { id: 'repairs_maintenance', name: 'Repairs & Maintenance' },
+  { id: 'rent_expense', name: 'Rent Expense' },
+  { id: 'accounting_services', name: 'Accounting Services' },
+  { id: 'advertising_promotion', name: 'Advertising & Promotion' },
+  { id: 'professional_fees', name: 'Professional Fees' },
+  { id: 'licenses', name: 'Licenses' },
+  { id: 'office_supplies', name: 'Office Supplies' },
+  { id: 'newspapers', name: 'Newspapers' },
+  { id: 'vouchers', name: 'Vouchers' },
+  { id: 'taxi', name: 'Taxi' },
+  { id: 'fuel_petrol', name: 'Fuel & Petrol' },
+  { id: 'dividends', name: 'Dividends' },
+  { id: 'miscellaneous', name: 'Miscellaneous' },
+  { id: 'uncategorized_expense', name: 'Uncategorized Expense' },
 ];
 
 function TodaySummary({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -1468,18 +1500,29 @@ function TodaySummary({ open, onClose }: { open: boolean; onClose: () => void })
 }
 
 function ExpenseTab({ user }: { user: any }) {
+  // Local-calendar-day date string — NOT toISOString().slice(0,10), which
+  // converts to UTC first and rolls the date back a day for any timezone
+  // ahead of UTC (e.g. Bangkok's UTC+7) during the early hours of the day.
+  const todayLocal = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
   const [step, setStep] = useState<'capture' | 'review' | 'saving' | 'done'>('capture');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [scanning, setScanning] = useState(false);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [scanningCount, setScanningCount] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
-  const [lightbox, setLightbox] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [todayCount, setTodayCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().slice(0, 10),
+    date: todayLocal(),
     supplier: '',
     category_id: 'food',
     category_name: 'Food & Ingredients',
@@ -1488,52 +1531,72 @@ function ExpenseTab({ user }: { user: any }) {
   });
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayLocal();
     const q = query(collection(db, 'finance_expenses'), where('date', '==', today));
     return onSnapshot(q, snap => setTodayCount(snap.size));
   }, []);
 
   const reset = () => {
-    setStep('capture'); setImageFile(null); setImagePreview(null);
-    setFormData({ date: new Date().toISOString().slice(0, 10), supplier: '', category_id: 'food', category_name: 'Food & Ingredients', total: '', notes: '' });
+    setStep('capture'); setImageFiles([]); setImagePreviews([]); setScanningCount(0);
+    setFormData({ date: todayLocal(), supplier: '', category_id: 'food', category_name: 'Food & Ingredients', total: '', notes: '' });
   };
 
-  const handleImageSelected = async (file: File) => {
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = e => setImagePreview(e.target?.result as string);
-    reader.readAsDataURL(file);
-    setStep('review');
-    setScanning(true);
+  const scanReceipt = async (file: File) => {
+    setScanningCount(c => c + 1);
     try {
       const base64 = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res((r.result as string).split(',')[1]); r.onerror = rej; r.readAsDataURL(file); });
       const response = await fetch('/api/ocr-receipt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: base64, mimeType: file.type }) });
       const result = await response.json();
       if (result.success && result.data) {
         const d = result.data;
-        setFormData(prev => ({ ...prev, supplier: d.supplier || prev.supplier, date: d.date || prev.date, total: d.total ? String(d.total) : prev.total }));
+        setFormData(prev => ({
+          ...prev,
+          supplier: d.supplier || prev.supplier,
+          date: d.date || prev.date,
+          total: d.total ? String((parseFloat(prev.total) || 0) + parseFloat(d.total)) : prev.total,
+        }));
         toast.success('Receipt scanned ✓');
-      } else { toast.error('Could not read receipt — fill in manually'); }
-    } catch { toast.error('Scan failed — fill in manually'); }
-    finally { setScanning(false); }
+      } else { toast.error('Could not read one of the receipts — check the total'); }
+    } catch { toast.error('Scan failed on one receipt — check the total'); }
+    finally { setScanningCount(c => Math.max(0, c - 1)); }
+  };
+
+  const handleFilesSelected = (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const newFiles = Array.from(fileList);
+    setImageFiles(prev => [...prev, ...newFiles]);
+    setStep('review');
+    newFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => setImagePreviews(prev => [...prev, e.target?.result as string]);
+      reader.readAsDataURL(file);
+      scanReceipt(file);
+    });
+  };
+
+  const removeImage = (idx: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== idx));
+    setImagePreviews(prev => prev.filter((_, i) => i !== idx));
+    if (lightboxIndex === idx) setLightboxIndex(null);
   };
 
   const handleSave = async () => {
     if (!formData.total || !formData.date) { toast.error('Fill in date and total amount'); return; }
     setStep('saving');
     try {
-      let receipt_url = '';
-      if (imageFile) {
-        const storageRef = ref(storage, `receipts/${Date.now()}_${imageFile.name}`);
-        await uploadBytes(storageRef, imageFile);
-        receipt_url = await getDownloadURL(storageRef);
+      const receipt_urls: string[] = [];
+      for (const file of imageFiles) {
+        const storageRef = ref(storage, `receipts/${Date.now()}_${file.name}`);
+        await uploadBytes(storageRef, file);
+        receipt_urls.push(await getDownloadURL(storageRef));
       }
       await addDoc(collection(db, 'finance_expenses'), {
         date: formData.date, supplier: formData.supplier, category_id: formData.category_id,
         category_name: formData.category_name, total: parseFloat(formData.total), currency: 'THB',
-        receipt_url, notes: formData.notes, logged_by: user?.email || 'unknown', created_at: new Date().toISOString(),
+        receipt_url: receipt_urls[0] || '', receipt_urls,
+        notes: formData.notes, logged_by: user?.email || 'unknown', created_at: new Date().toISOString(),
       });
-      await logActivity('Expense Logged', `฿${parseFloat(formData.total).toLocaleString()} · ${formData.category_name} · ${formData.supplier || 'no supplier'} · ${formData.date}`, 'finance');
+      await logActivity('Expense Logged', `฿${parseFloat(formData.total).toLocaleString()} · ${formData.category_name} · ${formData.supplier || 'no supplier'} · ${formData.date}${receipt_urls.length > 1 ? ` · ${receipt_urls.length} receipts` : ''}`, 'finance');
       setStep('done');
     } catch { toast.error('Failed to save'); setStep('review'); }
   };
@@ -1564,12 +1627,13 @@ function ExpenseTab({ user }: { user: any }) {
         <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-3 py-5 border-2 border-gray-200 text-gray-700 rounded-3xl text-lg font-semibold hover:bg-gray-50">
           <Upload size={22} /> Upload from Gallery
         </button>
+        <p className="text-center text-[11px] text-gray-400">Tip: you can attach more than one receipt photo to a single expense</p>
         <button onClick={() => setStep('review')} className="w-full py-4 border border-dashed border-gray-300 rounded-2xl text-gray-400 text-sm hover:border-terracotta hover:text-terracotta transition-all">
           Enter manually (no receipt)
         </button>
       </div>
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => e.target.files?.[0] && handleImageSelected(e.target.files[0])} />
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleImageSelected(e.target.files[0])} />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { handleFilesSelected(e.target.files); e.target.value = ''; }} />
+      <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => { handleFilesSelected(e.target.files); e.target.value = ''; }} />
       <TodaySummary open={showSummary} onClose={() => setShowSummary(false)} />
     </div>
   );
@@ -1579,19 +1643,37 @@ function ExpenseTab({ user }: { user: any }) {
       <div className="bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between sticky top-0 z-10">
         <button onClick={reset} className="text-terracotta font-semibold text-sm flex items-center gap-1 px-3 py-3 -ml-3 rounded-xl">← Back</button>
         <h2 className="font-bold text-gray-900">Review Expense</h2>
-        {scanning ? <span className="text-xs text-terracotta flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Scanning…</span> : <div className="w-16" />}
+        {scanningCount > 0 ? <span className="text-xs text-terracotta flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Scanning…</span> : <div className="w-16" />}
       </div>
       <div className="flex-1 overflow-y-auto p-5 max-w-md mx-auto w-full pb-32 space-y-4">
-        {imagePreview && (
-          <div className="relative">
-            <img src={imagePreview} alt="Receipt" onClick={() => setLightbox(true)} className="w-full max-h-44 object-contain rounded-2xl border border-gray-200 bg-gray-50 cursor-zoom-in" />
-            {scanning && <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center"><div className="bg-white rounded-2xl px-4 py-3 flex items-center gap-2 text-sm font-semibold text-terracotta"><Loader2 size={16} className="animate-spin" /> Reading…</div></div>}
+        {imagePreviews.length > 0 && (
+          <div className="grid grid-cols-3 gap-2">
+            {imagePreviews.map((src, idx) => (
+              <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden border border-gray-200 bg-gray-50 group">
+                <img src={src} alt={`Receipt ${idx + 1}`} onClick={() => setLightboxIndex(idx)} className="w-full h-full object-cover cursor-zoom-in" />
+                <button onClick={() => removeImage(idx)} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-white/90 flex items-center justify-center text-red-500 shadow-sm">
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-terracotta hover:text-terracotta transition-all"
+            >
+              <Plus size={20} />
+              <span className="text-[9px] font-bold uppercase tracking-wider mt-1">Add Page</span>
+            </button>
           </div>
         )}
-        {lightbox && imagePreview && (
-          <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightbox(false)}>
-            <img src={imagePreview} alt="Receipt" className="max-w-full max-h-full rounded-xl object-contain" />
-            <button onClick={() => setLightbox(false)} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white"><X size={20} /></button>
+        {scanningCount > 0 && (
+          <div className="flex items-center gap-2 text-xs text-terracotta font-semibold">
+            <Loader2 size={14} className="animate-spin" /> Scanning {scanningCount} receipt{scanningCount !== 1 ? 's' : ''}…
+          </div>
+        )}
+        {lightboxIndex !== null && imagePreviews[lightboxIndex] && (
+          <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightboxIndex(null)}>
+            <img src={imagePreviews[lightboxIndex]} alt="Receipt" className="max-w-full max-h-full rounded-xl object-contain" />
+            <button onClick={() => setLightboxIndex(null)} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white"><X size={20} /></button>
           </div>
         )}
         <div><label className="block text-sm font-semibold text-gray-700 mb-1.5">Date</label><input type="date" value={formData.date} onChange={e => setFormData(p => ({ ...p, date: e.target.value }))} className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta" /></div>
@@ -1608,11 +1690,14 @@ function ExpenseTab({ user }: { user: any }) {
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1.5">Total Amount (฿)</label>
           <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-400">฿</span><input type="number" inputMode="decimal" value={formData.total} onChange={e => setFormData(p => ({ ...p, total: e.target.value }))} placeholder="0.00" className="w-full border-2 border-gray-200 rounded-2xl pl-10 pr-4 py-4 text-3xl font-bold focus:outline-none focus:ring-2 focus:ring-terracotta" /></div>
+          {imagePreviews.length > 1 && <p className="text-[11px] text-gray-400 mt-1.5">Running total across {imagePreviews.length} photos — adjust manually if you add/remove one</p>}
         </div>
         <div><label className="block text-sm font-semibold text-gray-700 mb-1.5">Notes (optional)</label><input type="text" value={formData.notes} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} placeholder="Any extra details" className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta" /></div>
       </div>
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { handleFilesSelected(e.target.files); e.target.value = ''; }} />
+      <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => { handleFilesSelected(e.target.files); e.target.value = ''; }} />
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-100 p-4 max-w-lg mx-auto">
-        <button onClick={handleSave} disabled={step === 'saving' || scanning} className="w-full py-4 bg-terracotta text-white rounded-2xl font-bold text-lg disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg">
+        <button onClick={handleSave} disabled={step === 'saving' || scanningCount > 0} className="w-full py-4 bg-terracotta text-white rounded-2xl font-bold text-lg disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg">
           {step === 'saving' ? <><Loader2 size={20} className="animate-spin" /> Saving…</> : <><Check size={20} /> Save Expense</>}
         </button>
       </div>
