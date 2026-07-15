@@ -43,6 +43,12 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isMarketing();
     }
+    // Job postings — public can read (shown on /careers), Admin/Manager (and
+    // cashier, incidentally, via isCashier()) can manage them from /dashboard/jobs.
+    match /jobs/{id} {
+      allow read: if true;
+      allow write: if isCashier();
+    }
     match /settings/{id} { allow read: if true; }
     match /test/connection { allow read: if true; }
 
