@@ -52,11 +52,25 @@ service cloud.firestore {
     match /settings/{id} { allow read: if true; }
     match /test/connection { allow read: if true; }
 
-    // Users: Owner or Admin
+    // Users: Owner or Admin, plus a narrow self-claim path — a freshly
+    // authenticated user may read/update an admin-created "pending" profile
+    // that matches their own verified email, so a pre-created profile (with
+    // role/salary/etc. already set) gets linked to their real account on
+    // first login instead of a blank duplicate being created. See
+    // src/utils/userClaim.ts. This never lets anyone touch another person's
+    // already-claimed profile — only doc(s) still marked pending == true.
     match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        isAdmin() ||
+        (resource.data.pending == true && resource.data.email == request.auth.token.email)
+      );
       allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow update: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        isAdmin() ||
+        (resource.data.pending == true && resource.data.email == request.auth.token.email)
+      );
     }
 
     // Finance
