@@ -49,6 +49,13 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isCashier();
     }
+    // Blog posts — public can read (shown on /blog), Admin/Marketing manage
+    // them from /dashboard/blog. Same "read: true regardless of status"
+    // pattern already used for /menu's `published` flag.
+    match /blog_posts/{id} {
+      allow read: if true;
+      allow write: if isMarketing();
+    }
     match /settings/{id} { allow read: if true; }
     match /test/connection { allow read: if true; }
 
