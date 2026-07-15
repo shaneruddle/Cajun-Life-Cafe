@@ -15,6 +15,7 @@ import { db, auth } from '../firebase';
 import { UserProfile, OperationType } from '../types';
 import { handleFirestoreError } from '../utils/firestore';
 import { logActivity } from '../utils/logger';
+import { syncStaffDirectory } from '../utils/staffDirectory';
 import {
   Users,
   User as UserIcon,
@@ -104,6 +105,37 @@ export default function UserManagement() {
     return () => unsubscribe();
   }, []);
 
+  // One-time backfill: populate staff_directory for any existing eligible
+  // profiles that predate this feature. Ongoing changes are kept in sync by
+  // the syncStaffDirectory calls in handleSave / handleToggleDisabled /
+  // handleRoleChange below (and claimPendingProfile in userClaim.ts).
+  useEffect(() => {
+    (async () => {
+      try {
+        const snap = await getDocs(collection(db, 'users'));
+        await Promise.all(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() } as UserProfile))
+            .filter((u) => !u.superseded)
+            .map((u) =>
+              syncStaffDirectory({
+                uid: u.id!,
+                role: u.role,
+                disabled: u.disabled,
+                pending: u.pending,
+                displayName: u.displayName,
+                firstName: u.firstName,
+                lastName: u.lastName,
+                email: u.email,
+              })
+            )
+        );
+      } catch (err) {
+        console.error('Staff directory backfill failed:', err);
+      }
+    })();
+  }, []);
+
   useEffect(() => {
     if (error || success) {
       const t = setTimeout(() => { setError(null); setSuccess(null); }, 4000);
@@ -165,13 +197,22 @@ export default function UserManagement() {
           bankAccountNumber: formData.bankAccountNumber || '',
           notes: formData.notes || '',
         });
+        await syncStaffDirectory({
+          uid: editingUser.id,
+          role: formData.role || 'employee',
+          disabled: editingUser.disabled,
+          pending: editingUser.pending,
+          displayName,
+          email,
+        });
         await logActivity('User Profile Updated', `Updated profile for ${displayName || email}`, 'user');
         setSuccess('Profile updated successfully!');
       } else {
         // Creating a brand-new pre-provisioned profile — no Firebase Auth
         // account exists yet. It gets linked automatically the first time
         // this person signs up or logs in with a matching email (see
-        // src/utils/userClaim.ts).
+        // src/utils/userClaim.ts). It's still `pending` at this point, so it
+        // won't show up in staff_directory until it's claimed.
         const existing = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
         const alreadyExists = existing.docs.some((d) => !d.data().superseded);
         if (alreadyExists) {
@@ -218,6 +259,14 @@ export default function UserManagement() {
       : `Reactivate ${user.displayName || user.email}?`)) return;
     try {
       await updateDoc(doc(db, 'users', user.id!), { disabled: nextDisabled });
+      await syncStaffDirectory({
+        uid: user.id!,
+        role: user.role,
+        disabled: nextDisabled,
+        pending: user.pending,
+        displayName: user.displayName,
+        email: user.email,
+      });
       await logActivity(
         nextDisabled ? 'User Deactivated' : 'User Reactivated',
         `${user.displayName || user.email} was ${nextDisabled ? 'deactivated' : 'reactivated'}`,
@@ -246,6 +295,14 @@ export default function UserManagement() {
     if (isSelf(user)) return;
     try {
       await updateDoc(doc(db, 'users', user.id!), { role: newRole });
+      await syncStaffDirectory({
+        uid: user.id!,
+        role: newRole,
+        disabled: user.disabled,
+        pending: user.pending,
+        displayName: user.displayName,
+        email: user.email,
+      });
       await logActivity('User Role Updated', `${user.displayName || user.email} role set to ${newRole}`, 'user');
       setSuccess(`Role updated to ${newRole}.`);
     } catch (err) {

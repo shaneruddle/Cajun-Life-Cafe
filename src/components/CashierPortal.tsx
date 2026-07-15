@@ -16,6 +16,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '../firebase';
 import { logActivity } from '../utils/logger';
 import { claimPendingProfile } from '../utils/userClaim';
+import { useStaffOptions } from '../utils/staffDirectory';
 import {
   LogIn, LogOut, Camera, Loader2, Search, User, UserPlus,
   Wallet, ArrowUpCircle, ArrowDownCircle, History, Star,
@@ -1528,7 +1529,10 @@ function ExpenseTab({ user }: { user: any }) {
     category_name: 'Food & Ingredients',
     total: '',
     notes: '',
+    employeeId: '',
+    employeeName: '',
   });
+  const staffOptions = useStaffOptions();
 
   useEffect(() => {
     const today = todayLocal();
@@ -1538,7 +1542,7 @@ function ExpenseTab({ user }: { user: any }) {
 
   const reset = () => {
     setStep('capture'); setImageFiles([]); setImagePreviews([]); setScanningCount(0);
-    setFormData({ date: todayLocal(), supplier: '', category_id: 'food', category_name: 'Food & Ingredients', total: '', notes: '' });
+    setFormData({ date: todayLocal(), supplier: '', category_id: 'food', category_name: 'Food & Ingredients', total: '', notes: '', employeeId: '', employeeName: '' });
   };
 
   const scanReceipt = async (file: File) => {
@@ -1590,13 +1594,15 @@ function ExpenseTab({ user }: { user: any }) {
         await uploadBytes(storageRef, file);
         receipt_urls.push(await getDownloadURL(storageRef));
       }
+      const isSalaryCategory = formData.category_id === 'salary_staff_advances';
       await addDoc(collection(db, 'finance_expenses'), {
         date: formData.date, supplier: formData.supplier, category_id: formData.category_id,
         category_name: formData.category_name, total: parseFloat(formData.total), currency: 'THB',
         receipt_url: receipt_urls[0] || '', receipt_urls,
         notes: formData.notes, logged_by: user?.email || 'unknown', created_at: new Date().toISOString(),
+        ...(isSalaryCategory && formData.employeeId ? { employeeId: formData.employeeId, employeeName: formData.employeeName } : {}),
       });
-      await logActivity('Expense Logged', `฿${parseFloat(formData.total).toLocaleString()} · ${formData.category_name} · ${formData.supplier || 'no supplier'} · ${formData.date}${receipt_urls.length > 1 ? ` · ${receipt_urls.length} receipts` : ''}`, 'finance');
+      await logActivity('Expense Logged', `฿${parseFloat(formData.total).toLocaleString()} · ${formData.category_name}${isSalaryCategory && formData.employeeName ? ` · ${formData.employeeName}` : ''} · ${formData.supplier || 'no supplier'} · ${formData.date}${receipt_urls.length > 1 ? ` · ${receipt_urls.length} receipts` : ''}`, 'finance');
       setStep('done');
     } catch { toast.error('Failed to save'); setStep('review'); }
   };
@@ -1687,6 +1693,28 @@ function ExpenseTab({ user }: { user: any }) {
             <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
         </div>
+        {formData.category_id === 'salary_staff_advances' && (
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Staff Member</label>
+            <div className="relative">
+              <select
+                value={formData.employeeId}
+                onChange={e => {
+                  const staffMember = staffOptions.find(s => s.uid === e.target.value);
+                  setFormData(p => ({ ...p, employeeId: e.target.value, employeeName: staffMember?.name || '' }));
+                }}
+                className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-terracotta appearance-none pr-10"
+              >
+                <option value="">Select staff member…</option>
+                {staffOptions.map(s => <option key={s.uid} value={s.uid}>{s.name}</option>)}
+              </select>
+              <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+            {staffOptions.length === 0 && (
+              <p className="text-[11px] text-gray-400 mt-1.5">No staff found — ask an admin to check Users.</p>
+            )}
+          </div>
+        )}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1.5">Total Amount (฿)</label>
           <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-400">฿</span><input type="number" inputMode="decimal" value={formData.total} onChange={e => setFormData(p => ({ ...p, total: e.target.value }))} placeholder="0.00" className="w-full border-2 border-gray-200 rounded-2xl pl-10 pr-4 py-4 text-3xl font-bold focus:outline-none focus:ring-2 focus:ring-terracotta" /></div>
