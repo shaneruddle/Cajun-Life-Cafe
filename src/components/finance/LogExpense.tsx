@@ -18,6 +18,17 @@ const EXPENSE_CATEGORIES = [
   { id: 'other', name: 'Other' },
 ];
 
+// Local-calendar-day date string — NOT toISOString().slice(0,10), which
+// converts to UTC first and rolls the date back a day for any timezone
+// ahead of UTC (e.g. Bangkok's UTC+7) during the early hours of the day.
+const todayLocal = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 export default function LogExpense({ user, financeRole = 'owner' }: { user: any; financeRole?: string }) {
   const sevenDaysAgo = (() => {
     const d = new Date();
@@ -29,7 +40,7 @@ export default function LogExpense({ user, financeRole = 'owner' }: { user: any;
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().slice(0, 10),
+    date: todayLocal(),
     supplier: '',
     category_id: 'food',
     category_name: 'Food & Ingredients',
@@ -190,7 +201,7 @@ export default function LogExpense({ user, financeRole = 'owner' }: { user: any;
       setImageFile(null);
       setImagePreview(null);
       setFormData({
-        date: new Date().toISOString().slice(0, 10),
+        date: todayLocal(),
         supplier: '',
         category_id: 'food',
         category_name: 'Food & Ingredients',

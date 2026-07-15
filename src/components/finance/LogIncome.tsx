@@ -8,11 +8,22 @@ import { toast } from 'sonner';
 
 const INCOME_CATEGORIES = ['Food', 'Drinks', 'Meal Preps', 'Catering', 'Other'];
 
+// Local-calendar-day date string — NOT toISOString().slice(0,10), which
+// converts to UTC first and rolls the date back a day for any timezone
+// ahead of UTC (e.g. Bangkok's UTC+7) during the early hours of the day.
+const todayLocal = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 export default function LogIncome({ user, financeRole = 'owner' }: { user: any; financeRole?: string }) {
   const [saving, setSaving] = useState(false);
   const [recent, setRecent] = useState<Income[]>([]);
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().slice(0, 10),
+    date: todayLocal(),
     category: 'Food',
     amount: '',
     notes: '',
