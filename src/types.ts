@@ -65,10 +65,35 @@ export interface UserProfile {
   id?: string;
   email: string;
   displayName?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  address?: string;
   role: 'admin' | 'marketing' | 'cashier' | 'manager' | 'employee';
+  position?: string;
+  startDate?: string;
+  salary?: number;
+  bankBranch?: string;
+  bankAccountNumber?: string;
+  notes?: string;
+  photoURL?: string;
   createdAt: string;
   lastLogin?: string;
   uid: string;
+  // Profile lifecycle — set when an admin pre-creates a profile from the
+  // Users dashboard before the person has ever logged in. `pending` profiles
+  // have no real Firebase Auth account behind them yet; they get "claimed"
+  // (copied to users/{realUid}) the first time someone signs up/logs in with
+  // a matching email — see src/utils/userClaim.ts.
+  pending?: boolean;
+  // Set true once a pending profile has been claimed into a real uid-keyed
+  // doc, so the old placeholder drops out of the Users list.
+  superseded?: boolean;
+  claimedUid?: string;
+  // Soft-delete / access revocation — claimed accounts can't be hard-deleted
+  // from the client (Firebase Auth has no client delete API), so disabling
+  // is how admins remove access while keeping the record for payroll history.
+  disabled?: boolean;
 }
 
 export type OperationType = 'create' | 'update' | 'delete' | 'list' | 'get' | 'write';
