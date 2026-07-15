@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { 
-  LayoutGrid, 
-  Tag, 
-  Utensils, 
-  Menu as MenuIcon, 
-  Users, 
+import {
+  LayoutGrid,
+  Tag,
+  Utensils,
+  Menu as MenuIcon,
+  Users,
   Star,
-  ChevronDown, 
+  ChevronDown,
   ChevronRight,
   ChevronLeft,
   LogOut,
@@ -16,7 +16,8 @@ import {
   BarChart3,
   Receipt,
   Database,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Briefcase
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../firebase';
@@ -34,22 +35,22 @@ interface SidebarItemProps {
   children?: React.ReactNode;
 }
 
-const SidebarItem: React.FC<SidebarItemProps> = ({ 
-  icon, 
-  label, 
-  to, 
-  isActive, 
-  hasSubmenu, 
-  isOpen, 
+const SidebarItem: React.FC<SidebarItemProps> = ({
+  icon,
+  label,
+  to,
+  isActive,
+  hasSubmenu,
+  isOpen,
   isCollapsed,
   onClick,
-  children 
+  children
 }) => {
   const content = (
-    <div 
+    <div
       className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all cursor-pointer group ${
-        isActive 
-          ? 'bg-terracotta text-white shadow-md' 
+        isActive
+          ? 'bg-terracotta text-white shadow-md'
           : 'text-gray-500 hover:bg-gray-100 hover:text-ink'
       } ${isCollapsed ? 'justify-center px-2' : ''}`}
       onClick={onClick}
@@ -93,11 +94,11 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
 };
 
 const SidebarSubItem: React.FC<{ label: string; to: string; isActive: boolean }> = ({ label, to, isActive }) => (
-  <Link 
+  <Link
     to={to}
     className={`block px-4 py-2 rounded-lg text-sm transition-all ${
-      isActive 
-        ? 'text-terracotta font-bold bg-terracotta/5' 
+      isActive
+        ? 'text-terracotta font-bold bg-terracotta/5'
         : 'text-gray-400 hover:text-ink hover:bg-gray-50'
     }`}
   >
@@ -111,7 +112,7 @@ export default function DashboardLayout({ user }: { user: any }) {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  
+
   const handleSignOut = async () => {
     try {
       await signOut(auth);
@@ -134,7 +135,7 @@ export default function DashboardLayout({ user }: { user: any }) {
             </div>
             {!isCollapsed && <span className="font-display font-bold text-xl text-ink tracking-tight whitespace-nowrap">Cajun Life</span>}
           </Link>
-          <button 
+          <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className={`p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors ${isCollapsed ? 'hidden' : ''}`}
           >
@@ -144,7 +145,7 @@ export default function DashboardLayout({ user }: { user: any }) {
 
         {isCollapsed && (
           <div className="flex justify-center mb-6">
-            <button 
+            <button
               onClick={() => setIsCollapsed(false)}
               className="p-2 rounded-xl bg-gray-50 text-terracotta hover:bg-terracotta hover:text-white transition-all shadow-sm"
             >
@@ -159,12 +160,12 @@ export default function DashboardLayout({ user }: { user: any }) {
               Main Navigation
             </div>
           )}
-          
+
           {(user?.role === 'admin' || user?.role === 'marketing') && (
-            <SidebarItem 
-              icon={<LayoutGrid size={20} />} 
-              label="Menu" 
-              hasSubmenu 
+            <SidebarItem
+              icon={<LayoutGrid size={20} />}
+              label="Menu"
+              hasSubmenu
               isOpen={isMenuOpen}
               isCollapsed={isCollapsed}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -172,20 +173,20 @@ export default function DashboardLayout({ user }: { user: any }) {
             >
               {!isCollapsed && (
                 <>
-                  <SidebarSubItem 
-                    label="Main Menu" 
-                    to="/dashboard" 
-                    isActive={isActive('/dashboard')} 
+                  <SidebarSubItem
+                    label="Main Menu"
+                    to="/dashboard"
+                    isActive={isActive('/dashboard')}
                   />
-                  <SidebarSubItem 
-                    label="Categories" 
-                    to="/dashboard/categories" 
-                    isActive={isActive('/dashboard/categories')} 
+                  <SidebarSubItem
+                    label="Categories"
+                    to="/dashboard/categories"
+                    isActive={isActive('/dashboard/categories')}
                   />
-                  <SidebarSubItem 
-                    label="Custom Meals" 
-                    to="/dashboard/custom-meals" 
-                    isActive={isActive('/dashboard/custom-meals')} 
+                  <SidebarSubItem
+                    label="Custom Meals"
+                    to="/dashboard/custom-meals"
+                    isActive={isActive('/dashboard/custom-meals')}
                   />
                 </>
               )}
@@ -193,9 +194,9 @@ export default function DashboardLayout({ user }: { user: any }) {
           )}
 
           {user?.role === 'admin' && (
-            <SidebarItem 
-              icon={<span className="text-[20px] font-bold leading-none">฿</span>} 
-              label="Finance" 
+            <SidebarItem
+              icon={<span className="text-[20px] font-bold leading-none">฿</span>}
+              label="Finance"
               to="/dashboard/finance"
               isCollapsed={isCollapsed}
               isActive={isSubActive('/dashboard/finance')}
@@ -203,19 +204,29 @@ export default function DashboardLayout({ user }: { user: any }) {
           )}
 
           {(user?.role === 'admin' || user?.role === 'cashier') && (
-            <SidebarItem 
-              icon={<Star size={20} />} 
-              label="Loyalty & Payments" 
+            <SidebarItem
+              icon={<Star size={20} />}
+              label="Loyalty & Payments"
               to="/dashboard/loyalty"
               isCollapsed={isCollapsed}
               isActive={isActive('/dashboard/loyalty')}
             />
           )}
 
+          {(user?.role === 'admin' || user?.role === 'manager') && (
+            <SidebarItem
+              icon={<Briefcase size={20} />}
+              label="Job Postings"
+              to="/dashboard/jobs"
+              isCollapsed={isCollapsed}
+              isActive={isActive('/dashboard/jobs')}
+            />
+          )}
+
           {user?.role === 'admin' && (
-            <SidebarItem 
-              icon={<Users size={20} />} 
-              label="CRM & Directory" 
+            <SidebarItem
+              icon={<Users size={20} />}
+              label="CRM & Directory"
               to="/dashboard/crm"
               isCollapsed={isCollapsed}
               isActive={isActive('/dashboard/crm')}
@@ -223,19 +234,19 @@ export default function DashboardLayout({ user }: { user: any }) {
           )}
 
           {user?.role === 'admin' && (
-            <SidebarItem 
-              icon={<Users size={20} />} 
-              label="Users" 
+            <SidebarItem
+              icon={<Users size={20} />}
+              label="Users"
               to="/dashboard/users"
               isCollapsed={isCollapsed}
               isActive={isActive('/dashboard/users')}
             />
           )}
-          
+
           {(user?.role === 'admin' || user?.role === 'marketing') && (
-            <SidebarItem 
-              icon={<ImageIcon size={20} />} 
-              label="Image Management" 
+            <SidebarItem
+              icon={<ImageIcon size={20} />}
+              label="Image Management"
               to="/dashboard/images"
               isCollapsed={isCollapsed}
               isActive={isActive('/dashboard/images')}
@@ -243,9 +254,9 @@ export default function DashboardLayout({ user }: { user: any }) {
           )}
 
           {user?.role === 'admin' && (
-            <SidebarItem 
-              icon={<Database size={20} />} 
-              label="System Logs" 
+            <SidebarItem
+              icon={<Database size={20} />}
+              label="System Logs"
               to="/dashboard/logs"
               isCollapsed={isCollapsed}
               isActive={isActive('/dashboard/logs')}
@@ -258,21 +269,21 @@ export default function DashboardLayout({ user }: { user: any }) {
                 System
               </div>
             )}
-            <SidebarItem 
-              icon={<Home size={20} />} 
-              label="Back to Site" 
+            <SidebarItem
+              icon={<Home size={20} />}
+              label="Back to Site"
               to="/"
               isCollapsed={isCollapsed}
             />
             {(user?.role === 'admin' || user?.role === 'cashier' || user?.role === 'marketing') && (
-              <SidebarItem 
-                icon={<Receipt size={20} />} 
-                label="Staff Portal" 
+              <SidebarItem
+                icon={<Receipt size={20} />}
+                label="Staff Portal"
                 to="/cashier"
                 isCollapsed={isCollapsed}
               />
             )}
-            <button 
+            <button
               onClick={handleSignOut}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all group ${isCollapsed ? 'justify-center px-2' : ''}`}
               title={isCollapsed ? "Sign Out" : undefined}

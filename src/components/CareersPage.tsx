@@ -1,9 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Send, CheckCircle, Paperclip, X } from 'lucide-react';
+import { Send, CheckCircle, Paperclip, X, Briefcase, ArrowRight } from 'lucide-react';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 import { FirebaseImage } from './ui/FirebaseImage';
 import { normalizeImageUrl } from '../utils/images';
 import { translate } from '../i18n';
+import { Job } from '../types';
 
 // This page only supports English and Thai (its main audience is local
 // applicants), and defaults to Thai on load — independent of the site-wide
@@ -30,6 +33,13 @@ const ROLE_VALUES: Record<string, string> = {
   'careers.role6': 'Other / Open to anything',
 };
 
+// Inverse of ROLE_VALUES — lets an open job posting's `department` (which uses
+// the same canonical English values as the application form's role dropdown,
+// see JobsDashboard.tsx) resolve back to a translation key for display.
+const ROLE_KEY_BY_VALUE: Record<string, string> = Object.fromEntries(
+  Object.entries(ROLE_VALUES).map(([key, value]) => [value, key])
+);
+
 export default function CareersPage() {
   const [language, setLanguage] = useState<CareerLanguage>('th');
   const t = (key: string) => translate(language, key);
@@ -44,6 +54,29 @@ export default function CareersPage() {
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
+
+  useEffect(() => {
+    const q = query(collection(db, 'jobs'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as Job))
+        .filter(j => j.status === 'open');
+      setJobs(list);
+    }, (err) => {
+      console.error('Careers jobs snapshot error:', err);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const applyForJob = (job: Job) => {
+    setForm((f) => ({
+      ...f,
+      role: job.department,
+      experience: f.experience || `${language === 'th' ? 'สมัครตำแหน่ง' : 'Applying for'}: ${job.title}\n\n`,
+    }));
+    document.getElementById('apply')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -173,12 +206,62 @@ export default function CareersPage() {
         </div>
       </section>
 
+      {/* Open positions */}
+      {jobs.length > 0 && (
+        <section className="py-20 px-6 bg-cream">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-display font-bold text-ink mb-3">{t('careers.openPositions')}</h2>
+              <p className="text-gray-500">{t('careers.openPositionsSub')}</p>
+            </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              {jobs.map((job) => {
+                const deptKey = ROLE_KEY_BY_VALUE[job.department];
+                const deptLabel = deptKey ? t(deptKey) : job.department;
+                const typeLabel = job.employmentType === 'Part-time' ? t('careers.partTime') : t('careers.fullTime');
+                const title = language === 'th' && job.titleThai ? job.titleThai : job.title;
+                const description = language === 'th' && job.descriptionThai ? job.descriptionThai : job.description;
+                return (
+                  <motion.div
+                    key={job.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 flex flex-col"
+                  >
+                    <div className="w-12 h-12 bg-terracotta/10 rounded-2xl flex items-center justify-center mb-4">
+                      <Briefcase className="text-terracotta" size={22} />
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      <span className="inline-block bg-olive/10 text-olive text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                        {deptLabel}
+                      </span>
+                      <span className="inline-block bg-gray-100 text-gray-500 text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                        {typeLabel}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-xl text-ink mb-2">{title}</h3>
+                    <p className="text-gray-500 leading-relaxed text-sm mb-6 flex-1 whitespace-pre-line">{description}</p>
+                    <button
+                      onClick={() => applyForJob(job)}
+                      className="flex items-center justify-center gap-2 px-5 py-3 bg-terracotta/10 text-terracotta rounded-2xl font-bold text-sm hover:bg-terracotta hover:text-white transition-all"
+                    >
+                      {t('careers.applyForRole')} <ArrowRight size={16} />
+                    </button>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Application form */}
       <section id="apply" className="py-20 px-6 bg-cream">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-10">
             <h2 className="text-3xl font-display font-bold text-ink mb-3">{t('careers.applyTitle')}</h2>
-            <p className="text-gray-500">{t('careers.applySub')}</p>
+            <p className="text-gray-500">{jobs.length > 0 ? t('careers.applySubWithJobs') : t('careers.applySub')}</p>
           </div>
 
           {status === 'done' ? (
