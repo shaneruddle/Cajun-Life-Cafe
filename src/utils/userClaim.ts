@@ -1,7 +1,7 @@
 import { collection, query, where, getDocs, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { UserProfile } from '../types';
-import { syncStaffDirectory } from './staffDirectory';
+import { syncStaffDirectory, removeStaffDirectoryEntry } from './staffDirectory';
 
 /**
  * Looks for an admin-created "pending" profile (added from the Users
@@ -47,10 +47,14 @@ export async function claimPendingProfile(uid: string, email: string): Promise<U
 
     await setDoc(doc(db, 'users', uid), claimedProfile, { merge: true });
     await updateDoc(doc(db, 'users', pendingDoc.id), { superseded: true, claimedUid: uid });
-    // Now that this profile is a real (non-pending) account, make it visible
-    // in the staff_directory used by staff-name pickers (e.g. tagging a
-    // Salary & Staff Advances expense) if their role is payroll-eligible.
+    // Move the staff_directory entry from the old placeholder doc ID over to
+    // the real uid — write the new one first, then remove the stale
+    // placeholder entry (which was already visible pre-claim, since pending
+    // staff are included in the directory — see staffDirectory.ts).
     await syncStaffDirectory(claimedProfile).catch((err) => console.error('syncStaffDirectory (claim) failed:', err));
+    if (pendingDoc.id !== uid) {
+      await removeStaffDirectoryEntry(pendingDoc.id).catch((err) => console.error('removeStaffDirectoryEntry (claim) failed:', err));
+    }
 
     return claimedProfile;
   } catch (err) {

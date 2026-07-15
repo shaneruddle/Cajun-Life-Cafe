@@ -18,11 +18,17 @@ export interface StaffDirectoryEntry {
 // pick from when tagging a "Salary & Staff Advances" expense to a specific
 // employee. This collection is the safe, read-restricted source for that.
 //
+// Deliberately INCLUDES pending (not-yet-signed-in) profiles: an admin often
+// pre-creates a profile for someone (e.g. back-of-house staff who never use
+// the Cashier Portal at all) purely to track their salary/advances, and
+// shouldn't have to wait for that person to log in before payroll entries
+// can be tagged to them.
+//
 // Call this any time a users/{uid} doc is created, edited, disabled/
 // reactivated, has its role changed, or gets claimed from a pending profile.
 export async function syncStaffDirectory(profile: Partial<UserProfile> & { uid: string }) {
   const ref = doc(db, 'staff_directory', profile.uid);
-  const eligible = !!profile.role && PAYROLL_ELIGIBLE_ROLES.includes(profile.role) && !profile.disabled && !profile.pending;
+  const eligible = !!profile.role && PAYROLL_ELIGIBLE_ROLES.includes(profile.role) && !profile.disabled;
   if (eligible) {
     const name =
       profile.displayName ||
@@ -31,10 +37,17 @@ export async function syncStaffDirectory(profile: Partial<UserProfile> & { uid: 
       'Unnamed';
     await setDoc(ref, { uid: profile.uid, name, role: profile.role });
   } else {
-    // Not (or no longer) eligible — e.g. deactivated, still pending, or an
-    // admin/marketing account. Remove any stale directory entry.
+    // Not (or no longer) eligible — e.g. deactivated, or an admin/marketing
+    // account. Remove any stale directory entry.
     await deleteDoc(ref).catch(() => {});
   }
+}
+
+// Removes a staff_directory entry outright — used when a profile is deleted
+// entirely (e.g. an un-claimed pending profile removed from Users) or when a
+// pending placeholder is superseded by its real claimed uid-keyed doc.
+export async function removeStaffDirectoryEntry(uid: string) {
+  await deleteDoc(doc(db, 'staff_directory', uid)).catch(() => {});
 }
 
 // Live list of staff eligible to be tagged on payroll-related expenses,
