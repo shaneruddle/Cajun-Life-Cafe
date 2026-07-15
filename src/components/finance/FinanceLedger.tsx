@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { logActivity } from '../../utils/logger';
+import { useStaffOptions } from '../../utils/staffDirectory';
 import { Expense, Income } from './types';
 import { Search, Pencil, Trash2, X, Loader2, ArrowUpDown, TrendingUp, TrendingDown, Scale, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
@@ -196,7 +197,10 @@ export default function FinanceLedger({ user, financeRole = 'owner' }: { user: a
       type: 'expense',
       date: e.date,
       category: e.category_name || 'Other',
-      description: e.supplier || '—',
+      // For Salary & Staff Advances, prefer the tagged staff member's name
+      // over the (usually empty) supplier field so the ledger table shows
+      // who the payment was for.
+      description: (e.category_name === 'Salary & Staff Advances' && e.employeeName) ? e.employeeName : (e.supplier || '—'),
       notes: e.notes,
       amount: e.total,
       logged_by: e.logged_by,
@@ -314,12 +318,13 @@ export default function FinanceLedger({ user, financeRole = 'owner' }: { user: a
     }
   };
 
-  const handleSaveEdit = async (updated: { date: string; category: string; amount: number; description: string; notes: string }) => {
+  const handleSaveEdit = async (updated: { date: string; category: string; amount: number; description: string; notes: string; employeeId?: string; employeeName?: string }) => {
     if (!editEntry) return;
     setSaving(true);
     try {
       if (editEntry.type === 'expense') {
         const cat = EXPENSE_CATEGORIES.find(c => c.name === updated.category);
+        const isSalaryCategory = updated.category === 'Salary & Staff Advances';
         await updateDoc(doc(db, 'finance_expenses', editEntry.id), {
           date: updated.date,
           supplier: updated.description,
@@ -327,8 +332,13 @@ export default function FinanceLedger({ user, financeRole = 'owner' }: { user: a
           category_name: updated.category,
           total: updated.amount,
           notes: updated.notes,
+          // Clear the staff tag if the category was changed away from Salary
+          // & Staff Advances, so stale employee info doesn't linger on a
+          // now-unrelated expense.
+          employeeId: isSalaryCategory ? (updated.employeeId || '') : '',
+          employeeName: isSalaryCategory ? (updated.employeeName || '') : '',
         });
-        await logActivity('Expense Updated', `${fmt(updated.amount)} · ${updated.category} · ${updated.date}`, 'finance');
+        await logActivity('Expense Updated', `${fmt(updated.amount)} · ${updated.category}${isSalaryCategory && updated.employeeName ? ` · ${updated.employeeName}` : ''} · ${updated.date}`, 'finance');
       } else {
         await updateDoc(doc(db, 'finance_income', editEntry.id), {
           date: updated.date,
@@ -545,22 +555,26 @@ function EditModal({
   entry: LedgerEntry;
   saving: boolean;
   onClose: () => void;
-  onSave: (updated: { date: string; category: string; amount: number; description: string; notes: string }) => void;
+  onSave: (updated: { date: string; category: string; amount: number; description: string; notes: string; employeeId?: string; employeeName?: string }) => void;
 }) {
   const [date, setDate] = useState(entry.date);
   const [category, setCategory] = useState(entry.category);
   const [amount, setAmount] = useState(String(entry.amount));
   const [description, setDescription] = useState(entry.type === 'expense' ? entry.description : '');
   const [notes, setNotes] = useState(entry.notes || '');
+  const [employeeId, setEmployeeId] = useState((entry.type === 'expense' && (entry.raw as Expense).employeeId) || '');
+  const [employeeName, setEmployeeName] = useState((entry.type === 'expense' && (entry.raw as Expense).employeeName) || '');
+  const staffOptions = useStaffOptions();
 
   const categoryOptions = entry.type === 'expense' ? EXPENSE_CATEGORIES.map(c => c.name) : INCOME_CATEGORIES;
+  const isSalaryCategory = entry.type === 'expense' && category === 'Salary & Staff Advances';
 
   const handleSubmit = () => {
     if (!date || !amount) {
       toast.error('Date and amount are required');
       return;
     }
-    onSave({ date, category, amount: parseFloat(amount), description, notes });
+    onSave({ date, category, amount: parseFloat(amount), description, notes, employeeId, employeeName });
   };
 
   return (
@@ -578,11 +592,38 @@ function EditModal({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <select value={category} onChange={e => setCategory(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-terracotta">
+            <select
+              value={category}
+              onChange={e => {
+                setCategory(e.target.value);
+                if (e.target.value !== 'Salary & Staff Advances') { setEmployeeId(''); setEmployeeName(''); }
+              }}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-terracotta"
+            >
               {!categoryOptions.includes(category) && <option value={category}>{category}</option>}
               {categoryOptions.map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
+          {isSalaryCategory && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Staff Member</label>
+              <select
+                value={employeeId}
+                onChange={e => {
+                  const staffMember = staffOptions.find(s => s.uid === e.target.value);
+                  setEmployeeId(e.target.value);
+                  setEmployeeName(staffMember?.name || '');
+                }}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-terracotta"
+              >
+                <option value="">Select staff member…</option>
+                {employeeId && !staffOptions.some(s => s.uid === employeeId) && (
+                  <option value={employeeId}>{employeeName || 'Unknown staff member'}</option>
+                )}
+                {staffOptions.map(s => <option key={s.uid} value={s.uid}>{s.name}</option>)}
+              </select>
+            </div>
+          )}
           {entry.type === 'expense' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>

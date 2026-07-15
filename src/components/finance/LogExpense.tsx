@@ -4,6 +4,7 @@ import { logActivity } from '../../utils/logger';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase';
 import { ExpenseItem } from './types';
+import { useStaffOptions } from '../../utils/staffDirectory';
 import { Camera, Upload, Loader2, Check, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -79,7 +80,10 @@ export default function LogExpense({ user, financeRole = 'owner' }: { user: any;
     total: '',
     notes: '',
     items: [] as ExpenseItem[],
+    employeeId: '',
+    employeeName: '',
   });
+  const staffOptions = useStaffOptions();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -173,6 +177,7 @@ export default function LogExpense({ user, financeRole = 'owner' }: { user: any;
         receipt_url = await getDownloadURL(storageRef);
       }
 
+      const isSalaryCategory = formData.category_id === 'salary_staff_advances';
       await addDoc(collection(db, 'finance_expenses'), {
         date: formData.date,
         supplier: formData.supplier,
@@ -185,6 +190,7 @@ export default function LogExpense({ user, financeRole = 'owner' }: { user: any;
         notes: formData.notes,
         logged_by: user?.email || 'unknown',
         created_at: new Date().toISOString(),
+        ...(isSalaryCategory && formData.employeeId ? { employeeId: formData.employeeId, employeeName: formData.employeeName } : {}),
       });
 
       // Auto-update ingredient costs from line items
@@ -224,7 +230,7 @@ export default function LogExpense({ user, financeRole = 'owner' }: { user: any;
 
       await logActivity(
         'Expense Logged',
-        `฿${parseFloat(formData.total).toLocaleString()} · ${formData.category_name} · ${formData.supplier || 'no supplier'} · ${formData.date}`,
+        `฿${parseFloat(formData.total).toLocaleString()} · ${formData.category_name}${isSalaryCategory && formData.employeeName ? ` · ${formData.employeeName}` : ''} · ${formData.supplier || 'no supplier'} · ${formData.date}`,
         'finance'
       );
       toast.success('Expense logged successfully');
@@ -240,6 +246,8 @@ export default function LogExpense({ user, financeRole = 'owner' }: { user: any;
         total: '',
         notes: '',
         items: [],
+        employeeId: '',
+        employeeName: '',
       });
     } catch (err) {
       console.error(err);
@@ -313,6 +321,27 @@ export default function LogExpense({ user, financeRole = 'owner' }: { user: any;
             {EXPENSE_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
+
+        {/* Staff member — only for Salary & Staff Advances */}
+        {formData.category_id === 'salary_staff_advances' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Staff Member</label>
+            <select
+              value={formData.employeeId}
+              onChange={e => {
+                const staffMember = staffOptions.find(s => s.uid === e.target.value);
+                setFormData(p => ({ ...p, employeeId: e.target.value, employeeName: staffMember?.name || '' }));
+              }}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-terracotta"
+            >
+              <option value="">Select staff member…</option>
+              {staffOptions.map(s => <option key={s.uid} value={s.uid}>{s.name}</option>)}
+            </select>
+            {staffOptions.length === 0 && (
+              <p className="text-[11px] text-gray-400 mt-1">No staff found — check Users.</p>
+            )}
+          </div>
+        )}
 
         {/* Total */}
         <div>

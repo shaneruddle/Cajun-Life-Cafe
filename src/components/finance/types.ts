@@ -27,6 +27,11 @@ export interface Expense {
   notes?: string;
   logged_by: string;
   created_at: string;
+  // Set when category_id is 'salary_staff_advances' — which staff member
+  // this salary/advance payment is for. Sourced from the staff_directory
+  // collection (see src/utils/staffDirectory.ts), not the full users doc.
+  employeeId?: string;
+  employeeName?: string;
 }
 
 export interface Income {
