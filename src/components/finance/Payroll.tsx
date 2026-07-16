@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { collection, doc, getDoc, setDoc, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase';
@@ -16,6 +16,7 @@ import {
   Check,
   ImagePlus,
   FileText,
+  RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -41,7 +42,78 @@ const emptyEntries = (month: string): TimeCardDayEntry[] =>
     otOut: '',
     status: '' as TimeCardDayEntry['status'],
     note: '',
+    shiftStart: '',
+    shiftStartManual: false,
   }));
+
+// --- OT calculation -----------------------------------------------------
+// Staff aren't obliged to clock in before their shift starts, so an early
+// amIn shouldn't count toward the 9-hour OT threshold. We estimate the
+// "official" shift start per month from the most common amIn time (early
+// outliers get outvoted by the typical day), and let a manager override
+// any individual day — e.g. if the official start changed partway
+// through the month — via the Shift Start column below.
+const OT_THRESHOLD_HOURS = 9;
+
+// Parses "HH:MM" (24h) into minutes since midnight; tolerant of odd OCR
+// formatting (e.g. "8.30"). Returns null if unparseable/blank.
+const parseTimeToMinutes = (raw?: string): number | null => {
+  if (!raw) return null;
+  const m = raw.trim().match(/^(\d{1,2})[:.](\d{1,2})$/);
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (Number.isNaN(h) || Number.isNaN(min) || h > 23 || min > 59) return null;
+  return h * 60 + min;
+};
+
+const minutesToTime = (mins: number): string =>
+  `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+
+// Most common amIn time that month, rounded to the nearest 5 minutes.
+const computeEstimatedStart = (entries: TimeCardDayEntry[]): string | null => {
+  const buckets = new Map<number, number>();
+  for (const e of entries) {
+    const mins = parseTimeToMinutes(e.amIn);
+    if (mins == null) continue;
+    const bucket = Math.round(mins / 5) * 5;
+    buckets.set(bucket, (buckets.get(bucket) || 0) + 1);
+  }
+  let best: number | null = null;
+  let bestCount = 0;
+  for (const [bucket, count] of Array.from(buckets.entries()).sort((a, b) => a[0] - b[0])) {
+    if (count > bestCount) {
+      bestCount = count;
+      best = bucket;
+    }
+  }
+  return best == null ? null : minutesToTime(best);
+};
+
+// Hours worked that day for OT purposes: amIn is clipped up to the
+// effective shift start so early arrivals never count. Lunch (the gap
+// between amOut and pmIn) is naturally excluded since only the two
+// worked sessions are summed.
+const computeDayHours = (e: TimeCardDayEntry, shiftStart: string | null) => {
+  const shiftStartMins = parseTimeToMinutes(shiftStart || undefined);
+  const amInMins = parseTimeToMinutes(e.amIn);
+  const amOutMins = parseTimeToMinutes(e.amOut);
+  const pmInMins = parseTimeToMinutes(e.pmIn);
+  const pmOutMins = parseTimeToMinutes(e.pmOut);
+
+  let amHours = 0;
+  if (amInMins != null && amOutMins != null && amOutMins > amInMins) {
+    const clippedIn = shiftStartMins != null ? Math.max(amInMins, shiftStartMins) : amInMins;
+    amHours = Math.max(0, amOutMins - clippedIn) / 60;
+  }
+  let pmHours = 0;
+  if (pmInMins != null && pmOutMins != null && pmOutMins > pmInMins) {
+    pmHours = (pmOutMins - pmInMins) / 60;
+  }
+  const totalHours = amHours + pmHours;
+  const otHours = Math.max(0, totalHours - OT_THRESHOLD_HOURS);
+  return { totalHours, otHours };
+};
 
 const fileToBase64 = (file: File): Promise<string> =>
   new Promise((res, rej) => {
@@ -182,8 +254,35 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
 
   const advancesTotal = advances.reduce((sum, a) => sum + (a.total || 0), 0);
 
+  // Recomputes live as entries change (new scan, manual punch edit, or a
+  // per-day Shift Start override) — days without a manual override track
+  // the month's auto-estimated start automatically.
+  const estimatedStart = useMemo(() => computeEstimatedStart(entries), [entries]);
+  const dayComputations = useMemo(
+    () =>
+      entries.map(e => {
+        const effectiveShiftStart = e.shiftStartManual && e.shiftStart ? e.shiftStart : estimatedStart;
+        const { totalHours, otHours } = computeDayHours(e, effectiveShiftStart);
+        return { day: e.day, effectiveShiftStart, totalHours, otHours };
+      }),
+    [entries, estimatedStart]
+  );
+  const totalOtHours = dayComputations.reduce((sum, d) => sum + d.otHours, 0);
+  const estOtPay = otHourlyRate != null ? totalOtHours * otHourlyRate : null;
+
   const updateEntry = (day: number, field: keyof TimeCardDayEntry, value: string) => {
     setEntries(prev => prev.map(e => (e.day === day ? { ...e, [field]: value } : e)));
+  };
+
+  // Shift Start is editable per day: typing a value marks that day as a
+  // manual override (so it survives future re-scans/re-estimates); the
+  // reset button clears the override and lets the day track the live
+  // month-wide estimate again.
+  const setShiftStartOverride = (day: number, value: string) => {
+    setEntries(prev => prev.map(e => (e.day === day ? { ...e, shiftStart: value, shiftStartManual: true } : e)));
+  };
+  const clearShiftStartOverride = (day: number) => {
+    setEntries(prev => prev.map(e => (e.day === day ? { ...e, shiftStart: '', shiftStartManual: false } : e)));
   };
 
   const handleScan = async () => {
@@ -214,6 +313,7 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
             const byDay = new Map(prev.map(e => [e.day, e]));
             for (const sd of scannedDays) {
               if (!sd?.day) continue;
+              const prevEntry = byDay.get(sd.day);
               byDay.set(sd.day, {
                 day: sd.day,
                 amIn: sd.amIn || '',
@@ -224,6 +324,10 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
                 otOut: sd.otOut || '',
                 status: (sd.status || '') as TimeCardDayEntry['status'],
                 note: sd.note || '',
+                // Keep any manual Shift Start override across a re-scan —
+                // only the punch/status/note fields come from the card.
+                shiftStart: prevEntry?.shiftStart || '',
+                shiftStartManual: prevEntry?.shiftStartManual || false,
               });
             }
             return Array.from(byDay.values()).sort((a, b) => a.day - b.day);
@@ -410,7 +514,7 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
               profile (edit these from the Users dashboard). Shown once
               here at the top of the time card view rather than repeated
               in the advances panel below. */}
-          {(baseSalary != null || ssoDeduction != null || otHourlyRate != null || payrollNotes) && (
+          {(baseSalary != null || ssoDeduction != null || otHourlyRate != null || payrollNotes || totalOtHours > 0) && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
               <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">
                 <Banknote size={14} /> Payroll Details for {selectedLabel}
@@ -428,6 +532,14 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
                   <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">OT Hourly Rate</div>
                   <div className="font-bold text-ink">{otHourlyRate != null ? `${fmtBaht(otHourlyRate)}/hr` : '—'}</div>
                 </div>
+                <div className="bg-cream rounded-2xl p-4">
+                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total OT Hours</div>
+                  <div className="font-bold text-ink">{totalOtHours > 0 ? `${totalOtHours.toFixed(2)}h` : '—'}</div>
+                </div>
+                <div className="bg-cream rounded-2xl p-4">
+                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Est. OT Pay</div>
+                  <div className="font-bold text-ink">{estOtPay != null && estOtPay > 0 ? fmtBaht(estOtPay) : '—'}</div>
+                </div>
               </div>
               {payrollNotes && (
                 <div className="mt-4 pt-4 border-t border-gray-100">
@@ -440,8 +552,15 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
 
           {/* Editable day table */}
           <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden mb-6">
-            <div className="p-6 pb-0 flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-              <Clock size={14} /> {month} — review &amp; correct before saving
+            <div className="p-6 pb-0 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                <Clock size={14} /> {month} — review &amp; correct before saving
+              </div>
+              {estimatedStart && (
+                <span className="text-xs text-gray-400">
+                  Estimated shift start: <strong className="text-gray-600">{estimatedStart}</strong> — override any day in the Shift Start column
+                </span>
+              )}
             </div>
             {loadingCard ? (
               <div className="p-10 flex justify-center text-gray-400"><Loader2 size={20} className="animate-spin" /></div>
@@ -451,34 +570,64 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
                   <thead>
                     <tr className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
                       <th className="px-2 py-2 text-left">Day</th>
+                      <th className="px-2 py-2 text-left">Shift Start</th>
                       <th className="px-2 py-2" colSpan={2}>Before Noon</th>
                       <th className="px-2 py-2" colSpan={2}>After Noon</th>
-                      <th className="px-2 py-2" colSpan={2}>Overtime</th>
+                      <th className="px-2 py-2" colSpan={2}>Overtime (card)</th>
+                      <th className="px-2 py-2 text-left">OT Hrs</th>
                       <th className="px-2 py-2 text-left">Status</th>
                       <th className="px-2 py-2 text-left">Note</th>
                     </tr>
                     <tr className="text-[10px] font-bold uppercase tracking-wider text-gray-300">
                       <th></th>
+                      <th></th>
                       <th className="px-2 pb-2">In</th>
                       <th className="px-2 pb-2">Out</th>
                       <th className="px-2 pb-2">In</th>
                       <th className="px-2 pb-2">Out</th>
                       <th className="px-2 pb-2">In</th>
                       <th className="px-2 pb-2">Out</th>
+                      <th></th>
                       <th></th>
                       <th></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {entries.map(e => (
+                    {entries.map((e, i) => {
+                      const dc = dayComputations[i];
+                      return (
                       <tr key={e.day} className={e.status ? 'bg-amber-50/40' : e.amIn ? 'bg-olive/5' : ''}>
                         <td className="px-2 py-1.5 font-bold text-gray-500">{e.day}</td>
+                        <td className="px-2 py-1.5">
+                          <div className="flex items-center gap-1">
+                            <input
+                              value={dc?.effectiveShiftStart || ''}
+                              onChange={ev => setShiftStartOverride(e.day, ev.target.value)}
+                              placeholder="—"
+                              title={e.shiftStartManual ? 'Manually overridden for this day' : 'Auto-estimated from this month\'s clock-ins'}
+                              className={`${timeInputClass} ${e.shiftStartManual ? 'ring-1 ring-terracotta/50' : ''}`}
+                            />
+                            {e.shiftStartManual && (
+                              <button
+                                type="button"
+                                onClick={() => clearShiftStartOverride(e.day)}
+                                title="Reset to auto-estimated start time"
+                                className="text-gray-300 hover:text-terracotta transition-colors"
+                              >
+                                <RotateCcw size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-2 py-1.5"><input value={e.amIn || ''} onChange={ev => updateEntry(e.day, 'amIn', ev.target.value)} placeholder="—" className={timeInputClass} /></td>
                         <td className="px-2 py-1.5"><input value={e.amOut || ''} onChange={ev => updateEntry(e.day, 'amOut', ev.target.value)} placeholder="—" className={timeInputClass} /></td>
                         <td className="px-2 py-1.5"><input value={e.pmIn || ''} onChange={ev => updateEntry(e.day, 'pmIn', ev.target.value)} placeholder="—" className={timeInputClass} /></td>
                         <td className="px-2 py-1.5"><input value={e.pmOut || ''} onChange={ev => updateEntry(e.day, 'pmOut', ev.target.value)} placeholder="—" className={timeInputClass} /></td>
                         <td className="px-2 py-1.5"><input value={e.otIn || ''} onChange={ev => updateEntry(e.day, 'otIn', ev.target.value)} placeholder="—" className={timeInputClass} /></td>
                         <td className="px-2 py-1.5"><input value={e.otOut || ''} onChange={ev => updateEntry(e.day, 'otOut', ev.target.value)} placeholder="—" className={timeInputClass} /></td>
+                        <td className={`px-2 py-1.5 text-center font-bold ${dc && dc.otHours > 0 ? 'text-terracotta' : 'text-gray-300'}`}>
+                          {dc && dc.otHours > 0 ? dc.otHours.toFixed(2) : '—'}
+                        </td>
                         <td className="px-2 py-1.5">
                           <select
                             value={e.status || ''}
@@ -499,7 +648,8 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
                           />
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
