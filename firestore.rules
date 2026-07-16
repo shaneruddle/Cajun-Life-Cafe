@@ -25,6 +25,14 @@ service cloud.firestore {
       return isAuthenticated() && (isAdmin() || getUserRole() == 'cashier' || getUserRole() == 'manager');
     }
 
+    // Stricter than isCashier() — excludes plain cashier role. Used for
+    // payroll time-card data (hours + notes derived from clock-in cards),
+    // which is more sensitive than the salary/advance line items cashiers
+    // already see in finance_expenses.
+    function isManager() {
+      return isAuthenticated() && (isAdmin() || getUserRole() == 'manager');
+    }
+
     // Admin: Full access to everything
     match /{document=**} {
       allow read, write: if isAdmin();
@@ -121,6 +129,12 @@ service cloud.firestore {
     }
     match /payroll_summaries/{id} {
       allow read, write: if isAdmin();
+    }
+    // Time-card records OCR'd from Vertex punch cards — day-by-day in/out
+    // times plus handwritten notes. Admin/Manager only (see Payroll.tsx);
+    // deliberately excludes cashier, unlike finance_expenses.
+    match /payroll_timecards/{id} {
+      allow read, write: if isManager();
     }
 
     // CRM — cashiers can read/write customers and their transaction subcollection

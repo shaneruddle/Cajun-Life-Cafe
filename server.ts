@@ -27,7 +27,7 @@ async function startServer() {
   app.use(express.json({ limit: "20mb" }));
 
   // Version endpoint
-  app.get("/api/version", (_req, res) => res.json({ version: "2026-06-03 12:48:59 UTC", has_anthropic: !!process.env.ANTHROPIC_API_KEY }));
+  app.get("/api/version", (_req, res) => res.json({ version: "2026-07-16 00:00:00 UTC", has_anthropic: !!process.env.ANTHROPIC_API_KEY }));
 
   // ── CORS ──────────────────────────────────────────────────────────
   app.use((req, res, next) => {
@@ -120,11 +120,94 @@ Rules:
       const clean = claudeText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       let parsed: any = {};
       try { parsed = JSON.parse(clean); } catch(e) { console.error("JSON_PARSE_ERR:", e); }
-      return res.json({ success: true, data: parsed });
 
+      return res.json({ success: true, data: parsed });
     } catch (error) {
       console.error("OCR error:", error);
       return res.status(500).json({ success: false, error: "Failed to process receipt" });
+    }
+  });
+
+  // ── OCR Time Card Endpoint ───────────────────────────────────────────
+  // Reads photo(s) of a Vertex mechanical punch/time-clock card — one side
+  // covers days 1-15 (blue header), the other days 16-31 (orange header),
+  // for a single employee, already selected by the admin/manager in
+  // Payroll.tsx before upload (so this endpoint never has to guess *who*
+  // the card belongs to — just what it says).
+  app.post("/api/ocr-timecard", async (req, res) => {
+    const { images, expectedEmployeeName } = req.body as {
+      images?: { imageBase64: string; mimeType?: string }[];
+      expectedEmployeeName?: string;
+    };
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+
+    if (!anthropicKey) {
+      return res.status(500).json({ success: false, error: "OCR service not configured" });
+    }
+    if (!images || !images.length) {
+      return res.status(400).json({ success: false, error: "No image provided" });
+    }
+
+    try {
+      const imageBlocks = images.map(img => ({
+        type: "image",
+        source: { type: "base64", media_type: img.mimeType || "image/jpeg", data: img.imageBase64 }
+      }));
+
+      const promptText = `You are reading a Vertex mechanical time-clock punch card from a Thai restaurant. You may be given one or two photos — the front of the card (blue header, days 1-15) and/or the back (orange header, days 16-31) — both belong to the SAME employee.
+
+Card layout:
+- Header fields, usually handwritten in blue pen: เลขที่/NO. (employee number, often blank), ชื่อ/NAME, แผนก/DEPT. (often used for job position/title instead), and sometimes a handwritten month/period label.
+- A grid with one row per day of the month (วันที่ = day number 1-31). Columns, left to right: ก่อนเที่ยง (before noon) with เข้า (time in) / ออก (time out); หลังเที่ยง (after noon) with เข้า / ออก; ล่วงเวลา (overtime) with เข้า / ออก.
+- Times are mechanically stamped by the clock in HH:MM 24-hour format (may appear in red or black ink, sometimes smudged or partially cut off — do your best, and if truly unreadable leave that field as an empty string rather than guessing).
+- Some day rows show a handwritten code instead of stamped times: "CD" (a shift swap with a coworker — the employee worked a different day instead) or "OFF" (a scheduled day off). When you see one of these, set that day's "status" field and leave the time fields for that half of the day empty.
+- Some days have handwritten marks in blue pen near or over a stamped time — e.g. "+2", "-2", a replacement time like "1400", or a short handwritten note (sometimes in Thai, e.g. about a doctor's visit). Capture these VERBATIM as plain text in that day's "note" field. Do NOT use them to adjust or recalculate any time field — just record what's written.
+- A day row with no stamps and no handwriting at all (nothing has happened yet, e.g. future days) should just have all time fields as empty strings and status "".
+
+${expectedEmployeeName ? `The employee this card should belong to is "${expectedEmployeeName}" — read whatever name is actually written on the card regardless, and report it in cardNameRaw as-is (do not force it to match).` : ""}
+
+Return ONLY valid JSON, no markdown fences, no extra text, in exactly this shape:
+{
+  "cardNameRaw": "whatever is handwritten in the NAME field, as-is",
+  "cardPositionRaw": "whatever is handwritten in the DEPT/position field, as-is",
+  "periodLabel": "any handwritten month/period label on the card, as-is, or empty string",
+  "days": [
+    { "day": 1, "amIn": "08:46", "amOut": "18:09", "pmIn": "", "pmOut": "", "otIn": "", "otOut": "", "status": "", "note": "" }
+  ]
+}
+Rules:
+- Include an entry for every day that has ANY data on either photo (stamped time, CD, OFF, or a handwritten note) — you do not need to include fully blank future days.
+- "status" is either "CD", "OFF", or "" — never put CD/OFF in a time field.
+- If both photos were provided, merge them into one "days" array covering the full month (front photo = days 1-15, back = days 16-31), sorted by day number ascending.
+- Return ONLY the JSON object, nothing else.`;
+
+      const claudeResp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 4096,
+          messages: [{
+            role: "user",
+            content: [...imageBlocks, { type: "text", text: promptText }]
+          }]
+        })
+      });
+
+      const claudeData = await claudeResp.json() as any;
+      const claudeText = claudeData?.content?.[0]?.text || "{}";
+      const clean = claudeText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      let parsed: any = {};
+      try { parsed = JSON.parse(clean); } catch(e) { console.error("TIMECARD_JSON_PARSE_ERR:", e); }
+
+      return res.json({ success: true, data: parsed });
+    } catch (error) {
+      console.error("Timecard OCR error:", error);
+      return res.status(500).json({ success: false, error: "Failed to process time card" });
     }
   });
 
@@ -225,7 +308,6 @@ Rules:
       });
       const profile = await profileResp.json() as any;
       const lineUserId = profile.userId;
-
       if (!lineUserId) return res.redirect(`/activate/error?msg=Could+not+get+LINE+ID`);
 
       const tokenSnap = await adminDb.collection("activation_tokens")
@@ -235,10 +317,8 @@ Rules:
       if (tokenSnap.empty || tokenSnap.docs[0].data().used) {
         return res.redirect(`/activate/error?msg=Link+already+used`);
       }
-
       const tokenDocRef = tokenSnap.docs[0].ref;
       const { crmCustomerId } = tokenSnap.docs[0].data();
-
       if (!crmCustomerId) {
         return res.redirect(`/activate/error?msg=Invalid+activation+token`);
       }
@@ -247,7 +327,6 @@ Rules:
         lineUserId,
         updatedAt: new Date().toISOString()
       });
-
       await tokenDocRef.update({ used: true, usedAt: new Date().toISOString(), lineUserId });
 
       return res.redirect(`/activate/success`);
@@ -289,13 +368,10 @@ Rules:
   // ── Loyalty Signup ────────────────────────────────────────────────
   app.post("/api/loyalty-signup", async (req, res) => {
     const { firstName, lastName, email, mobile, website } = req.body || {};
-
     if (website) return res.json({ success: true });
-
     if (!firstName?.trim() || !lastName?.trim() || !mobile?.trim()) {
       return res.status(400).json({ success: false, error: "Name and mobile number are required" });
     }
-
     const digits = String(mobile).replace(/[\s\-()]/g, "");
     let fullMobile = digits;
     if (digits.startsWith("0")) fullMobile = `+66${digits.slice(1)}`;
@@ -375,9 +451,7 @@ Rules:
   // ── Contact Form ──────────────────────────────────────────────────
   app.post("/api/contact", async (req, res) => {
     const { name, email, phone, message, website } = req.body || {};
-
     if (website) return res.json({ success: true });
-
     if (!name?.trim() || !message?.trim()) {
       return res.status(400).json({ success: false, error: "Please tell us your name and a message" });
     }
@@ -418,9 +492,7 @@ Rules:
   // ── Customer Feedback ─────────────────────────────────────────────
   app.post("/api/feedback", async (req, res) => {
     const { category, rating, dish, message, name, contact, website } = req.body || {};
-
     if (website) return res.json({ success: true });
-
     if (!message?.trim()) {
       return res.status(400).json({ success: false, error: "Please write something — even a few words help." });
     }
@@ -473,14 +545,12 @@ Rules:
   app.post("/api/line-push", async (req, res) => {
     const { lineUserId, message } = req.body;
     const accessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN || "";
-
     if (!lineUserId || !message) {
       return res.status(400).json({ success: false, error: "lineUserId and message required" });
     }
     if (!accessToken) {
       return res.status(500).json({ success: false, error: "LINE access token not configured" });
     }
-
     try {
       const pushResp = await fetch("https://api.line.me/v2/bot/message/push", {
         method: "POST",
@@ -493,7 +563,6 @@ Rules:
           messages: [{ type: "text", text: message }]
         })
       });
-
       const pushData = await pushResp.json() as any;
       if (pushResp.ok) {
         return res.json({ success: true });
@@ -515,7 +584,6 @@ Rules:
     if (!smtpHost || !smtpUser || !smtpPass) return { sent: false, entries: 0, error: "SMTP not configured" };
 
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
     const [logsSnap, membersSnap] = await Promise.all([
       adminDb.collection("system_logs")
         .where("category", "==", "loyalty")
@@ -627,9 +695,7 @@ Rules:
   app.post("/api/careers", cvUpload.single("cv"), async (req, res) => {
     const { name, email, role, experience, website } = req.body || {};
     const cvFile = req.file;
-
     if (website) return res.json({ success: true });
-
     if (!name?.trim() || !email?.trim()) {
       return res.status(400).json({ success: false, error: "Name and email are required" });
     }
