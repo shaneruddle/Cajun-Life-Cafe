@@ -313,13 +313,12 @@ export interface TimeCardDayEntry {
   // partway through the month) that persists across re-scans.
   shiftStart?: string;
   shiftStartManual?: boolean;
-  // Computed OT hours for the day (see computeDayHours in Payroll.tsx) can
-  // be manually corrected — e.g. a manager knows the real figure differs
-  // from what the punches imply. otHours holds the override value only
-  // when otHoursManual is true; otherwise the day tracks the live
-  // computed value and neither field is persisted.
+  // "Paid OT" — the actual overtime hours a manager decides to pay for
+  // the day. This is a plain manual entry, blank by default (it does NOT
+  // auto-fill from the calculated "Time Over" figure — see
+  // computeDayHours/dayComputations in Payroll.tsx). Left undefined until
+  // the manager types a value for that day.
   otHours?: number;
-  otHoursManual?: boolean;
 }
 
 // One employee's full month of clock-in data, built from OCR'ing both
