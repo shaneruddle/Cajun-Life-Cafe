@@ -36,8 +36,8 @@ async function startServer() {
   // the very next commit once it's been run once. Safe to re-run (it only
   // touches docs still tagged category_id === "staff", so it's a no-op on
   // a second call).
-  app.post("/api/admin/recategorize-staff-2026-07-16", async (req, res) => {
-    if (req.body?.secret !== "clc-recat-staff-jul16") {
+  app.get("/api/admin/recategorize-staff-2026-07-16", async (req, res) => {
+    if (req.query?.secret !== "clc-recat-staff-jul16") {
       return res.status(403).json({ error: "forbidden" });
     }
     try {
