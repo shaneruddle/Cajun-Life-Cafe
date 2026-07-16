@@ -278,3 +278,47 @@ export interface BlogPost {
   updatedAt: string;
   publishedAt?: string;
 }
+
+// A single day's row off a Vertex punch/time-clock card — see
+// src/components/finance/Payroll.tsx and the /api/ocr-timecard backend
+// endpoint (server.ts) that extracts these from photographed cards.
+// Times are stamped mechanically by the clock; `note` carries any
+// handwritten annotation (e.g. "+2", "-2", a Thai note about a doctor's
+// visit) as free text — OCR does NOT try to auto-adjust hours from these,
+// a human reviews and decides. `status` overrides the time columns when
+// the card shows a code instead of a punch (CD = shift swap with a
+// coworker, OFF = scheduled day off) for that half of the day.
+export interface TimeCardDayEntry {
+  day: number; // 1-31
+  amIn?: string;
+  amOut?: string;
+  pmIn?: string;
+  pmOut?: string;
+  otIn?: string;
+  otOut?: string;
+  status?: 'CD' | 'OFF' | '';
+  note?: string;
+}
+
+// One employee's full month of clock-in data, built from OCR'ing both
+// sides of their Vertex time card (days 1-15 front, 16-31 back) and then
+// reviewed/corrected by an admin/manager before saving. Doc ID is
+// `${employeeId}_${month}` so re-uploading a card for the same
+// employee/month overwrites rather than duplicates.
+export interface TimeCard {
+  id?: string;
+  employeeId: string;
+  employeeName: string; // resolved from staff_directory at save time
+  month: string; // 'YYYY-MM'
+  // What OCR actually read off the card's NAME/DEPT fields — shown next to
+  // the picked employee purely as a sanity check (e.g. flagging that "Annie"
+  // was uploaded under the wrong employee). Never used to auto-match.
+  cardNameRaw?: string;
+  cardPositionRaw?: string;
+  entries: TimeCardDayEntry[];
+  cardImageUrls?: string[];
+  uploadedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
