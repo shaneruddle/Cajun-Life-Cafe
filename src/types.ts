@@ -304,6 +304,15 @@ export interface TimeCardDayEntry {
   otOut?: string;
   status?: 'CD' | 'OFF' | '';
   note?: string;
+  // Effective "official" shift start used to clip amIn when computing OT
+  // (see computeDayHours in Payroll.tsx) — staff aren't obliged to clock
+  // in before their shift starts, so early arrivals shouldn't count
+  // toward the 9-hour OT threshold. Auto-estimated per month from the
+  // most common amIn time unless shiftStartManual is true, in which case
+  // shiftStart is a manual per-day override (handles a shift change
+  // partway through the month) that persists across re-scans.
+  shiftStart?: string;
+  shiftStartManual?: boolean;
 }
 
 // One employee's full month of clock-in data, built from OCR'ing both
