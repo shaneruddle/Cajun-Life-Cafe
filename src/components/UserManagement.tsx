@@ -175,10 +175,10 @@ export default function UserManagement() {
       setError('Please enter at least a first or last name.');
       return;
     }
-    if (!email) {
-      setError('Please enter an email address.');
-      return;
-    }
+    // Email is optional — some staff (e.g. back-of-house who never use the
+    // Cashier Portal or dashboard) will never sign in, so there's nothing
+    // to link a login to. They still get a full profile for payroll/
+    // staff_directory purposes; they just won't auto-claim on login.
     setSaving(true);
     try {
       const displayName = [formData.firstName, formData.lastName].filter(Boolean).join(' ').trim();
@@ -225,12 +225,16 @@ export default function UserManagement() {
         // it DOES show up in staff_directory immediately (see
         // syncStaffDirectory) so it can be tagged on payroll expenses even
         // if this person never logs into the Cashier Portal.
-        const existing = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
-        const alreadyExists = existing.docs.some((d) => !d.data().superseded);
-        if (alreadyExists) {
-          setError('A profile with this email already exists.');
-          setSaving(false);
-          return;
+        // Blank emails aren't a meaningful "duplicate" of each other — only
+        // check for a collision when an email was actually entered.
+        if (email) {
+          const existing = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+          const alreadyExists = existing.docs.some((d) => !d.data().superseded);
+          if (alreadyExists) {
+            setError('A profile with this email already exists.');
+            setSaving(false);
+            return;
+          }
         }
         const newRef = doc(collection(db, 'users'));
         await setDoc(newRef, {
@@ -263,8 +267,12 @@ export default function UserManagement() {
           nickname: formData.nickname,
           email,
         });
-        await logActivity('User Profile Created', `Created pending profile for ${displayName || email}`, 'user');
-        setSuccess('Profile created — it will link automatically when they first sign in with this email.');
+        await logActivity('User Profile Created', `Created pending profile for ${displayName || email || newRef.id}`, 'user');
+        setSuccess(
+          email
+            ? 'Profile created — it will link automatically when they first sign in with this email.'
+            : 'Profile created — no email on file, so it won\'t link to a login. Add one later if this person needs Cashier Portal / dashboard access.'
+        );
       }
       resetForm();
     } catch (err) {
@@ -436,7 +444,7 @@ export default function UserManagement() {
                                 {user.nickname && <span className="text-gray-400 font-normal"> ({user.nickname})</span>}
                               </div>
                               <div className="text-xs text-gray-400 flex items-center gap-1">
-                                <Mail size={12} /> {user.email}
+                                <Mail size={12} /> {user.email || 'No email on file'}
                               </div>
                             </div>
                           </div>
@@ -562,18 +570,20 @@ export default function UserManagement() {
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Email *</label>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Email (optional)</label>
                     <input
-                      required
                       type="email"
                       value={formData.email || ''}
                       disabled={!!editingUser && !editingUser.pending}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className={`w-full border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-terracotta outline-none font-medium ${!!editingUser && !editingUser.pending ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-50'}`}
-                      placeholder="name@example.com"
+                      placeholder="name@example.com — leave blank if they'll never sign in"
                     />
                     {!!editingUser && !editingUser.pending && (
                       <p className="text-[11px] text-gray-400 mt-1.5">This account has already signed in — email is tied to their login and can't be changed here.</p>
+                    )}
+                    {!(!!editingUser && !editingUser.pending) && (
+                      <p className="text-[11px] text-gray-400 mt-1.5">Only needed if this person will log in to the Cashier Portal or dashboard.</p>
                     )}
                   </div>
                   <div>
@@ -750,7 +760,7 @@ export default function UserManagement() {
                     {viewingUser.displayName || 'Unnamed'}
                     {viewingUser.nickname && <span className="text-gray-400 font-normal"> ({viewingUser.nickname})</span>}
                   </h2>
-                  <p className="text-gray-400 mt-1 flex items-center gap-1 text-sm"><Mail size={14} /> {viewingUser.email}</p>
+                  <p className="text-gray-400 mt-1 flex items-center gap-1 text-sm"><Mail size={14} /> {viewingUser.email || 'No email on file'}</p>
                 </div>
                 <button onClick={() => setViewingUser(null)} className="p-2 hover:bg-white rounded-full transition-colors">
                   <X size={24} className="text-gray-400" />
