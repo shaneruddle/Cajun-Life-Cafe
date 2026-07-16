@@ -33,6 +33,17 @@ service cloud.firestore {
       return isAuthenticated() && (isAdmin() || getUserRole() == 'manager');
     }
 
+    // Any signed-in staff member with a real role (admin/manager/cashier/
+    // marketing) — deliberately excludes 'employee' (pending-approval
+    // accounts, blocked from /dashboard entirely on the client already) and
+    // 'none' (no users doc / unrecognized role). Used for read-only access
+    // to things every staff member should be able to see, like the Calendar.
+    function isStaff() {
+      return isAuthenticated() && (
+        isAdmin() || getUserRole() == 'manager' || getUserRole() == 'cashier' || getUserRole() == 'marketing'
+      );
+    }
+
     // Admin: Full access to everything
     match /{document=**} {
       allow read, write: if isAdmin();
@@ -140,6 +151,14 @@ service cloud.firestore {
     // deliberately excludes cashier, unlike finance_expenses.
     match /payroll_timecards/{id} {
       allow read, write: if isManager();
+    }
+
+    // Calendar — holidays, national holidays, licence renewal reminders,
+    // etc. Any staff member can view; only Manager/Admin can add, edit, or
+    // delete (see CalendarDashboard.tsx).
+    match /calendar_events/{id} {
+      allow read: if isStaff();
+      allow write: if isManager();
     }
 
     // CRM — cashiers can read/write customers and their transaction subcollection
