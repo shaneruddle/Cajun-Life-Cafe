@@ -74,10 +74,15 @@ service cloud.firestore {
     // first login instead of a blank duplicate being created. See
     // src/utils/userClaim.ts. This never lets anyone touch another person's
     // already-claimed profile — only doc(s) still marked pending == true.
+    //
+    // Read is also opened to isManager() (not just isAdmin()) so the
+    // Payroll tab (Admin/Manager only, see Payroll.tsx) can show a staff
+    // member's base salary alongside their advances — cashiers still can't
+    // read this collection at all, and only admins can write to it.
     match /users/{userId} {
       allow read: if isAuthenticated() && (
         request.auth.uid == userId ||
-        isAdmin() ||
+        isManager() ||
         (resource.data.pending == true && resource.data.email == request.auth.token.email)
       );
       allow create: if isAuthenticated() && request.auth.uid == userId;
