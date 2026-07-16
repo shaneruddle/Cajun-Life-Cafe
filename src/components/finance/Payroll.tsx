@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, doc, getDoc, setDoc, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase';
@@ -17,6 +17,9 @@ import {
   ImagePlus,
   FileText,
   RotateCcw,
+  Receipt,
+  Download,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -29,6 +32,13 @@ const daysInMonth = (month: string) => {
   const [y, m] = month.split('-').map(Number);
   if (!y || !m) return 31;
   return new Date(y, m, 0).getDate();
+};
+
+// "2026-06" -> "June 2026" for the pay slip header
+const formatMonthLabel = (month: string) => {
+  const [y, m] = month.split('-').map(Number);
+  if (!y || !m) return month;
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 };
 
 const emptyEntries = (month: string): TimeCardDayEntry[] =>
@@ -146,6 +156,9 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
   const [ssoDeduction, setSsoDeduction] = useState<number | null>(null);
   const [otHourlyRate, setOtHourlyRate] = useState<number | null>(null);
   const [payrollNotes, setPayrollNotes] = useState('');
+  const [position, setPosition] = useState('');
+
+  const [showPayslip, setShowPayslip] = useState(false);
 
   const [existingMonths, setExistingMonths] = useState<string[]>([]);
 
@@ -226,12 +239,14 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
         setSsoDeduction(typeof userData.ssoDeduction === 'number' ? userData.ssoDeduction : null);
         setOtHourlyRate(typeof userData.otHourlyRate === 'number' ? userData.otHourlyRate : null);
         setPayrollNotes(userData.payrollNotes || '');
+        setPosition(userData.position || '');
       } catch (err) {
         console.error('Failed to load payroll details:', err);
         setBaseSalary(null);
         setSsoDeduction(null);
         setOtHourlyRate(null);
         setPayrollNotes('');
+        setPosition('');
       }
     })();
 
@@ -274,6 +289,10 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
   // calculated Time Over. Blank by default; the manager types it in.
   const totalPaidOtHours = entries.reduce((sum, e) => sum + (e.otHours || 0), 0);
   const totalOtPay = otHourlyRate != null ? totalPaidOtHours * otHourlyRate : null;
+  // Net pay for the pay slip: base salary + overtime pay, minus salary
+  // advances and SSO deduction. Missing figures count as zero rather than
+  // blocking the calculation, since not every employee has every field set.
+  const netPay = (baseSalary || 0) + (totalOtPay || 0) - (advancesTotal || 0) - (ssoDeduction || 0);
 
   const updateEntry = (day: number, field: keyof TimeCardDayEntry, value: string) => {
     setEntries(prev => prev.map(e => (e.day === day ? { ...e, [field]: value } : e)));
@@ -702,16 +721,330 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
             )}
           </div>
 
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-8 py-4 bg-terracotta text-white rounded-2xl font-bold hover:shadow-lg hover:shadow-terracotta/20 transition-all disabled:opacity-60"
-          >
-            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            {saving ? 'Saving…' : 'Save Time Card'}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 px-8 py-4 bg-terracotta text-white rounded-2xl font-bold hover:shadow-lg hover:shadow-terracotta/20 transition-all disabled:opacity-60"
+            >
+              {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              {saving ? 'Saving…' : 'Save Time Card'}
+            </button>
+            {(baseSalary != null || ssoDeduction != null || totalPaidOtHours > 0 || advancesTotal > 0) && (
+              <button
+                onClick={() => setShowPayslip(true)}
+                className="flex items-center gap-2 px-8 py-4 bg-white border-2 border-olive text-olive rounded-2xl font-bold hover:bg-olive hover:text-white transition-all"
+              >
+                <Receipt size={18} /> Generate Pay Slip
+              </button>
+            )}
+          </div>
         </>
       )}
+
+      {showPayslip && (
+        <PayslipModal
+          onClose={() => setShowPayslip(false)}
+          employeeName={selectedLabel || 'Employee'}
+          position={position || cardPositionRaw}
+          monthLabel={formatMonthLabel(month)}
+          baseSalary={baseSalary}
+          otPay={totalOtPay}
+          advance={advancesTotal}
+          sso={ssoDeduction}
+          netPay={netPay}
+        />
+      )}
+    </div>
+  );
+}
+
+// Draws a rounded-rectangle path (manual implementation — avoids relying on
+// the newer ctx.roundRect() browser API so this renders consistently).
+function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+interface PayslipModalProps {
+  onClose: () => void;
+  employeeName: string;
+  position: string;
+  monthLabel: string;
+  baseSalary: number | null;
+  otPay: number | null;
+  advance: number;
+  sso: number | null;
+  netPay: number;
+}
+
+// Renders a branded pay slip straight to a <canvas> (no external image
+// library) so it can be downloaded as a PNG with canvas.toBlob(). Drawn at
+// 2x scale for a crisp image regardless of the user's screen density.
+function PayslipModal({ onClose, employeeName, position, monthLabel, baseSalary, otPay, advance, sso, netPay }: PayslipModalProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const W = 900;
+    const H = 560;
+    const SCALE = 2;
+
+    const draw = async () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      canvas.width = W * SCALE;
+      canvas.height = H * SCALE;
+      canvas.style.width = `${W}px`;
+      canvas.style.height = `${H}px`;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.scale(SCALE, SCALE);
+
+      // Make sure brand fonts are loaded before measuring/drawing text —
+      // otherwise the first paint can fall back to a system font.
+      try {
+        await Promise.all([
+          document.fonts.load('700 26px "Libre Baskerville"'),
+          document.fonts.load('600 14px "Inter"'),
+          document.fonts.load('400 12px "Inter"'),
+        ]);
+      } catch {
+        // Font Loading API not available — fall back to default fonts, fine.
+      }
+
+      const logo = new Image();
+      logo.src = '/logo.png';
+      const logoLoaded = await new Promise<boolean>(resolve => {
+        logo.onload = () => resolve(true);
+        logo.onerror = () => resolve(false);
+      });
+      if (cancelled) return;
+
+      const ink = '#1A1A1A';
+      const terracotta = '#A64B2A';
+      const olive = '#5A5A40';
+      const cream = '#F5F5F0';
+      const gray = '#8A8A85';
+
+      // Card background + border
+      ctx.fillStyle = '#FFFFFF';
+      roundRectPath(ctx, 0, 0, W, H, 20);
+      ctx.fill();
+      ctx.strokeStyle = '#E5E5E0';
+      ctx.lineWidth = 1;
+      roundRectPath(ctx, 0.5, 0.5, W - 1, H - 1, 20);
+      ctx.stroke();
+
+      // Header band
+      ctx.fillStyle = cream;
+      roundRectPath(ctx, 0, 0, W, 130, 20);
+      ctx.fill();
+      ctx.fillRect(0, 110, W, 20); // square off the bottom corners of the band
+      ctx.strokeStyle = olive;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 130);
+      ctx.lineTo(W, 130);
+      ctx.stroke();
+
+      const padX = 40;
+      let logoW = 0;
+      if (logoLoaded) {
+        const logoH = 72;
+        logoW = (logo.width / logo.height) * logoH;
+        ctx.drawImage(logo, padX, 29, logoW, logoH);
+      }
+
+      const brandX = padX + (logoW > 0 ? logoW + 16 : 0);
+      ctx.fillStyle = ink;
+      ctx.font = '700 26px "Libre Baskerville", serif';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText('CAJUN LIFE CAFE', brandX, 60);
+      ctx.fillStyle = gray;
+      ctx.font = '400 12px "Inter", sans-serif';
+      ctx.fillText('Healthy Eating · Pratumnak Hill, Pattaya', brandX, 80);
+
+      ctx.textAlign = 'right';
+      ctx.fillStyle = terracotta;
+      ctx.font = '700 24px "Libre Baskerville", serif';
+      ctx.fillText('PAY SLIP', W - padX, 55);
+      ctx.fillStyle = ink;
+      ctx.font = '600 13px "Inter", sans-serif';
+      ctx.fillText(`Pay Period: ${monthLabel}`, W - padX, 78);
+      ctx.textAlign = 'left';
+
+      // Employee info block
+      let y = 168;
+      const labelColor = gray;
+      const valueColor = ink;
+
+      ctx.font = '700 10px "Inter", sans-serif';
+      ctx.fillStyle = labelColor;
+      ctx.fillText('EMPLOYEE NAME', padX, y);
+      ctx.font = '700 16px "Inter", sans-serif';
+      ctx.fillStyle = valueColor;
+      ctx.fillText(employeeName, padX, y + 22);
+
+      if (position) {
+        ctx.font = '700 10px "Inter", sans-serif';
+        ctx.fillStyle = labelColor;
+        ctx.fillText('POSITION', W / 2 + 20, y);
+        ctx.font = '700 16px "Inter", sans-serif';
+        ctx.fillStyle = valueColor;
+        ctx.fillText(position, W / 2 + 20, y + 22);
+      }
+
+      // Income / Deductions table
+      const tableTop = 235;
+      const colGap = 20;
+      const colW = (W - padX * 2 - colGap) / 2;
+      const leftX = padX;
+      const rightX = padX + colW + colGap;
+
+      ctx.fillStyle = olive + '1A'; // ~10% opacity via hex alpha
+      roundRectPath(ctx, leftX, tableTop, colW, 30, 8);
+      ctx.fill();
+      roundRectPath(ctx, rightX, tableTop, colW, 30, 8);
+      ctx.fill();
+
+      ctx.font = '700 11px "Inter", sans-serif';
+      ctx.fillStyle = olive;
+      ctx.fillText('INCOME', leftX + 16, tableTop + 20);
+      ctx.fillText('DEDUCTIONS', rightX + 16, tableTop + 20);
+
+      const rowLabelFont = '400 14px "Inter", sans-serif';
+      const rowValueFont = '700 14px "Inter", sans-serif';
+      const rowH = 34;
+      let rowY = tableTop + 30 + 30;
+
+      const drawRow = (x: number, colWidth: number, label: string, value: string, bold = false) => {
+        ctx.font = bold ? rowValueFont : rowLabelFont;
+        ctx.fillStyle = bold ? ink : '#4A4A45';
+        ctx.fillText(label, x + 16, rowY);
+        ctx.font = rowValueFont;
+        ctx.fillStyle = ink;
+        ctx.textAlign = 'right';
+        ctx.fillText(value, x + colWidth - 16, rowY);
+        ctx.textAlign = 'left';
+      };
+
+      const incomeTotal = (baseSalary || 0) + (otPay || 0);
+      const deductionsTotal = (advance || 0) + (sso || 0);
+
+      drawRow(leftX, colW, 'Base Salary', baseSalary != null ? fmtBaht(baseSalary) : '—');
+      drawRow(rightX, colW, 'Salary Advance', advance > 0 ? fmtBaht(advance) : '—');
+      rowY += rowH;
+      drawRow(leftX, colW, 'Overtime Pay', otPay != null && otPay > 0 ? fmtBaht(otPay) : '—');
+      drawRow(rightX, colW, 'Social Security (SSO)', sso != null ? fmtBaht(sso) : '—');
+      rowY += rowH + 6;
+
+      ctx.strokeStyle = '#E5E5E0';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(leftX, rowY - rowH / 2 - 2);
+      ctx.lineTo(leftX + colW, rowY - rowH / 2 - 2);
+      ctx.moveTo(rightX, rowY - rowH / 2 - 2);
+      ctx.lineTo(rightX + colW, rowY - rowH / 2 - 2);
+      ctx.stroke();
+
+      drawRow(leftX, colW, 'Total Income', fmtBaht(incomeTotal), true);
+      drawRow(rightX, colW, 'Total Deductions', fmtBaht(deductionsTotal), true);
+
+      // Net pay banner
+      const bannerY = rowY + 40;
+      const bannerH = 64;
+      ctx.fillStyle = terracotta;
+      roundRectPath(ctx, padX, bannerY, W - padX * 2, bannerH, 14);
+      ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '700 14px "Inter", sans-serif';
+      ctx.fillText('NET PAY', padX + 24, bannerY + 26);
+      ctx.font = '700 28px "Libre Baskerville", serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(fmtBaht(netPay), W - padX - 24, bannerY + 42);
+      ctx.textAlign = 'left';
+
+      // Footer
+      ctx.strokeStyle = '#E5E5E0';
+      ctx.beginPath();
+      ctx.moveTo(padX, H - 44);
+      ctx.lineTo(W - padX, H - 44);
+      ctx.stroke();
+      ctx.font = '400 11px "Inter", sans-serif';
+      ctx.fillStyle = gray;
+      ctx.textAlign = 'center';
+      const generatedOn = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      ctx.fillText(`Generated on ${generatedOn} · Cajun Life Cafe Payroll`, W / 2, H - 24);
+      ctx.textAlign = 'left';
+
+      if (!cancelled) setReady(true);
+    };
+
+    draw();
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeName, position, monthLabel, baseSalary, otPay, advance, sso, netPay]);
+
+  const handleDownload = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safeName = employeeName.replace(/\s+/g, '_');
+      a.href = url;
+      a.download = `PaySlip_${safeName}_${monthLabel.replace(/\s+/g, '_')}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
+      <div
+        className="bg-white rounded-3xl shadow-2xl p-6 max-w-full max-h-full overflow-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-display font-bold text-ink flex items-center gap-2">
+            <Receipt size={18} className="text-terracotta" /> Pay Slip Preview
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-ink transition-colors" title="Close">
+            <X size={22} />
+          </button>
+        </div>
+
+        <div className="overflow-auto rounded-2xl border border-gray-100">
+          <canvas ref={canvasRef} />
+        </div>
+
+        <div className="flex flex-wrap gap-3 mt-5">
+          <button
+            onClick={handleDownload}
+            disabled={!ready}
+            className="flex items-center gap-2 px-6 py-3 bg-terracotta text-white rounded-2xl font-bold hover:shadow-lg hover:shadow-terracotta/20 transition-all disabled:opacity-60"
+          >
+            <Download size={16} /> Download as Image
+          </button>
+          <button
+            onClick={onClose}
+            className="flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
