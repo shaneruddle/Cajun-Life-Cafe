@@ -166,17 +166,22 @@ export default function CalendarDashboard({ user }: { user: any }) {
     setSaving(true);
     try {
       const now = new Date().toISOString();
+      // Firestore's addDoc/updateDoc reject any field explicitly set to
+      // `undefined` (throws "Unsupported field value: undefined") — so
+      // optional fields are only added to the payload when they have a
+      // real value, rather than being set to `undefined` when blank.
       const payload: Omit<CalendarEvent, 'id'> = {
         title: formData.title.trim(),
         date: formData.date,
-        endDate: formData.endDate || undefined,
         type: (formData.type as CalendarEvent['type']) || 'other',
         recurringAnnually: !!formData.recurringAnnually,
-        notes: formData.notes?.trim() || undefined,
         createdBy: editingEvent?.createdBy || auth.currentUser?.email || 'unknown',
         createdAt: editingEvent?.createdAt || now,
         updatedAt: now,
       };
+      if (formData.endDate) payload.endDate = formData.endDate;
+      const trimmedNotes = formData.notes?.trim();
+      if (trimmedNotes) payload.notes = trimmedNotes;
 
       if (editingEvent?.id) {
         await updateDoc(doc(db, 'calendar_events', editingEvent.id), payload as any);
