@@ -78,6 +78,12 @@ export interface UserProfile {
   position?: string;
   startDate?: string;
   salary?: number;
+  // Additional payroll fields, editable only from the Users dashboard —
+  // shown read-only at the top of the Payroll tab's time card view
+  // (src/components/finance/Payroll.tsx) alongside salary.
+  ssoDeduction?: number; // Social Security Office deduction, THB/month
+  otHourlyRate?: number; // Overtime rate, THB/hour
+  payrollNotes?: string; // Free-text payroll notes (separate from `notes` below)
   bankBranch?: string;
   bankAccountNumber?: string;
   notes?: string;
