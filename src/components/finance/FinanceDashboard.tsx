@@ -5,7 +5,8 @@ import LogIncome from './LogIncome';
 import Ingredients from './Ingredients';
 import FinanceReports from './FinanceReports';
 import FinanceLedger from './FinanceLedger';
-import { LayoutDashboard, Receipt, TrendingUp, Scale, FileBarChart, List } from 'lucide-react';
+import Payroll from './Payroll';
+import { LayoutDashboard, Receipt, TrendingUp, Scale, FileBarChart, List, Clock } from 'lucide-react';
 
 export type FinanceRole = 'owner' | 'manager' | 'cashier';
 
@@ -23,6 +24,10 @@ export const FINANCE_TABS = [
   { id: 'expense',      label: 'Log Expense',  icon: <Receipt size={16} />,         roles: ['owner', 'manager', 'cashier'] },
   { id: 'income',       label: 'Log Income',   icon: <TrendingUp size={16} />,      roles: ['owner', 'manager', 'cashier'] },
   { id: 'ledger',       label: 'Ledger',       icon: <List size={16} />,            roles: ['owner', 'manager'] },
+  // Payroll: time-card OCR + salary advance lookup. Deliberately excludes
+  // 'cashier' — see isManager() in firestore.rules, which the
+  // payroll_timecards collection is gated on.
+  { id: 'payroll',      label: 'Payroll',      icon: <Clock size={16} />,           roles: ['owner', 'manager'] },
   { id: 'ingredients',  label: 'Ingredients',  icon: <Scale size={16} />,           roles: ['owner', 'manager'] },
   { id: 'reports',      label: 'Reports',      icon: <FileBarChart size={16} />,    roles: ['owner'] },
 ];
@@ -40,6 +45,7 @@ export default function FinanceDashboard({ user }: { user: any }) {
       {activeTab === 'expense'     && <LogExpense user={user} financeRole={financeRole} />}
       {activeTab === 'income'      && <LogIncome user={user} financeRole={financeRole} />}
       {activeTab === 'ledger'      && <FinanceLedger user={user} financeRole={financeRole} />}
+      {activeTab === 'payroll'     && <Payroll user={user} financeRole={financeRole} />}
       {activeTab === 'ingredients' && <Ingredients />}
       {activeTab === 'reports'     && <FinanceReports />}
     </div>
