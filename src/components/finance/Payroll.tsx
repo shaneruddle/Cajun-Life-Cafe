@@ -66,10 +66,14 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
 
   const [advances, setAdvances] = useState<Expense[]>([]);
   const [loadingAdvances, setLoadingAdvances] = useState(false);
-  // Base salary lives on the user profile (users/{uid}.salary), not on
-  // finance_expenses like advances — fetched separately and shown as a
-  // reference line above the advances list, never editable from here.
+  // Payroll details live on the user profile (users/{uid}), not on
+  // finance_expenses like advances — fetched together and shown as a
+  // reference block above the day table, never editable from here (edit
+  // them from the Users dashboard instead).
   const [baseSalary, setBaseSalary] = useState<number | null>(null);
+  const [ssoDeduction, setSsoDeduction] = useState<number | null>(null);
+  const [otHourlyRate, setOtHourlyRate] = useState<number | null>(null);
+  const [payrollNotes, setPayrollNotes] = useState('');
 
   const [existingMonths, setExistingMonths] = useState<string[]>([]);
 
@@ -92,6 +96,9 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
       setAdvances([]);
       setExistingMonths([]);
       setBaseSalary(null);
+      setSsoDeduction(null);
+      setOtHourlyRate(null);
+      setPayrollNotes('');
       return;
     }
 
@@ -142,11 +149,17 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
     (async () => {
       try {
         const userSnap = await getDoc(doc(db, 'users', employeeId));
-        const salaryValue = userSnap.exists() ? (userSnap.data() as any).salary : undefined;
-        setBaseSalary(typeof salaryValue === 'number' ? salaryValue : null);
+        const userData = userSnap.exists() ? (userSnap.data() as any) : {};
+        setBaseSalary(typeof userData.salary === 'number' ? userData.salary : null);
+        setSsoDeduction(typeof userData.ssoDeduction === 'number' ? userData.ssoDeduction : null);
+        setOtHourlyRate(typeof userData.otHourlyRate === 'number' ? userData.otHourlyRate : null);
+        setPayrollNotes(userData.payrollNotes || '');
       } catch (err) {
-        console.error('Failed to load base salary:', err);
+        console.error('Failed to load payroll details:', err);
         setBaseSalary(null);
+        setSsoDeduction(null);
+        setOtHourlyRate(null);
+        setPayrollNotes('');
       }
     })();
 
@@ -334,14 +347,8 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
           {/* Salary advances panel */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
             <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">
-              <Banknote size={14} /> Salary &amp; Staff Advances on file for {selectedLabel}
+              <Banknote size={14} /> Staff Advances on file for {selectedLabel}
             </div>
-            {baseSalary != null && (
-              <div className="flex justify-between items-center text-sm border-b border-gray-100 pb-3 mb-3">
-                <span className="text-gray-500">Base salary (from staff profile)</span>
-                <span className="font-bold text-ink">{fmtBaht(baseSalary)}/month</span>
-              </div>
-            )}
             {loadingAdvances ? (
               <div className="flex items-center gap-2 text-gray-400 text-sm"><Loader2 size={14} className="animate-spin" /> Loading…</div>
             ) : advances.length === 0 ? (
@@ -398,6 +405,38 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
               <p className="text-xs text-gray-400 mt-3">{existingCardImageUrls.length} photo{existingCardImageUrls.length !== 1 ? 's' : ''} already saved for this month.</p>
             )}
           </div>
+
+          {/* Payroll details — read-only reference pulled from the staff
+              profile (edit these from the Users dashboard). Shown once
+              here at the top of the time card view rather than repeated
+              in the advances panel below. */}
+          {(baseSalary != null || ssoDeduction != null || otHourlyRate != null || payrollNotes) && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+              <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">
+                <Banknote size={14} /> Payroll Details for {selectedLabel}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="bg-cream rounded-2xl p-4">
+                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Base Salary</div>
+                  <div className="font-bold text-ink">{baseSalary != null ? `${fmtBaht(baseSalary)}/mo` : '—'}</div>
+                </div>
+                <div className="bg-cream rounded-2xl p-4">
+                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">SSO Deduction</div>
+                  <div className="font-bold text-ink">{ssoDeduction != null ? `${fmtBaht(ssoDeduction)}/mo` : '—'}</div>
+                </div>
+                <div className="bg-cream rounded-2xl p-4">
+                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">OT Hourly Rate</div>
+                  <div className="font-bold text-ink">{otHourlyRate != null ? `${fmtBaht(otHourlyRate)}/hr` : '—'}</div>
+                </div>
+              </div>
+              {payrollNotes && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2">Payroll Notes</div>
+                  <p className="text-sm text-gray-600 whitespace-pre-line">{payrollNotes}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Editable day table */}
           <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden mb-6">
