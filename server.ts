@@ -29,30 +29,6 @@ async function startServer() {
   // Version endpoint
   app.get("/api/version", (_req, res) => res.json({ version: "2026-07-16 00:00:00 UTC", has_anthropic: !!process.env.ANTHROPIC_API_KEY }));
 
-  // ── TEMPORARY one-off migration: recategorize legacy "staff" expense
-  // records to "salary_staff_advances" now that the "Staff" category is
-  // being removed from the app. Gated by a throwaway secret so it can't be
-  // triggered by accident; this route and the secret are both deleted in
-  // the very next commit once it's been run once. Safe to re-run (it only
-  // touches docs still tagged category_id === "staff", so it's a no-op on
-  // a second call).
-  app.get("/api/admin/recategorize-staff-2026-07-16", async (req, res) => {
-    if (req.query?.secret !== "clc-recat-staff-jul16") {
-      return res.status(403).json({ error: "forbidden" });
-    }
-    try {
-      const snap = await adminDb.collection("finance_expenses").where("category_id", "==", "staff").get();
-      const batch = adminDb.batch();
-      snap.docs.forEach((d) => {
-        batch.update(d.ref, { category_id: "salary_staff_advances", category_name: "Salary & Staff Advances" });
-      });
-      await batch.commit();
-      return res.json({ success: true, updated: snap.size });
-    } catch (err: any) {
-      console.error("recategorize-staff migration error:", err);
-      return res.status(500).json({ success: false, error: err?.message });
-    }
-  });
 
   // ── CORS ──────────────────────────────────────────────────────────
   app.use((req, res, next) => {
