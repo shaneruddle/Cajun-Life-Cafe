@@ -262,17 +262,18 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
     () =>
       entries.map(e => {
         const effectiveShiftStart = e.shiftStartManual && e.shiftStart ? e.shiftStart : estimatedStart;
-        const { totalHours, otHours: computedOtHours } = computeDayHours(e, effectiveShiftStart);
-        // OT Hrs can be manually corrected per day — otHours holds the
-        // override value only when otHoursManual is true, otherwise the
-        // day tracks the live computed figure.
-        const otHours = e.otHoursManual && e.otHours != null ? e.otHours : computedOtHours;
-        return { day: e.day, effectiveShiftStart, totalHours, computedOtHours, otHours };
+        // "Time Over" — hours worked past the 9-hour OT threshold, purely
+        // calculated from punches + effective shift start. Read-only.
+        const { totalHours, otHours: timeOverHours } = computeDayHours(e, effectiveShiftStart);
+        return { day: e.day, effectiveShiftStart, totalHours, timeOverHours };
       }),
     [entries, estimatedStart]
   );
-  const totalOtHours = dayComputations.reduce((sum, d) => sum + d.otHours, 0);
-  const estOtPay = otHourlyRate != null ? totalOtHours * otHourlyRate : null;
+  // "Paid OT" is a separate, purely manual figure — the actual overtime
+  // hours a manager decides to pay for the day, independent of the
+  // calculated Time Over. Blank by default; the manager types it in.
+  const totalPaidOtHours = entries.reduce((sum, e) => sum + (e.otHours || 0), 0);
+  const totalOtPay = otHourlyRate != null ? totalPaidOtHours * otHourlyRate : null;
 
   const updateEntry = (day: number, field: keyof TimeCardDayEntry, value: string) => {
     setEntries(prev => prev.map(e => (e.day === day ? { ...e, [field]: value } : e)));
@@ -289,17 +290,13 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
     setEntries(prev => prev.map(e => (e.day === day ? { ...e, shiftStart: '', shiftStartManual: false } : e)));
   };
 
-  // OT Hrs is editable per day too — typing a value marks it as a manual
-  // correction (persists across re-scans/recalculation); the reset button
-  // clears it and lets the day track the live computed figure again.
-  const setOtHoursOverride = (day: number, value: string) => {
+  // Paid OT is a plain manual entry per day — blank until the manager
+  // types the actual overtime hours to pay for that day.
+  const setPaidOtHours = (day: number, value: string) => {
     const num = value === '' ? undefined : Number(value);
     setEntries(prev =>
-      prev.map(e => (e.day === day ? { ...e, otHours: num, otHoursManual: value !== '' && !Number.isNaN(num) } : e))
+      prev.map(e => (e.day === day ? { ...e, otHours: num === undefined || Number.isNaN(num) ? undefined : num } : e))
     );
-  };
-  const clearOtHoursOverride = (day: number) => {
-    setEntries(prev => prev.map(e => (e.day === day ? { ...e, otHours: undefined, otHoursManual: false } : e)));
   };
 
   const handleScan = async () => {
@@ -341,12 +338,11 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
                 otOut: sd.otOut || '',
                 status: (sd.status || '') as TimeCardDayEntry['status'],
                 note: sd.note || '',
-                // Keep any manual Shift Start / OT Hrs overrides across a
-                // re-scan — only the punch/status/note fields come from the card.
+                // Keep any manual Shift Start override / Paid OT entries across
+                // a re-scan — only the punch/status/note fields come from the card.
                 shiftStart: prevEntry?.shiftStart || '',
                 shiftStartManual: prevEntry?.shiftStartManual || false,
                 otHours: prevEntry?.otHours,
-                otHoursManual: prevEntry?.otHoursManual || false,
               });
             }
             return Array.from(byDay.values()).sort((a, b) => a.day - b.day);
@@ -533,7 +529,7 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
               profile (edit these from the Users dashboard). Shown once
               here at the top of the time card view rather than repeated
               in the advances panel below. */}
-          {(baseSalary != null || ssoDeduction != null || otHourlyRate != null || payrollNotes || totalOtHours > 0) && (
+          {(baseSalary != null || ssoDeduction != null || otHourlyRate != null || payrollNotes || totalPaidOtHours > 0) && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
               <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">
                 <Banknote size={14} /> Payroll Details for {selectedLabel}
@@ -552,12 +548,12 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
                   <div className="font-bold text-ink">{otHourlyRate != null ? `${fmtBaht(otHourlyRate)}/hr` : '—'}</div>
                 </div>
                 <div className="bg-cream rounded-2xl p-4">
-                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total OT Hours</div>
-                  <div className="font-bold text-ink">{totalOtHours > 0 ? `${totalOtHours.toFixed(2)}h` : '—'}</div>
+                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total Paid OT Hours</div>
+                  <div className="font-bold text-ink">{totalPaidOtHours > 0 ? `${totalPaidOtHours.toFixed(2)}h` : '—'}</div>
                 </div>
                 <div className="bg-cream rounded-2xl p-4">
-                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Est. OT Pay</div>
-                  <div className="font-bold text-ink">{estOtPay != null && estOtPay > 0 ? fmtBaht(estOtPay) : '—'}</div>
+                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total OT Pay</div>
+                  <div className="font-bold text-ink">{totalOtPay != null && totalOtPay > 0 ? fmtBaht(totalOtPay) : '—'}</div>
                 </div>
               </div>
               {payrollNotes && (
@@ -593,7 +589,8 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
                       <th className="px-2 py-2" colSpan={2}>Before Noon</th>
                       <th className="px-2 py-2" colSpan={2}>After Noon</th>
                       <th className="px-2 py-2 text-left">Total Hrs</th>
-                      <th className="px-2 py-2 text-left">OT Hrs</th>
+                      <th className="px-2 py-2 text-left">Time Over</th>
+                      <th className="px-2 py-2 text-left">Paid OT</th>
                       <th className="px-2 py-2 text-left">Status</th>
                       <th className="px-2 py-2 text-left">Note</th>
                     </tr>
@@ -604,6 +601,7 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
                       <th className="px-2 pb-2">Out</th>
                       <th className="px-2 pb-2">In</th>
                       <th className="px-2 pb-2">Out</th>
+                      <th></th>
                       <th></th>
                       <th></th>
                       <th></th>
@@ -644,29 +642,20 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
                         <td className="px-2 py-1.5 text-center font-bold text-ink">
                           {dc && dc.totalHours > 0 ? dc.totalHours.toFixed(2) : '—'}
                         </td>
+                        <td className="px-2 py-1.5 text-center font-bold text-ink">
+                          {dc && dc.timeOverHours > 0 ? dc.timeOverHours.toFixed(2) : '—'}
+                        </td>
                         <td className="px-2 py-1.5">
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              value={dc && dc.otHours > 0 ? dc.otHours : ''}
-                              onChange={ev => setOtHoursOverride(e.day, ev.target.value)}
-                              placeholder="—"
-                              title={e.otHoursManual ? 'Manually corrected for this day' : 'Auto-computed from hours worked'}
-                              className={`w-16 bg-gray-50 border-none rounded-lg px-2 py-1.5 text-sm text-center font-bold focus:ring-2 focus:ring-terracotta outline-none ${dc && dc.otHours > 0 ? 'text-terracotta' : 'text-gray-300'} ${e.otHoursManual ? 'ring-1 ring-terracotta/50' : ''}`}
-                            />
-                            {e.otHoursManual && (
-                              <button
-                                type="button"
-                                onClick={() => clearOtHoursOverride(e.day)}
-                                title="Reset to auto-computed OT hours"
-                                className="text-gray-300 hover:text-terracotta transition-colors"
-                              >
-                                <RotateCcw size={12} />
-                              </button>
-                            )}
-                          </div>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={e.otHours != null ? e.otHours : ''}
+                            onChange={ev => setPaidOtHours(e.day, ev.target.value)}
+                            placeholder="—"
+                            title="Actual overtime hours to pay for this day"
+                            className={`w-16 bg-gray-50 border-none rounded-lg px-2 py-1.5 text-sm text-center font-bold focus:ring-2 focus:ring-terracotta outline-none ${e.otHours ? 'text-terracotta' : 'text-gray-300'}`}
+                          />
                         </td>
                         <td className="px-2 py-1.5">
                           <select
@@ -691,6 +680,23 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
                       );
                     })}
                   </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-gray-100 text-sm">
+                      <td colSpan={8} className="px-2 py-3 text-right text-gray-500 uppercase text-[11px] font-bold tracking-widest">
+                        Total Paid OT
+                      </td>
+                      <td className="px-2 py-3 text-center font-bold text-terracotta">
+                        {totalPaidOtHours > 0 ? `${totalPaidOtHours.toFixed(2)}h` : '—'}
+                      </td>
+                      <td colSpan={2} className="px-2 py-3 font-bold text-ink">
+                        {otHourlyRate == null
+                          ? 'Set an OT hourly rate on the Users tab to calculate pay'
+                          : totalOtPay != null && totalOtPay > 0
+                          ? `${fmtBaht(totalOtPay)} total OT pay`
+                          : '—'}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             )}
