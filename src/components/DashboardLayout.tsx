@@ -19,7 +19,8 @@ import {
   Database,
   Image as ImageIcon,
   Briefcase,
-  Newspaper
+  Newspaper,
+  CalendarDays
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../firebase';
@@ -238,6 +239,16 @@ export default function DashboardLayout({ user }: { user: any }) {
               to="/dashboard/jobs"
               isCollapsed={isCollapsed}
               isActive={isActive('/dashboard/jobs')}
+            />
+          )}
+
+          {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'cashier' || user?.role === 'marketing') && (
+            <SidebarItem
+              icon={<CalendarDays size={20} />}
+              label="Calendar"
+              to="/dashboard/calendar"
+              isCollapsed={isCollapsed}
+              isActive={isActive('/dashboard/calendar')}
             />
           )}
 

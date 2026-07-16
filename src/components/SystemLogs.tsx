@@ -35,6 +35,7 @@ const LOG_CATEGORIES = [
   { id: 'custom_meal', label: 'Custom Meals' },
   { id: 'user',        label: 'Users' },
   { id: 'image',       label: 'Images' },
+  { id: 'calendar',    label: 'Calendar' },
   { id: 'system',      label: 'System' }
 ];
 
@@ -48,6 +49,7 @@ const CategoryBadge = ({ category }: { category: SystemLog['category'] }) => {
     image: 'bg-pink-50 text-pink-600 border-pink-100',
     loyalty: 'bg-amber-50 text-amber-600 border-amber-100',
     crm: 'bg-teal-50 text-teal-600 border-teal-100',
+    calendar: 'bg-cyan-50 text-cyan-600 border-cyan-100',
     system: 'bg-gray-50 text-gray-600 border-gray-100'
   };
 
