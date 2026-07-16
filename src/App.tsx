@@ -60,6 +60,7 @@ import CareersPage from "./components/CareersPage";
 import BlogDashboard from "./components/BlogDashboard";
 import BlogPage from "./components/BlogPage";
 import BlogPostPage from "./components/BlogPostPage";
+import CalendarDashboard from "./components/CalendarDashboard";
 import { Toaster } from "sonner";
 import ActivatePage from "./components/ActivatePage";
 import ActivateSuccess from "./components/ActivateSuccess";
@@ -551,6 +552,7 @@ function AppContent({ user, setUser }: any) {
           <Route path="jobs" element={isAdmin || isManager ? <JobsDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="blog" element={isAdmin || isMarketing ? <BlogDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="crm" element={isAdmin || isMarketing ? <CRMDirectory user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="calendar" element={isAdmin || isMarketing || isStaff || isManager ? <CalendarDashboard user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="images" element={isAdmin || isMarketing ? <ImageManagement /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="logs" element={isAdmin ? <SystemLogs /> : <div className="p-20 text-center">Access Denied</div>} />
         </Route>

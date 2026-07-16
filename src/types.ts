@@ -166,7 +166,7 @@ export interface SystemLog {
   userEmail: string;
   userId: string;
   timestamp: string;
-  category: 'menu' | 'category' | 'custom_meal' | 'finance' | 'user' | 'system' | 'image' | 'crm' | 'loyalty' | 'job' | 'blog';
+  category: 'menu' | 'category' | 'custom_meal' | 'finance' | 'user' | 'system' | 'image' | 'crm' | 'loyalty' | 'job' | 'blog' | 'calendar';
 }
 
 // Single unified customer record — lives in crm_customers collection.
@@ -343,3 +343,26 @@ export interface TimeCard {
   updatedAt: string;
 }
 
+// A single calendar entry — a national holiday, a cafe closure day, a
+// license/permit renewal reminder, or anything else worth flagging on a
+// date. Managers/admin can add/edit/delete (see CalendarDashboard.tsx and
+// the calendar_events rule in firestore.rules); every other logged-in
+// staff role can view only.
+export interface CalendarEvent {
+  id?: string;
+  title: string;
+  date: string; // 'YYYY-MM-DD' — start date
+  // Optional end date for multi-day spans (e.g. the Songkran holiday).
+  // Omitted/equal to `date` for a single-day event.
+  endDate?: string;
+  type: 'national_holiday' | 'holiday' | 'license_renewal' | 'other';
+  // When true, the event recurs every year on the same month/day (and same
+  // day-count span if endDate is set) — used for national holidays that
+  // fall on a fixed date. `date`/`endDate` still hold the original year
+  // the event was entered in; only the month/day are reused for recurrence.
+  recurringAnnually?: boolean;
+  notes?: string;
+  createdBy?: string; // email of the manager/admin who created it
+  createdAt?: string;
+  updatedAt?: string;
+}
