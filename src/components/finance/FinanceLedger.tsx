@@ -12,7 +12,6 @@ export const EXPENSE_CATEGORIES = [
   { id: 'drinks', name: 'Drinks & Beverages' },
   { id: 'packaging', name: 'Packaging' },
   { id: 'utilities', name: 'Utilities' },
-  { id: 'staff', name: 'Staff' },
   { id: 'equipment', name: 'Equipment' },
   { id: 'rent', name: 'Rent' },
   { id: 'other', name: 'Other' },
