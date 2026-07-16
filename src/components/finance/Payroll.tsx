@@ -66,6 +66,10 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
 
   const [advances, setAdvances] = useState<Expense[]>([]);
   const [loadingAdvances, setLoadingAdvances] = useState(false);
+  // Base salary lives on the user profile (users/{uid}.salary), not on
+  // finance_expenses like advances — fetched separately and shown as a
+  // reference line above the advances list, never editable from here.
+  const [baseSalary, setBaseSalary] = useState<number | null>(null);
 
   const [existingMonths, setExistingMonths] = useState<string[]>([]);
 
@@ -87,6 +91,7 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
       setExistingCardImageUrls([]);
       setAdvances([]);
       setExistingMonths([]);
+      setBaseSalary(null);
       return;
     }
 
@@ -131,6 +136,17 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
         console.error('Failed to load salary advances:', err);
       } finally {
         setLoadingAdvances(false);
+      }
+    })();
+
+    (async () => {
+      try {
+        const userSnap = await getDoc(doc(db, 'users', employeeId));
+        const salaryValue = userSnap.exists() ? (userSnap.data() as any).salary : undefined;
+        setBaseSalary(typeof salaryValue === 'number' ? salaryValue : null);
+      } catch (err) {
+        console.error('Failed to load base salary:', err);
+        setBaseSalary(null);
       }
     })();
 
@@ -320,10 +336,16 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
             <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">
               <Banknote size={14} /> Salary &amp; Staff Advances on file for {selectedLabel}
             </div>
+            {baseSalary != null && (
+              <div className="flex justify-between items-center text-sm border-b border-gray-100 pb-3 mb-3">
+                <span className="text-gray-500">Base salary (from staff profile)</span>
+                <span className="font-bold text-ink">{fmtBaht(baseSalary)}/month</span>
+              </div>
+            )}
             {loadingAdvances ? (
               <div className="flex items-center gap-2 text-gray-400 text-sm"><Loader2 size={14} className="animate-spin" /> Loading…</div>
             ) : advances.length === 0 ? (
-              <p className="text-sm text-gray-400">No salary or advance payments logged for this staff member yet.</p>
+              <p className="text-sm text-gray-400">No advance payments logged for this staff member yet.</p>
             ) : (
               <div className="space-y-2">
                 {advances.map(a => (
