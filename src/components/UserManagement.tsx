@@ -54,6 +54,9 @@ const emptyForm: Partial<UserProfile> = {
   position: '',
   startDate: '',
   salary: undefined,
+  ssoDeduction: undefined,
+  otHourlyRate: undefined,
+  payrollNotes: '',
   bankBranch: '',
   bankAccountNumber: '',
   notes: '',
@@ -196,6 +199,9 @@ export default function UserManagement() {
           position: formData.position || '',
           startDate: formData.startDate || '',
           salary: formData.salary ?? null,
+          ssoDeduction: formData.ssoDeduction ?? null,
+          otHourlyRate: formData.otHourlyRate ?? null,
+          payrollNotes: formData.payrollNotes || '',
           bankBranch: formData.bankBranch || '',
           bankAccountNumber: formData.bankAccountNumber || '',
           notes: formData.notes || '',
@@ -240,6 +246,9 @@ export default function UserManagement() {
           position: formData.position || '',
           startDate: formData.startDate || '',
           salary: formData.salary ?? null,
+          ssoDeduction: formData.ssoDeduction ?? null,
+          otHourlyRate: formData.otHourlyRate ?? null,
+          payrollNotes: formData.payrollNotes || '',
           bankBranch: formData.bankBranch || '',
           bankAccountNumber: formData.bankAccountNumber || '',
           notes: formData.notes || '',
@@ -653,6 +662,39 @@ export default function UserManagement() {
                         placeholder="XXX-X-XXXXX-X"
                       />
                     </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2">SSO Deduction (฿ / month)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={formData.ssoDeduction ?? ''}
+                        onChange={(e) => setFormData({ ...formData, ssoDeduction: e.target.value === '' ? undefined : Number(e.target.value) })}
+                        className="w-full bg-white border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-terracotta outline-none font-medium"
+                        placeholder="750"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2">OT Hourly Rate (฿ / hour)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={formData.otHourlyRate ?? ''}
+                        onChange={(e) => setFormData({ ...formData, otHourlyRate: e.target.value === '' ? undefined : Number(e.target.value) })}
+                        className="w-full bg-white border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-terracotta outline-none font-medium"
+                        placeholder="65"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2">Payroll Notes</label>
+                    <textarea
+                      rows={2}
+                      value={formData.payrollNotes || ''}
+                      onChange={(e) => setFormData({ ...formData, payrollNotes: e.target.value })}
+                      className="w-full bg-white border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-terracotta outline-none resize-none text-sm"
+                      placeholder="e.g. Split payment across two accounts, pay on the 28th, etc."
+                    />
                   </div>
                 </div>
 
@@ -728,8 +770,16 @@ export default function UserManagement() {
                     <Banknote size={14} /> Payroll Details
                   </div>
                   <div className="flex justify-between"><span className="text-gray-400">Salary</span><span className="font-bold text-ink">{fmtSalary(viewingUser.salary)} / month</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">SSO Deduction</span><span className="text-ink">{fmtSalary(viewingUser.ssoDeduction)} / month</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">OT Hourly Rate</span><span className="text-ink">{fmtSalary(viewingUser.otHourlyRate)} / hour</span></div>
                   <div className="flex justify-between"><span className="text-gray-400">Bank Branch</span><span className="text-ink">{viewingUser.bankBranch || '—'}</span></div>
                   <div className="flex justify-between"><span className="text-gray-400">Account Number</span><span className="text-ink">{viewingUser.bankAccountNumber || '—'}</span></div>
+                  {viewingUser.payrollNotes && (
+                    <div className="pt-1 border-t border-white">
+                      <span className="text-gray-400">Payroll Notes</span>
+                      <p className="text-ink whitespace-pre-line mt-1">{viewingUser.payrollNotes}</p>
+                    </div>
+                  )}
                 </div>
 
                 {viewingUser.notes && (
