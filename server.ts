@@ -62,6 +62,32 @@ async function startServer() {
 
   app.use(express.static(publicDir));
 
+  // ── Convert HEIC/HEIF photos to JPEG before sending to Claude Vision ──
+  // Claude's vision API only accepts JPEG/PNG/GIF/WEBP. iPhone photos
+  // uploaded via Safari's file picker are usually auto-converted to JPEG by
+  // the browser, but a desktop browser (or "Keep Original" on iOS) can send
+  // the raw .HEIC file straight through. Claude can't read that — it
+  // replies with something that isn't the expected JSON, which surfaces to
+  // staff as "Could not read any days off the card" with no real clue why.
+  async function normalizeImageForVision(imageBase64: string, mimeType?: string): Promise<{ data: string; media_type: string }> {
+    const isHeic = /heic|heif/i.test(mimeType || "");
+    if (!isHeic) {
+      return { data: imageBase64, media_type: mimeType || "image/jpeg" };
+    }
+    try {
+      const heicConvert = require("heic-convert");
+      const inputBuffer = Buffer.from(imageBase64, "base64");
+      const outputBuffer: Buffer = await heicConvert({ buffer: inputBuffer, format: "JPEG", quality: 0.92 });
+      return { data: outputBuffer.toString("base64"), media_type: "image/jpeg" };
+    } catch (err) {
+      console.error("HEIC_CONVERT_ERR:", err);
+      // Don't let a conversion bug crash the endpoint — fall through with
+      // the original bytes (Claude will likely still fail to read it, but
+      // the user gets the existing "couldn't read" message, not a 500).
+      return { data: imageBase64, media_type: mimeType || "image/jpeg" };
+    }
+  }
+
   // ── OCR Receipt Endpoint ───────────────────────────────────────────
   app.post("/api/ocr-receipt", async (req, res) => {
     const { imageBase64, mimeType = "image/jpeg" } = req.body;
@@ -75,6 +101,8 @@ async function startServer() {
     }
 
     try {
+      const normalizedImage = await normalizeImageForVision(imageBase64, mimeType);
+
       const claudeResp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -90,7 +118,7 @@ async function startServer() {
             content: [
               {
                 type: "image",
-                source: { type: "base64", media_type: mimeType, data: imageBase64 }
+                source: { type: "base64", media_type: normalizedImage.media_type, data: normalizedImage.data }
               },
               {
                 type: "text",
@@ -149,9 +177,12 @@ Rules:
     }
 
     try {
-      const imageBlocks = images.map(img => ({
+      const normalizedImages = await Promise.all(
+        images.map(img => normalizeImageForVision(img.imageBase64, img.mimeType))
+      );
+      const imageBlocks = normalizedImages.map(img => ({
         type: "image",
-        source: { type: "base64", media_type: img.mimeType || "image/jpeg", data: img.imageBase64 }
+        source: { type: "base64", media_type: img.media_type, data: img.data }
       }));
 
       const promptText = `You are reading a Vertex mechanical time-clock punch card from a Thai restaurant. You may be given one or two photos — the front of the card (blue header, days 1-15) and/or the back (orange header, days 16-31) — both belong to the SAME employee.
