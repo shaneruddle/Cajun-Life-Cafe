@@ -4,10 +4,11 @@ import { db } from '../../firebase';
 import { MenuItem, Category } from '../../types';
 import { handleFirestoreError } from '../../utils/firestore';
 import {
-  RecipeLine, RecipeDoc, totalRecipeCost, getCostHealth, CostHealth,
+  RecipeLine, RecipeDoc, totalRecipeCost, foodCostPct, marginPct, getCostHealth, CostHealth,
 } from '../../utils/foodCost';
 import { MarginBadge, FoodCostBadge } from './CostBadges';
-import { Search, Filter, Calculator, AlertCircle } from 'lucide-react';
+import MenuItemCosting from './MenuItemCosting';
+import { Search, Filter, Calculator, AlertCircle, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 
 const BAHT = String.fromCharCode(0x0e3f);
 const EM_DASH = String.fromCharCode(0x2014);
@@ -27,6 +28,29 @@ interface Row {
   health: CostHealth;
 }
 
+type SortField = 'name' | 'category' | 'price' | 'cost' | 'foodCostPct' | 'marginPct';
+type SortDirection = 'asc' | 'desc';
+
+const SORT_COLUMNS: { field: SortField; label: string; align?: 'right' }[] = [
+  { field: 'name', label: 'Item' },
+  { field: 'category', label: 'Category' },
+  { field: 'price', label: 'Selling Price', align: 'right' },
+  { field: 'cost', label: 'Food Cost', align: 'right' },
+  { field: 'foodCostPct', label: 'Food Cost %' },
+  { field: 'marginPct', label: 'Margin %' },
+];
+
+function sortValue(row: Row, field: SortField): number | string {
+  switch (field) {
+    case 'name': return row.item.name?.toLowerCase() || '';
+    case 'category': return row.item.category?.toLowerCase() || '';
+    case 'price': return row.price;
+    case 'cost': return row.cost ?? -1;
+    case 'foodCostPct': return row.cost !== null && row.price > 0 ? (foodCostPct(row.cost, row.price) ?? -1) : -1;
+    case 'marginPct': return row.cost !== null && row.price > 0 ? (marginPct(row.cost, row.price) ?? -1) : -1;
+  }
+}
+
 export default function FoodCostsDashboard() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [categoriesList, setCategoriesList] = useState<Category[]>([]);
@@ -36,6 +60,18 @@ export default function FoodCostsDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [filterHealth, setFilterHealth] = useState<'All' | CostHealth>('All');
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+
+  const toggleSort = (field: SortField) => {
+    if (field === sortField) {
+      setSortDirection(d => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 4000);
@@ -97,7 +133,7 @@ export default function FoodCostsDashboard() {
   }, [items, recipes]);
 
   const filteredRows = useMemo(() => {
-    return rows.filter(row => {
+    const filtered = rows.filter(row => {
       const matchesSearch = !searchTerm ||
         row.item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         row.item.category.toLowerCase().includes(searchTerm.toLowerCase());
@@ -105,7 +141,15 @@ export default function FoodCostsDashboard() {
       const matchesHealth = filterHealth === 'All' || row.health === filterHealth;
       return matchesSearch && matchesCategory && matchesHealth;
     });
-  }, [rows, searchTerm, filterCategory, filterHealth]);
+    const dir = sortDirection === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const av = sortValue(a, sortField);
+      const bv = sortValue(b, sortField);
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    });
+  }, [rows, searchTerm, filterCategory, filterHealth, sortField, sortDirection]);
 
   const costedCount = rows.filter(r => r.cost !== null).length;
 
@@ -169,17 +213,30 @@ export default function FoodCostsDashboard() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-400">Item</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-400">Category</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-400 text-right">Selling Price</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-400 text-right">Food Cost</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-400">Food Cost %</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-400">Margin %</th>
+                  {SORT_COLUMNS.map(col => (
+                    <th
+                      key={col.field}
+                      onClick={() => toggleSort(col.field)}
+                      className={`px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-400 cursor-pointer select-none hover:text-ink transition-colors ${col.align === 'right' ? 'text-right' : ''}`}
+                    >
+                      <span className={`inline-flex items-center gap-1 ${col.align === 'right' ? 'flex-row-reverse' : ''}`}>
+                        {col.label}
+                        {sortField === col.field
+                          ? (sortDirection === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)
+                          : <ArrowUpDown size={12} className="text-gray-300" />
+                        }
+                      </span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredRows.map(row => (
-                  <tr key={row.item.id} className="hover:bg-gray-50/50 transition-colors">
+                  <tr
+                    key={row.item.id}
+                    onClick={() => setSelectedItem(row.item)}
+                    className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <Calculator size={14} className="text-terracotta shrink-0" />
@@ -221,6 +278,10 @@ export default function FoodCostsDashboard() {
           </div>
         </div>
       </div>
+
+      {selectedItem && (
+        <MenuItemCosting item={selectedItem} onClose={() => setSelectedItem(null)} />
+      )}
     </div>
   );
 }
