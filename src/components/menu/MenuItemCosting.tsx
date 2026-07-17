@@ -5,8 +5,10 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { MenuItem } from '../../types';
-import { X, Plus, Trash2, TrendingUp, TrendingDown, Minus, Calculator, CheckCircle2, Circle } from 'lucide-react';
+import { X, Plus, Trash2, Calculator, CheckCircle2, Circle } from 'lucide-react';
 import { toast } from 'sonner';
+import { lineCost, RecipeLine } from '../../utils/foodCost';
+import { MarginBadge, FoodCostBadge } from './CostBadges';
 
 interface StarredIngredient {
   id: string;
@@ -14,51 +16,6 @@ interface StarredIngredient {
   unit: string;
   unit_cost: number;
   quantity: number;
-}
-
-interface RecipeLine {
-  purchase_id: string;
-  ingredient_name: string;
-  portion_g: number;
-  unit: string;
-  unit_cost: number;
-  quantity: number;
-}
-
-function lineCost(line: RecipeLine): number | null {
-  if (!line.unit_cost || !line.quantity) return null;
-  const unit = line.unit?.toLowerCase() ?? '';
-  let totalBaseUnits: number;
-  if (unit === 'kg') totalBaseUnits = line.quantity * 1000;
-  else if (unit === 'l') totalBaseUnits = line.quantity * 1000;
-  else if (unit === 'g' || unit === 'ml') totalBaseUnits = line.quantity;
-  else totalBaseUnits = line.quantity;
-  return ((line.unit_cost * line.quantity) / totalBaseUnits) * line.portion_g;
-}
-
-function MarginBadge({ cost, price }: { cost: number; price: number }) {
-  const pct = ((price - cost) / price) * 100;
-  const cls = pct >= 65 ? 'bg-green-100 text-green-700'
-            : pct >= 50 ? 'bg-amber-100 text-amber-700'
-            :              'bg-red-100 text-red-700';
-  const Icon = pct >= 65 ? TrendingUp : pct >= 50 ? Minus : TrendingDown;
-  return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${cls}`}>
-      <Icon size={11} /> {pct.toFixed(0)}% margin
-    </span>
-  );
-}
-
-function FoodCostBadge({ cost, price }: { cost: number; price: number }) {
-  const pct = price > 0 ? (cost / price) * 100 : 0;
-  const cls = pct <= 30 ? 'bg-green-100 text-green-700'
-    : pct <= 40 ? 'bg-amber-100 text-amber-700'
-    : 'bg-red-100 text-red-700';
-  return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${cls}`}>
-      {pct.toFixed(0)}% food cost
-    </span>
-  );
 }
 
 interface Props {

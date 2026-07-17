@@ -43,6 +43,7 @@ import { FirebaseImage } from "./components/ui/FirebaseImage";
 import Dashboard from "./components/Dashboard";
 import CategoriesDashboard from "./components/CategoriesDashboard";
 import CustomMealsDashboard from "./components/CustomMealsDashboard";
+import FoodCostsDashboard from "./components/menu/FoodCostsDashboard";
 import Auth from "./components/Auth";
 import BulkImport from "./components/BulkImport";
 import BulkCustomMealsImport from "./components/BulkCustomMealsImport";
@@ -546,6 +547,7 @@ function AppContent({ user, setUser }: any) {
           <Route index element={isAdmin || isMarketing ? <Dashboard /> : (isManager ? <Navigate to="/dashboard/jobs" /> : <Navigate to="/dashboard/loyalty" />)} />
           <Route path="categories" element={isAdmin || isMarketing ? <CategoriesDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="custom-meals" element={isAdmin || isMarketing ? <CustomMealsDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="food-costs" element={isAdmin || isMarketing ? <FoodCostsDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="users" element={isAdmin ? <UserManagement /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="finance" element={canAccessFinance ? <FinanceDashboard user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="loyalty" element={isAdmin || isStaff ? <LoyaltyDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
