@@ -177,7 +177,7 @@ export default function DashboardLayout({ user }: { user: any }) {
               isOpen={isMenuOpen}
               isCollapsed={isCollapsed}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              isActive={isSubActive('/dashboard/menu') || isActive('/dashboard') || isActive('/dashboard/categories') || isActive('/dashboard/custom-meals')}
+              isActive={isSubActive('/dashboard/menu') || isActive('/dashboard') || isActive('/dashboard/categories') || isActive('/dashboard/custom-meals') || isActive('/dashboard/food-costs')}
             >
               {!isCollapsed && (
                 <>
@@ -195,6 +195,11 @@ export default function DashboardLayout({ user }: { user: any }) {
                     label="Custom Meals"
                     to="/dashboard/custom-meals"
                     isActive={isActive('/dashboard/custom-meals')}
+                  />
+                  <SidebarSubItem
+                    label="Food Costs"
+                    to="/dashboard/food-costs"
+                    isActive={isActive('/dashboard/food-costs')}
                   />
                 </>
               )}
