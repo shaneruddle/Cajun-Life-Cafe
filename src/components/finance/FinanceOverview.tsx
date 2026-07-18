@@ -3,9 +3,14 @@ import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestor
 import { db } from '../../firebase';
 import { Expense, Income } from './types';
 import { TrendingUp, TrendingDown, DollarSign, AlertCircle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const CATEGORY_COLORS = ['#C84B31', '#4A5240', '#E8DCC8', '#8B7355', '#6B8F71', '#D4A853'];
+
+// Sum of a category breakdown's values - used to show each bar's share of
+// the total in the tooltip alongside the raw amount.
+const totalCategoryValue = (arr: { name: string; value: number }[]) =>
+  arr.reduce((sum, x) => sum + x.value, 0);
 
 export default function FinanceOverview({ financeRole = 'owner' }: { financeRole?: string }) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -37,13 +42,13 @@ export default function FinanceOverview({ financeRole = 'owner' }: { financeRole
   const expensesByCategory = useMemo(() => {
     const map: Record<string, number> = {};
     expenses.forEach(e => { map[e.category_name] = (map[e.category_name] || 0) + e.total; });
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
+    return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [expenses]);
 
   const incomeByCategory = useMemo(() => {
     const map: Record<string, number> = {};
     income.forEach(i => { map[i.category] = (map[i.category] || 0) + i.amount; });
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
+    return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [income]);
 
   // Last 6 months for bar chart
@@ -107,13 +112,20 @@ export default function FinanceOverview({ financeRole = 'owner' }: { financeRole
         {expensesByCategory.length > 0 && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <h3 className="font-bold text-ink mb-4">Expenses by Category</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={expensesByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+            <ResponsiveContainer width="100%" height={Math.max(220, expensesByCategory.length * 40)}>
+              <BarChart data={expensesByCategory} layout="vertical" margin={{ left: 8, right: 24 }}>
+                <XAxis type="number" tickFormatter={(v: number) => fmt(v)} tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 12 }} />
+                <Tooltip
+                  formatter={(v: number) => {
+                    const pct = totalCategoryValue(expensesByCategory) > 0 ? (v / totalCategoryValue(expensesByCategory)) * 100 : 0;
+                    return [`${fmt(v)} (${pct.toFixed(0)}%)`, 'Amount'];
+                  }}
+                />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                   {expensesByCategory.map((_, i) => <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(v: number) => fmt(v)} />
-              </PieChart>
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         )}
@@ -121,13 +133,20 @@ export default function FinanceOverview({ financeRole = 'owner' }: { financeRole
         {incomeByCategory.length > 0 && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <h3 className="font-bold text-ink mb-4">Income by Category</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={incomeByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+            <ResponsiveContainer width="100%" height={Math.max(220, incomeByCategory.length * 40)}>
+              <BarChart data={incomeByCategory} layout="vertical" margin={{ left: 8, right: 24 }}>
+                <XAxis type="number" tickFormatter={(v: number) => fmt(v)} tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 12 }} />
+                <Tooltip
+                  formatter={(v: number) => {
+                    const pct = totalCategoryValue(incomeByCategory) > 0 ? (v / totalCategoryValue(incomeByCategory)) * 100 : 0;
+                    return [`${fmt(v)} (${pct.toFixed(0)}%)`, 'Amount'];
+                  }}
+                />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                   {incomeByCategory.map((_, i) => <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(v: number) => fmt(v)} />
-              </PieChart>
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         )}
