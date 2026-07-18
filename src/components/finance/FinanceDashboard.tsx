@@ -6,7 +6,8 @@ import Ingredients from './Ingredients';
 import FinanceReports from './FinanceReports';
 import FinanceLedger from './FinanceLedger';
 import Payroll from './Payroll';
-import { LayoutDashboard, Receipt, TrendingUp, Scale, FileBarChart, List, Clock } from 'lucide-react';
+import DailyBalances from './DailyBalances';
+import { LayoutDashboard, Receipt, TrendingUp, Scale, FileBarChart, List, Clock, Wallet } from 'lucide-react';
 
 export type FinanceRole = 'owner' | 'manager' | 'cashier';
 
@@ -23,6 +24,11 @@ export const FINANCE_TABS = [
   { id: 'overview',     label: 'Overview',     icon: <LayoutDashboard size={16} />, roles: ['owner', 'manager'] },
   { id: 'expense',      label: 'Log Expense',  icon: <Receipt size={16} />,         roles: ['owner', 'manager', 'cashier'] },
   { id: 'income',       label: 'Log Income',   icon: <TrendingUp size={16} />,      roles: ['owner', 'manager', 'cashier'] },
+  // Daily Balances: open running ledger of Cash/KBank/Krungsri closing
+  // figures, one row per date. Any of the three roles can enter or correct
+  // a figure at any time (see DailyBalances.tsx) — no verify/lock workflow
+  // beyond the automatic per-date lock.
+  { id: 'daily-balances', label: 'Daily Balances', icon: <Wallet size={16} />,      roles: ['owner', 'manager', 'cashier'] },
   { id: 'ledger',       label: 'Ledger',       icon: <List size={16} />,            roles: ['owner', 'manager'] },
   // Payroll: time-card OCR + salary advance lookup. Deliberately excludes
   // 'cashier' — see isManager() in firestore.rules, which the
@@ -44,6 +50,7 @@ export default function FinanceDashboard({ user }: { user: any }) {
       {activeTab === 'overview'    && <FinanceOverview financeRole={financeRole} />}
       {activeTab === 'expense'     && <LogExpense user={user} financeRole={financeRole} />}
       {activeTab === 'income'      && <LogIncome user={user} financeRole={financeRole} />}
+      {activeTab === 'daily-balances' && <DailyBalances user={user} />}
       {activeTab === 'ledger'      && <FinanceLedger user={user} financeRole={financeRole} />}
       {activeTab === 'payroll'     && <Payroll user={user} financeRole={financeRole} />}
       {activeTab === 'ingredients' && <Ingredients />}

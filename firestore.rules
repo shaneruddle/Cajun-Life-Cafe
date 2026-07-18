@@ -140,6 +140,29 @@ service cloud.firestore {
       allow read, write: if isCashier();
     }
 
+    // Daily Balances — an open running ledger of Cash/KBank/Krungsri
+    // closing figures, one doc per trading date (doc id = date). Any
+    // operational staff (admin/manager/cashier, via isCashier()) can add or
+    // correct a figure at any time while the date is still open. `lockAt`
+    // is a client-computed Timestamp (trading date + 2 days — i.e. editable
+    // through the following day, then read-only) written on every update;
+    // once request.time passes it, further updates are rejected. No manual
+    // unlock. `history` is append-only (create only, never update/delete)
+    // so past corrections stay visible as the audit trail. See
+    // DailyBalances.tsx.
+    match /daily_balances/{date} {
+      allow read: if isCashier();
+      allow create: if isCashier();
+      allow update: if isCashier() && (!('lockAt' in resource.data) || request.time < resource.data.lockAt);
+      allow delete: if false;
+
+      match /history/{id} {
+        allow read: if isCashier();
+        allow create: if isCashier();
+        allow update, delete: if false;
+      }
+    }
+
     match /employees/{id} {
       allow read, write: if isAdmin();
     }
