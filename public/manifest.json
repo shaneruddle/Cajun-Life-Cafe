@@ -2,11 +2,11 @@
   "name": "Cajun Life Cafe - Admin",
   "short_name": "CLC Admin",
   "description": "Cajun Life Cafe admin dashboard - finance, loyalty, jobs, CRM, and food cost tracking.",
-  "start_url": "/dashboard",
+  "start_url": "/dashboard/finance?tab=daily-balances",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#F5F5F0",
+  "background_color": "#FFFFFF",
   "theme_color": "#A64B2A",
   "icons": [
     {"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},

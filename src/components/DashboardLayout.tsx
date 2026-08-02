@@ -109,17 +109,25 @@ const SidebarSubItem: React.FC<{ label: string; to: string; isActive: boolean }>
   </Link>
 );
 
+// Installed-app (PWA) view: trimmed to the sections Shane checks on the go.
+// Logging into the dashboard from a regular browser still shows the full menu.
+const PWA_ALLOWED_FINANCE_TABS = ['overview', 'daily-balances', 'ledger', 'reports'];
+
 export default function DashboardLayout({ user }: { user: any }) {
+  const isPWA = typeof window !== 'undefined' && (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true
+  );
   const isAdmin = user?.email?.toLowerCase() === 'info@cajunlifecafe.com' || user?.role === 'admin';
   const canSeeFinance = isAdmin || user?.role === 'manager' || user?.role === 'cashier';
   const financeRole = getFinanceRole(user);
-  const financeTabs = FINANCE_TABS.filter(t => t.roles.includes(financeRole));
+  const financeTabs = FINANCE_TABS.filter(t => t.roles.includes(financeRole) && (!isPWA || PWA_ALLOWED_FINANCE_TABS.includes(t.id)));
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const currentFinanceTab = searchParams.get('tab') || financeTabs[0]?.id;
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [isFinanceOpen, setIsFinanceOpen] = useState(location.pathname.startsWith('/dashboard/finance'));
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(isPWA);
 
   const handleSignOut = async () => {
     try {
@@ -170,40 +178,50 @@ export default function DashboardLayout({ user }: { user: any }) {
           )}
 
           {(user?.role === 'admin' || user?.role === 'marketing') && (
-            <SidebarItem
-              icon={<LayoutGrid size={20} />}
-              label="Menu"
-              hasSubmenu
-              isOpen={isMenuOpen}
-              isCollapsed={isCollapsed}
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              isActive={isSubActive('/dashboard/menu') || isActive('/dashboard') || isActive('/dashboard/categories') || isActive('/dashboard/custom-meals') || isActive('/dashboard/food-costs')}
-            >
-              {!isCollapsed && (
-                <>
-                  <SidebarSubItem
-                    label="Main Menu"
-                    to="/dashboard"
-                    isActive={isActive('/dashboard')}
-                  />
-                  <SidebarSubItem
-                    label="Categories"
-                    to="/dashboard/categories"
-                    isActive={isActive('/dashboard/categories')}
-                  />
-                  <SidebarSubItem
-                    label="Custom Meals"
-                    to="/dashboard/custom-meals"
-                    isActive={isActive('/dashboard/custom-meals')}
-                  />
-                  <SidebarSubItem
-                    label="Food Costs"
-                    to="/dashboard/food-costs"
-                    isActive={isActive('/dashboard/food-costs')}
-                  />
-                </>
-              )}
-            </SidebarItem>
+            isPWA ? (
+              <SidebarItem
+                icon={<Utensils size={20} />}
+                label="Food Costs"
+                to="/dashboard/food-costs"
+                isCollapsed={isCollapsed}
+                isActive={isActive('/dashboard/food-costs')}
+              />
+            ) : (
+              <SidebarItem
+                icon={<LayoutGrid size={20} />}
+                label="Menu"
+                hasSubmenu
+                isOpen={isMenuOpen}
+                isCollapsed={isCollapsed}
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                isActive={isSubActive('/dashboard/menu') || isActive('/dashboard') || isActive('/dashboard/categories') || isActive('/dashboard/custom-meals') || isActive('/dashboard/food-costs')}
+              >
+                {!isCollapsed && (
+                  <>
+                    <SidebarSubItem
+                      label="Main Menu"
+                      to="/dashboard"
+                      isActive={isActive('/dashboard')}
+                    />
+                    <SidebarSubItem
+                      label="Categories"
+                      to="/dashboard/categories"
+                      isActive={isActive('/dashboard/categories')}
+                    />
+                    <SidebarSubItem
+                      label="Custom Meals"
+                      to="/dashboard/custom-meals"
+                      isActive={isActive('/dashboard/custom-meals')}
+                    />
+                    <SidebarSubItem
+                      label="Food Costs"
+                      to="/dashboard/food-costs"
+                      isActive={isActive('/dashboard/food-costs')}
+                    />
+                  </>
+                )}
+              </SidebarItem>
+            )
           )}
 
           {canSeeFinance && (
@@ -237,7 +255,7 @@ export default function DashboardLayout({ user }: { user: any }) {
             />
           )}
 
-          {(user?.role === 'admin' || user?.role === 'manager') && (
+          {!isPWA && (user?.role === 'admin' || user?.role === 'manager') && (
             <SidebarItem
               icon={<Briefcase size={20} />}
               label="Job Postings"
@@ -247,7 +265,7 @@ export default function DashboardLayout({ user }: { user: any }) {
             />
           )}
 
-          {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'cashier' || user?.role === 'marketing') && (
+          {!isPWA && (user?.role === 'admin' || user?.role === 'manager' || user?.role === 'cashier' || user?.role === 'marketing') && (
             <SidebarItem
               icon={<CalendarDays size={20} />}
               label="Calendar"
@@ -257,7 +275,7 @@ export default function DashboardLayout({ user }: { user: any }) {
             />
           )}
 
-          {user?.role === 'admin' && (
+          {!isPWA && user?.role === 'admin' && (
             <SidebarItem
               icon={<Users size={20} />}
               label="CRM & Directory"
@@ -267,7 +285,7 @@ export default function DashboardLayout({ user }: { user: any }) {
             />
           )}
 
-          {user?.role === 'admin' && (
+          {!isPWA && user?.role === 'admin' && (
             <SidebarItem
               icon={<Users size={20} />}
               label="Users"
@@ -277,7 +295,7 @@ export default function DashboardLayout({ user }: { user: any }) {
             />
           )}
 
-          {(user?.role === 'admin' || user?.role === 'marketing') && (
+          {!isPWA && (user?.role === 'admin' || user?.role === 'marketing') && (
             <SidebarItem
               icon={<ImageIcon size={20} />}
               label="Image Management"
@@ -287,7 +305,7 @@ export default function DashboardLayout({ user }: { user: any }) {
             />
           )}
 
-          {(user?.role === 'admin' || user?.role === 'marketing') && (
+          {!isPWA && (user?.role === 'admin' || user?.role === 'marketing') && (
             <SidebarItem
               icon={<Newspaper size={20} />}
               label="Blog"
@@ -297,7 +315,7 @@ export default function DashboardLayout({ user }: { user: any }) {
             />
           )}
 
-          {user?.role === 'admin' && (
+          {!isPWA && user?.role === 'admin' && (
             <SidebarItem
               icon={<Database size={20} />}
               label="System Logs"
