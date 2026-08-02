@@ -473,6 +473,7 @@ const Footer = () => (
           <li><Link to="/blog" className="hover:text-white transition-colors">Blog</Link></li>
           <li><Link to="/careers" className="hover:text-white transition-colors">Careers</Link></li>
           <li><a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">LINE: @cajunlifecafe</a></li>
+          <li><Link to="/dashboard" className="hover:text-white transition-colors">Admin Login</Link></li>
         </ul>
       </div>
     </div>
@@ -565,9 +566,6 @@ function AppContent({ user, setUser }: any) {
         <Route path="/activate/success" element={<ActivateSuccess />} />
         <Route path="/activate/error" element={<ActivateError />} />
       </Routes>
-      {!isDigitalMenu && !isDashboard && !isActivate && !isCareers && !isBlog && !user && (
-        <div className="fixed bottom-4 right-4 z-[60]"><Auth onUserChange={setUser} /></div>
-      )}
     </div>
   );
 }
