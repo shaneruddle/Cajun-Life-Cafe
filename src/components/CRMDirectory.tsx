@@ -13,6 +13,7 @@ import { db, auth } from '../firebase';
 import { CRMCustomer } from '../types';
 import { handleFirestoreError } from '../utils/firestore';
 import { logActivity } from '../utils/logger';
+import { FirebaseImage } from './ui/FirebaseImage';
 import { 
   Users, 
   Search, 
@@ -324,9 +325,17 @@ export default function CRMDirectory({ user }: { user?: any }) {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${customer.loyaltyEnabled ? 'bg-terracotta/10 text-terracotta border border-terracotta/20' : 'bg-gray-100 text-gray-400'}`}>
-                          {customer.firstName[0]}{customer.lastName?.[0] ?? ''}
-                        </div>
+                        {customer.photoURL ? (
+                          <FirebaseImage
+                            src={customer.photoURL}
+                            alt={`${customer.firstName} ${customer.lastName}`}
+                            className="w-10 h-10 rounded-xl object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${customer.loyaltyEnabled ? 'bg-terracotta/10 text-terracotta border border-terracotta/20' : 'bg-gray-100 text-gray-400'}`}>
+                            {customer.firstName[0]}{customer.lastName?.[0] ?? ''}
+                          </div>
+                        )}
                         <div>
                           <div className="font-bold text-ink flex items-center gap-2">
                             {customer.firstName} {customer.lastName}

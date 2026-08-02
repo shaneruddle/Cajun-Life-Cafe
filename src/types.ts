@@ -194,6 +194,8 @@ export interface CRMCustomer {
   balance?: number;
   lineUserId?: string;
   isVerified?: boolean;
+  // Profile photo
+  photoURL?: string;
 }
 
 export interface LoyaltyTransactionItem {

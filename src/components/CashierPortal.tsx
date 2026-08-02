@@ -15,6 +15,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '../firebase';
 import { logActivity } from '../utils/logger';
+import { FirebaseImage } from './ui/FirebaseImage';
 import { claimPendingProfile } from '../utils/userClaim';
 import { useStaffOptions, staffLabel } from '../utils/staffDirectory';
 import {
@@ -735,6 +736,17 @@ function CustomerWallet({
           <button onClick={onBack} className="p-2 -ml-2 rounded-xl hover:bg-gray-100 text-gray-500">
             <ChevronLeft size={22} />
           </button>
+          {liveCustomer.photoURL ? (
+            <FirebaseImage
+              src={liveCustomer.photoURL}
+              alt={`${liveCustomer.firstName} ${liveCustomer.lastName}`}
+              className="w-12 h-12 rounded-2xl object-cover shrink-0"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg bg-terracotta/10 text-terracotta shrink-0">
+              {liveCustomer.firstName[0]}{liveCustomer.lastName?.[0] ?? ''}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <h2 className="font-bold text-lg text-ink truncate">{liveCustomer.firstName} {liveCustomer.lastName}</h2>
             <p className="text-xs text-gray-400 font-mono">{liveCustomer.mobile}</p>
@@ -1094,6 +1106,8 @@ function CRMTab({ user }: { user: any }) {
   // Edit form state — must be declared before any conditional returns (Rules of Hooks)
   const [editData, setEditData] = useState<Partial<CRMCustomer>>({});
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (selected) {
@@ -1157,6 +1171,29 @@ function CRMTab({ user }: { user: any }) {
     }
   };
 
+  const handlePhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !selected?.id) return;
+    setUploadingPhoto(true);
+    try {
+      const storageRef = ref(storage, `customer_photos/${selected.id}_${Date.now()}.jpg`);
+      await uploadBytes(storageRef, file);
+      const photoURL = await getDownloadURL(storageRef);
+      await updateDoc(doc(db, 'crm_customers', selected.id), {
+        photoURL, updatedAt: new Date().toISOString(),
+      });
+      await logActivity('Customer Photo Updated', `${selected.firstName} ${selected.lastName} photo updated by ${user.email}`, 'crm');
+      setSelected(prev => prev ? { ...prev, photoURL } : prev);
+      toast.success('Photo updated');
+    } catch (err) {
+      console.error(err);
+      toast.error('Photo upload failed');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   if (selected) {
     return (
       <div className="flex flex-col h-full">
@@ -1164,6 +1201,31 @@ function CRMTab({ user }: { user: any }) {
           <button onClick={() => setSelected(null)} className="p-2 -ml-2 rounded-xl hover:bg-gray-100 text-gray-500">
             <ChevronLeft size={22} />
           </button>
+          <button
+            onClick={() => photoInputRef.current?.click()}
+            disabled={uploadingPhoto}
+            className="relative shrink-0"
+            title="Take customer photo"
+          >
+            {selected.photoURL ? (
+              <FirebaseImage
+                src={selected.photoURL}
+                alt={`${selected.firstName} ${selected.lastName}`}
+                className="w-14 h-14 rounded-2xl object-cover"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-lg bg-terracotta/10 text-terracotta">
+                {selected.firstName[0]}{selected.lastName?.[0] ?? ''}
+              </div>
+            )}
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-terracotta text-white flex items-center justify-center border-2 border-white shadow">
+              {uploadingPhoto ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+            </div>
+          </button>
+          <input
+            ref={photoInputRef} type="file" accept="image/*" capture="environment"
+            className="hidden" onChange={handlePhotoSelected}
+          />
           <div className="flex-1 min-w-0">
             <h2 className="font-bold text-lg text-ink">{selected.firstName} {selected.lastName}</h2>
             <p className="text-[10px] text-gray-400 uppercase tracking-widest">Edit Profile</p>
@@ -1301,11 +1363,19 @@ function CRMTab({ user }: { user: any }) {
             onClick={() => setSelected(c)}
             className="w-full flex items-center gap-4 px-5 py-4 border-b border-gray-50 hover:bg-cream/40 transition-colors active:bg-cream"
           >
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0 ${
-              c.loyaltyEnabled ? 'bg-terracotta/10 text-terracotta' : 'bg-gray-100 text-gray-400'
-            }`}>
-              {c.firstName[0]}{c.lastName?.[0] ?? ''}
-            </div>
+            {c.photoURL ? (
+              <FirebaseImage
+                src={c.photoURL}
+                alt={`${c.firstName} ${c.lastName}`}
+                className="w-12 h-12 rounded-2xl object-cover shrink-0"
+              />
+            ) : (
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0 ${
+                c.loyaltyEnabled ? 'bg-terracotta/10 text-terracotta' : 'bg-gray-100 text-gray-400'
+              }`}>
+                {c.firstName[0]}{c.lastName?.[0] ?? ''}
+              </div>
+            )}
             <div className="flex-1 text-left min-w-0">
               <p className="font-bold text-ink flex items-center gap-1.5">
                 {c.firstName} {c.lastName}
