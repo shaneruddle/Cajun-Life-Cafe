@@ -192,9 +192,9 @@ export default function LoyaltyDashboard({ isAdmin = false }: { isAdmin?: boolea
       reader.onload = async (e) => {
         const base64 = (e.target?.result as string).split(',')[1];
         setScannedImageFile(file);
-        const resp = await fetch('/api/ocr-receipt', {
+        const idToken = await auth.currentUser?.getIdToken(); const resp = await fetch('/api/ocr-receipt', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}) },
           body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
         });
         const data = await resp.json();

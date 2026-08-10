@@ -634,9 +634,9 @@ function CustomerWallet({
         r.onerror = rej;
         r.readAsDataURL(file);
       });
-      const resp = await fetch('/api/ocr-receipt', {
+      const idToken = await auth.currentUser?.getIdToken(); const resp = await fetch('/api/ocr-receipt', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}) },
         body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
       });
       const data = await resp.json();
@@ -1618,7 +1618,7 @@ function ExpenseTab({ user }: { user: any }) {
     setScanningCount(c => c + 1);
     try {
       const base64 = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res((r.result as string).split(',')[1]); r.onerror = rej; r.readAsDataURL(file); });
-      const response = await fetch('/api/ocr-receipt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: base64, mimeType: file.type }) });
+      const idToken = await auth.currentUser?.getIdToken(); const response = await fetch('/api/ocr-receipt', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}) }, body: JSON.stringify({ imageBase64: base64, mimeType: file.type }) });
       const result = await response.json();
       if (result.success && result.data) {
         const d = result.data;

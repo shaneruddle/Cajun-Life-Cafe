@@ -20,45 +20,50 @@ import { syncStaffDirectory, removeStaffDirectoryEntry } from './staffDirectory'
  * back to their normal "unknown user" handling in that case.
  */
 export async function claimPendingProfile(uid: string, email: string): Promise<UserProfile | null> {
-  const normalizedEmail = email.trim().toLowerCase();
-  try {
-    const q = query(
-      collection(db, 'users'),
-      where('email', '==', normalizedEmail),
-      where('pending', '==', true)
-    );
-    const snap = await getDocs(q);
-    const pendingDoc = snap.docs.find((d) => !d.data().superseded);
-    if (!pendingDoc) return null;
+    const normalizedEmail = email.trim().toLowerCase();
+    try {
+          const q = query(
+                  collection(db, 'users'),
+                  where('email', '==', normalizedEmail),
+                  where('pending', '==', true)
+                );
+          const snap = await getDocs(q);
+          const pendingDoc = snap.docs.find((d) => !d.data().superseded);
+          if (!pendingDoc) return null;
 
-    const data = pendingDoc.data() as UserProfile;
-    const now = new Date().toISOString();
-    const claimedProfile: UserProfile = {
-      ...data,
-      email: normalizedEmail,
-      uid,
-      pending: false,
-      createdAt: data.createdAt || now,
-      lastLogin: now,
-    };
-    delete (claimedProfile as any).id;
-    delete (claimedProfile as any).superseded;
-    delete (claimedProfile as any).claimedUid;
+      const data = pendingDoc.data() as UserProfile;
+          const now = new Date().toISOString();
+          const claimedProfile: UserProfile = {
+                  ...data,
+                  email: normalizedEmail,
+                  uid,
+                  pending: false,
+                  createdAt: data.createdAt || now,
+                  lastLogin: now,
+          };
+          delete (claimedProfile as any).id;
+          delete (claimedProfile as any).superseded;
+          delete (claimedProfile as any).claimedUid;
+          // Firestore rules require this to prove the role/salary/etc. being
+      // copied onto the new uid-keyed doc really comes from an admin-created
+      // pending profile (matched by id, email, and role) rather than being
+      // arbitrary client-supplied data. See firestore.rules — isClaimingOwnPendingProfile.
+      (claimedProfile as any).claimedFromPendingId = pendingDoc.id;
 
-    await setDoc(doc(db, 'users', uid), claimedProfile, { merge: true });
-    await updateDoc(doc(db, 'users', pendingDoc.id), { superseded: true, claimedUid: uid });
-    // Move the staff_directory entry from the old placeholder doc ID over to
-    // the real uid — write the new one first, then remove the stale
-    // placeholder entry (which was already visible pre-claim, since pending
-    // staff are included in the directory — see staffDirectory.ts).
-    await syncStaffDirectory(claimedProfile).catch((err) => console.error('syncStaffDirectory (claim) failed:', err));
-    if (pendingDoc.id !== uid) {
-      await removeStaffDirectoryEntry(pendingDoc.id).catch((err) => console.error('removeStaffDirectoryEntry (claim) failed:', err));
+      await setDoc(doc(db, 'users', uid), claimedProfile, { merge: true });
+          await updateDoc(doc(db, 'users', pendingDoc.id), { superseded: true, claimedUid: uid });
+          // Move the staff_directory entry from the old placeholder doc ID over to
+      // the real uid — write the new one first, then remove the stale
+      // placeholder entry (which was already visible pre-claim, since pending
+      // staff are included in the directory — see staffDirectory.ts).
+      await syncStaffDirectory(claimedProfile).catch((err) => console.error('syncStaffDirectory (claim) failed:', err));
+          if (pendingDoc.id !== uid) {
+                  await removeStaffDirectoryEntry(pendingDoc.id).catch((err) => console.error('removeStaffDirectoryEntry (claim) failed:', err));
+          }
+
+      return claimedProfile;
+    } catch (err) {
+          console.error('claimPendingProfile failed:', err);
+          return null;
     }
-
-    return claimedProfile;
-  } catch (err) {
-    console.error('claimPendingProfile failed:', err);
-    return null;
-  }
 }

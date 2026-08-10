@@ -7,7 +7,7 @@ import { createRequire } from "module";
 import multer from "multer";
 const require = createRequire(import.meta.url);
 import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore } from "firebase-admin/firestore"; import { getAuth } from "firebase-admin/auth";
 
 dotenv.config();
 
@@ -15,7 +15,7 @@ dotenv.config();
 if (!getApps().length) {
   initializeApp({ credential: applicationDefault() });
 }
-const adminDb = getFirestore(); // default database
+const adminDb = getFirestore(); /* default database */ const adminAuth = getAuth(); async function requireAuth(req, res, next) { const authHeader = req.headers.authorization || ""; const match = authHeader.match(/^Bearer (.+)$/); if (!match) { return res.status(401).json({ success: false, error: "Missing Authorization header" }); } try { await adminAuth.verifyIdToken(match[1]); next(); } catch (err) { console.error("requireAuth: invalid token:", err); return res.status(401).json({ success: false, error: "Invalid or expired session" }); } }
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -90,7 +90,7 @@ async function startServer() {
   }
 
   // ── OCR Receipt Endpoint ───────────────────────────────────────────
-  app.post("/api/ocr-receipt", async (req, res) => {
+  app.post("/api/ocr-receipt", requireAuth, async (req, res) => {
     const { imageBase64, mimeType = "image/jpeg" } = req.body;
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
@@ -163,7 +163,7 @@ Rules:
   // for a single employee, already selected by the admin/manager in
   // Payroll.tsx before upload (so this endpoint never has to guess *who*
   // the card belongs to — just what it says).
-  app.post("/api/ocr-timecard", async (req, res) => {
+  app.post("/api/ocr-timecard", requireAuth, async (req, res) => {
     const { images, expectedEmployeeName } = req.body as {
       images?: { imageBase64: string; mimeType?: string }[];
       expectedEmployeeName?: string;

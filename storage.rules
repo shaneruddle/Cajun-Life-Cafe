@@ -1,12 +1,62 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      // Allow anyone to read images (public menu)
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function storageUserRole() {
+      return firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        ? firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role
+        : 'none';
+    }
+
+    function isCashierStorage() {
+      return signedIn() && storageUserRole() in ['admin', 'manager', 'cashier'];
+    }
+
+    function isManagerStorage() {
+      return signedIn() && storageUserRole() in ['admin', 'manager'];
+    }
+
+    function isMarketingStorage() {
+      return signedIn() && storageUserRole() in ['admin', 'marketing'];
+    }
+
+    match /assets/{allPaths=**} {
       allow read: if true;
-      
-      // TEMPORARY: Allow anyone to write for testing
-      allow write: if true;
+      allow write: if isMarketingStorage();
+    }
+    match /logos/{allPaths=**} {
+      allow read: if true;
+      allow write: if isMarketingStorage();
+    }
+    match /promotions/{allPaths=**} {
+      allow read: if true;
+      allow write: if isMarketingStorage();
+    }
+    match /menu-items/{allPaths=**} {
+      allow read: if true;
+      allow write: if isMarketingStorage();
+    }
+
+    match /receipts/{allPaths=**} {
+      allow read, write: if isCashierStorage();
+    }
+    match /loyalty_receipts/{allPaths=**} {
+      allow read, write: if isCashierStorage();
+    }
+    match /customer_photos/{allPaths=**} {
+      allow read, write: if isCashierStorage();
+    }
+
+    match /timecards/{allPaths=**} {
+      allow read, write: if isManagerStorage();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
