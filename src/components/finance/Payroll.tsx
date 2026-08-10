@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, doc, getDoc, setDoc, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../firebase';
+import { auth, db, storage } from '../../firebase';
 import { logActivity } from '../../utils/logger';
 import { useStaffOptions, staffLabel } from '../../utils/staffDirectory';
 import { TimeCard, TimeCardDayEntry } from '../../types';
@@ -329,9 +329,9 @@ export default function Payroll({ user }: { user: any; financeRole?: string }) {
       if (frontFile) images.push({ imageBase64: await fileToBase64(frontFile), mimeType: frontFile.type });
       if (backFile) images.push({ imageBase64: await fileToBase64(backFile), mimeType: backFile.type });
 
-      const response = await fetch('https://cajun-life-cafe-server-1006330230181.asia-east1.run.app/api/ocr-timecard', {
+      const idToken = await auth.currentUser?.getIdToken(); const response = await fetch('https://cajun-life-cafe-server-1006330230181.asia-east1.run.app/api/ocr-timecard', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}) },
         body: JSON.stringify({ images, expectedEmployeeName: selectedLabel }),
       });
       const result = await response.json();
