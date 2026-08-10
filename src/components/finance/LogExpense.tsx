@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { collection, addDoc, getDocs, query, where, updateDoc, doc } from 'firebase/firestore';
 import { logActivity } from '../../utils/logger';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../firebase';
+import { auth, db, storage } from '../../firebase';
 import { ExpenseItem } from './types';
 import { useStaffOptions, staffLabel } from '../../utils/staffDirectory';
 import { Camera, Upload, Loader2, Check, Trash2, Plus } from 'lucide-react';
@@ -106,9 +106,9 @@ export default function LogExpense({ user, financeRole = 'owner' }: { user: any;
         r.readAsDataURL(file);
       });
 
-      const response = await fetch('https://cajun-life-cafe-server-1006330230181.asia-east1.run.app/api/ocr-receipt', {
+      const idToken = await auth.currentUser?.getIdToken(); const response = await fetch('https://cajun-life-cafe-server-1006330230181.asia-east1.run.app/api/ocr-receipt', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}) },
         body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
       });
 
