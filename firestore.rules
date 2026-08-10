@@ -25,31 +25,20 @@ service cloud.firestore {
       return isAuthenticated() && (isAdmin() || getUserRole() == 'cashier' || getUserRole() == 'manager');
     }
 
-    // Stricter than isCashier() — excludes plain cashier role. Used for
-    // payroll time-card data (hours + notes derived from clock-in cards),
-    // which is more sensitive than the salary/advance line items cashiers
-    // already see in finance_expenses.
     function isManager() {
       return isAuthenticated() && (isAdmin() || getUserRole() == 'manager');
     }
 
-    // Any signed-in staff member with a real role (admin/manager/cashier/
-    // marketing) — deliberately excludes 'employee' (pending-approval
-    // accounts, blocked from /dashboard entirely on the client already) and
-    // 'none' (no users doc / unrecognized role). Used for read-only access
-    // to things every staff member should be able to see, like the Calendar.
     function isStaff() {
       return isAuthenticated() && (
         isAdmin() || getUserRole() == 'manager' || getUserRole() == 'cashier' || getUserRole() == 'marketing'
       );
     }
 
-    // Admin: Full access to everything
     match /{document=**} {
       allow read, write: if isAdmin();
     }
 
-    // Public: Read access to menu and settings
     match /menu/{id} {
       allow read: if true;
       allow write: if isMarketing();
@@ -62,15 +51,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isMarketing();
     }
-    // Job postings — public can read (shown on /careers), Admin/Manager (and
-    // cashier, incidentally, via isCashier()) can manage them from /dashboard/jobs.
     match /jobs/{id} {
       allow read: if true;
       allow write: if isCashier();
     }
-    // Blog posts — public can read (shown on /blog), Admin/Marketing manage
-    // them from /dashboard/blog. Same "read: true regardless of status"
-    // pattern already used for /menu's `published` flag.
     match /blog_posts/{id} {
       allow read: if true;
       allow write: if isMarketing();
@@ -78,44 +62,61 @@ service cloud.firestore {
     match /settings/{id} { allow read: if true; }
     match /test/connection { allow read: if true; }
 
-    // Users: Owner or Admin, plus a narrow self-claim path — a freshly
-    // authenticated user may read/update an admin-created "pending" profile
-    // that matches their own verified email, so a pre-created profile (with
-    // role/salary/etc. already set) gets linked to their real account on
-    // first login instead of a blank duplicate being created. See
-    // src/utils/userClaim.ts. This never lets anyone touch another person's
-    // already-claimed profile — only doc(s) still marked pending == true.
-    //
-    // Read is also opened to isManager() (not just isAdmin()) so the
-    // Payroll tab (Admin/Manager only, see Payroll.tsx) can show a staff
-    // member's base salary alongside their advances — cashiers still can't
-    // read this collection at all, and only admins can write to it.
+    function isOwnerBootstrap() {
+      return request.auth.token.email == 'info@cajunlifecafe.com' &&
+             request.auth.token.email_verified == true;
+    }
+
+    function isSafeSelfSignup(data) {
+      return (data.role == 'employee' &&
+              !('salary' in data) && !('ssoDeduction' in data) &&
+              !('otHourlyRate' in data) && !('payrollNotes' in data) &&
+              !('bankBranch' in data) && !('bankAccountNumber' in data) &&
+              !('disabled' in data) && !('pending' in data))
+             ||
+             (data.role == 'admin' && isOwnerBootstrap());
+    }
+
+    function isClaimingOwnPendingProfile(data) {
+      let pendingId = data.claimedFromPendingId;
+      let pendingPath = /databases/$(database)/documents/users/$(pendingId);
+      return pendingId is string &&
+             exists(pendingPath) &&
+             get(pendingPath).data.pending == true &&
+             get(pendingPath).data.email == request.auth.token.email &&
+             get(pendingPath).data.role == data.role;
+    }
+
     match /users/{userId} {
       allow read: if isAuthenticated() && (
         request.auth.uid == userId ||
         isManager() ||
         (resource.data.pending == true && resource.data.email == request.auth.token.email)
       );
-      allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAuthenticated() && (
-        request.auth.uid == userId ||
+
+      allow create: if isAuthenticated() && request.auth.uid == userId && (
         isAdmin() ||
-        (resource.data.pending == true && resource.data.email == request.auth.token.email)
+        isSafeSelfSignup(request.resource.data) ||
+        isClaimingOwnPendingProfile(request.resource.data)
+      );
+
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (request.auth.uid == userId &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['lastLogin', 'displayName', 'email', 'photoURL'])) ||
+        (resource.data.pending == true &&
+         resource.data.email == request.auth.token.email &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['superseded', 'claimedUid']))
       );
     }
 
-    // Staff directory — a deliberately narrow view of `users`: just uid,
-    // name, and role, no salary/bank fields. Lets cashier/manager staff read
-    // the full staff list (e.g. to populate a "which staff member" picker on
-    // a Salary & Staff Advances expense) without exposing anyone's payroll
-    // details. Kept in sync from UserManagement.tsx / userClaim.ts — see
-    // src/utils/staffDirectory.ts. Only admins write it directly.
     match /staff_directory/{id} {
       allow read: if isCashier();
       allow write: if isAdmin();
     }
 
-    // Finance
     match /finance_categories/{id} {
       allow read: if isAuthenticated();
     }
@@ -126,10 +127,6 @@ service cloud.firestore {
     match /finance_expenses/{id} {
       allow read, write: if isCashier();
     }
-    // NOTE: the app actually reads/writes the singular "finance_income"
-    // collection (see LogIncome.tsx / FinanceOverview.tsx / FinanceLedger.tsx)
-    // — this was previously named "finance_incomes" here and silently blocked
-    // non-admin (manager/cashier) reads and writes to that collection.
     match /finance_income/{id} {
       allow read, write: if isCashier();
     }
@@ -140,16 +137,6 @@ service cloud.firestore {
       allow read, write: if isCashier();
     }
 
-    // Daily Balances — an open running ledger of Cash/KBank/Krungsri
-    // closing figures, one doc per trading date (doc id = date). Any
-    // operational staff (admin/manager/cashier, via isCashier()) can add or
-    // correct a figure at any time while the date is still open. `lockAt`
-    // is a client-computed Timestamp (trading date + 2 days — i.e. editable
-    // through the following day, then read-only) written on every update;
-    // once request.time passes it, further updates are rejected. No manual
-    // unlock. `history` is append-only (create only, never update/delete)
-    // so past corrections stay visible as the audit trail. See
-    // DailyBalances.tsx.
     match /daily_balances/{date} {
       allow read: if isCashier();
       allow create: if isCashier();
@@ -169,22 +156,15 @@ service cloud.firestore {
     match /payroll_summaries/{id} {
       allow read, write: if isAdmin();
     }
-    // Time-card records OCR'd from Vertex punch cards — day-by-day in/out
-    // times plus handwritten notes. Admin/Manager only (see Payroll.tsx);
-    // deliberately excludes cashier, unlike finance_expenses.
     match /payroll_timecards/{id} {
       allow read, write: if isManager();
     }
 
-    // Calendar — holidays, national holidays, licence renewal reminders,
-    // etc. Any staff member can view; only Manager/Admin can add, edit, or
-    // delete (see CalendarDashboard.tsx).
     match /calendar_events/{id} {
       allow read: if isStaff();
       allow write: if isManager();
     }
 
-    // CRM — cashiers can read/write customers and their transaction subcollection
     match /crm_customers/{id} {
       allow read, write: if isCashier();
       match /transactions/{txId} {
@@ -192,12 +172,10 @@ service cloud.firestore {
       }
     }
 
-    // Activation tokens — cashiers create them, server reads them
     match /activation_tokens/{id} {
       allow read, write: if isCashier();
     }
 
-    // Legacy loyalty collections (kept for safety)
     match /loyalty_customers/{id} {
       allow read, write: if isCashier();
       match /transactions/{txId} {
