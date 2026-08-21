@@ -67,6 +67,7 @@ import ActivatePage from "./components/ActivatePage";
 import ActivateSuccess from "./components/ActivateSuccess";
 import ActivateError from "./components/ActivateError";
 import LineOrderApp from "./components/LineOrderApp";
+import DeliveryDashboard from "./components/DeliveryDashboard";
 
 const BUSINESS = {
   name: "Cajun Life Cafe",
@@ -553,6 +554,7 @@ function AppContent({ user, setUser }: any) {
           <Route path="users" element={isAdmin ? <UserManagement /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="finance" element={canAccessFinance ? <FinanceDashboard user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="loyalty" element={isAdmin || isStaff ? <LoyaltyDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
+          <Route path="deliveries" element={isAdmin || isManager || isCashier ? <DeliveryDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="jobs" element={isAdmin || isManager ? <JobsDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="blog" element={isAdmin || isMarketing ? <BlogDashboard /> : <div className="p-20 text-center">Access Denied</div>} />
           <Route path="crm" element={isAdmin || isMarketing ? <CRMDirectory user={user} /> : <div className="p-20 text-center">Access Denied</div>} />
