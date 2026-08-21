@@ -361,16 +361,6 @@ Rules:
             { type: "text", text: `Delivery: ${opts.addressText || "Address to confirm"}`, wrap: true, size: "xs", color: "#5A5A40", margin: "sm" },
             { type: "text", text: `Order ref: ${opts.orderRef}`, size: "xs", color: "#999999", margin: "sm" }
           ]
-        },
-        footer: {
-          type: "box",
-          layout: "vertical",
-          spacing: "sm",
-          contents: [
-            { type: "button", style: "primary", color: "#A64B2A", action: { type: "postback", label: "✅ Confirm Order", data: `action=confirm_order&id=${opts.orderId}`, displayText: "Confirm my order" } },
-            { type: "button", style: "secondary", action: { type: "postback", label: "✏️ Edit Order", data: `action=edit_order&id=${opts.orderId}`, displayText: "I'd like to edit my order" } },
-            { type: "button", style: "link", action: { type: "postback", label: "❌ Cancel", data: `action=cancel_order&id=${opts.orderId}`, displayText: "Cancel my order" } }
-          ]
         }
       }
     };
@@ -511,19 +501,20 @@ Rules:
         total,
         deliveryAddress: deliveryAddress || null,
         notes: notes || "",
-        status: "draft",
+        status: "confirmed",
         orderSource: "line_structured",
         driverName: null,
         createdAt: now,
         updatedAt: now,
-        statusHistory: [{ status: "draft", at: now }]
+        statusHistory: [{ status: "confirmed", at: now }]
       });
 
-      // Push the confirmation Flex Message (with Confirm/Edit/Cancel) as the
-      // bot, not via liff.sendMessages() from the client — see
+      // Push the order summary Flex Message (no action buttons — orders
+      // auto-confirm on submission, there's no separate confirm/edit/cancel
+      // step) as the bot, not via liff.sendMessages() from the client — see
       // pushLineMessages()'s comment for why. Failure here doesn't fail the
-      // request (the draft order was created successfully either way) but
-      // is surfaced to the client so the LIFF app can tell the customer.
+      // request (the order was created successfully either way) but is
+      // surfaced to the client so the LIFF app can tell the customer.
       const flexMessage = buildOrderFlexMessage({
         orderRef,
         orderId: docRef.id,
