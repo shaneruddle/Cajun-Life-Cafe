@@ -12,7 +12,7 @@
 // before), and a "Build Your Own" bowl configurator is NOT included yet —
 // same categories/items as DigitalMenu, just with quantities added, kept
 // deliberately small for a first pass (fast-follow, not forgotten).
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
@@ -43,6 +43,16 @@ const LineOrderApp = () => {
   const [addressText, setAddressText] = useState("");
   const [addressNotes, setAddressNotes] = useState("");
   const [addressLoaded, setAddressLoaded] = useState(false);
+
+  // ── Single-page menu scroll-spy (all categories on one scroll, pill
+  // highlights + jump-scrolls to the section in view — matches the
+  // order.bru.asia reference Shane asked to match) ───────────────────
+  const mainRef = useRef<HTMLElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const pillRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [headerHeight, setHeaderHeight] = useState(96);
+  const isProgrammaticScroll = useRef(false);
 
   // ── LIFF init ────────────────────────────────────────────────────
   useEffect(() => {
@@ -98,14 +108,60 @@ const LineOrderApp = () => {
     return [...definedCats.filter((c) => itemCats.includes(c)), ...otherCats];
   }, [items, categoryList]);
 
-  useEffect(() => {
-    if (!activeCategory && categories.length > 0) setActiveCategory(categories[0]);
-  }, [categories, activeCategory]);
+  const itemsByCategory = useMemo(() => {
+    const map: Record<string, MenuItem[]> = {};
+    for (const cat of categories) {
+      const catItems = items.filter((i) => i.category === cat);
+      if (catItems.length > 0) map[cat] = catItems;
+    }
+    return map;
+  }, [items, categories]);
 
-  const filteredItems = useMemo(
-    () => items.filter((i) => i.category === activeCategory),
-    [items, activeCategory]
+  const visibleCategories = useMemo(
+    () => categories.filter((c) => itemsByCategory[c]?.length),
+    [categories, itemsByCategory]
   );
+
+  useEffect(() => {
+    if (!activeCategory && visibleCategories.length > 0) setActiveCategory(visibleCategories[0]);
+  }, [visibleCategories, activeCategory]);
+
+  // Sticky header (title + pill row) height changes as categories load in —
+  // re-measure so section scroll-margin/scroll-spy math stays accurate.
+  useEffect(() => {
+    if (headerRef.current) setHeaderHeight(headerRef.current.offsetHeight);
+  }, [visibleCategories]);
+
+  // Keep the active pill scrolled into view in the horizontal pill row.
+  useEffect(() => {
+    const btn = pillRefs.current[activeCategory];
+    if (btn) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [activeCategory]);
+
+  // While the customer scrolls the single continuous menu, highlight
+  // whichever category section is currently under the sticky header.
+  const handleMenuScroll = useCallback(() => {
+    if (isProgrammaticScroll.current) return;
+    const container = mainRef.current;
+    if (!container || visibleCategories.length === 0) return;
+    const scrollTop = container.scrollTop;
+    let current = visibleCategories[0];
+    for (const cat of visibleCategories) {
+      const el = sectionRefs.current[cat];
+      if (el && el.offsetTop - headerHeight - 16 <= scrollTop) current = cat;
+    }
+    setActiveCategory((prev) => (prev === current ? prev : current));
+  }, [visibleCategories, headerHeight]);
+
+  // Tapping a pill jump-scrolls the page to that category's section.
+  const scrollToCategory = useCallback((cat: string) => {
+    const el = sectionRefs.current[cat];
+    if (!el) return;
+    isProgrammaticScroll.current = true;
+    setActiveCategory(cat);
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => { isProgrammaticScroll.current = false; }, 600);
+  }, []);
 
   // ── Saved address prefill ────────────────────────────────────────
   useEffect(() => {
@@ -289,21 +345,22 @@ const LineOrderApp = () => {
 
   // stage === "menu" or "not-in-line"
   return (
-    <div className="min-h-screen bg-cream flex flex-col pb-28">
+    <div className="h-dvh bg-cream flex flex-col overflow-hidden">
       {stage === "not-in-line" && (
         <div className="bg-terracotta/10 text-terracotta text-xs text-center py-2 px-4">
           Open this from the Cajun Life LINE chat to place an order.
         </div>
       )}
-      <div className="sticky top-0 z-40 bg-cream/95 backdrop-blur-sm border-b border-gray-100">
+      <div ref={headerRef} className="sticky top-0 z-40 bg-cream/95 backdrop-blur-sm border-b border-gray-100">
         <header className="px-4 pt-4 pb-2">
           <h1 className="text-lg font-display font-bold text-terracotta text-center">Cajun Life — Order Food</h1>
         </header>
         <div className="flex overflow-x-auto gap-2 px-4 pb-3 no-scrollbar">
-          {categories.map((cat) => (
+          {visibleCategories.map((cat) => (
             <button
               key={cat}
-              onClick={() => setActiveCategory(cat)}
+              ref={(el) => { pillRefs.current[cat] = el; }}
+              onClick={() => scrollToCategory(cat)}
               className={`whitespace-nowrap px-3 py-1.5 rounded-full font-medium text-xs transition-all ${
                 activeCategory === cat ? "bg-terracotta text-white shadow-md" : "bg-white text-ink shadow-sm border border-gray-100"
               }`}
@@ -314,37 +371,58 @@ const LineOrderApp = () => {
         </div>
       </div>
 
-      <main className="flex-1 overflow-y-auto px-4 pt-2 space-y-3">
-        {filteredItems.map((item) => {
-          const qty = cart[item.id!]?.qty || 0;
-          return (
-            <div key={item.id} className="card p-3 flex items-center gap-3">
-              <FirebaseImage
-                src={normalizeImageUrl(item.primaryPhotoPath || item.image)}
-                fallbackSrc="/logo.png"
-                alt={item.name}
-                className="w-16 h-16 rounded-2xl object-cover flex-shrink-0"
-                aspectRatio="1/1"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-ink text-sm truncate">{item.name}</p>
-                {item.description && (
-                  <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{item.description}</p>
-                )}
-                <p className="text-terracotta font-bold text-sm mt-1">฿{item.price.replace("฿", "")}</p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {qty > 0 && (
-                  <button onClick={() => addToCart(item, -1)} className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center"><Minus className="w-3 h-3" /></button>
-                )}
-                {qty > 0 && <span className="w-5 text-center text-sm font-bold">{qty}</span>}
-                <button onClick={() => addToCart(item, 1)} className="w-7 h-7 rounded-full bg-terracotta text-white flex items-center justify-center"><Plus className="w-3 h-3" /></button>
-              </div>
+      <main ref={mainRef} onScroll={handleMenuScroll} className="flex-1 overflow-y-auto px-4 pt-2 pb-28 space-y-6">
+        {visibleCategories.map((cat) => (
+          <div
+            key={cat}
+            ref={(el) => { sectionRefs.current[cat] = el; }}
+            style={{ scrollMarginTop: headerHeight + 8 }}
+          >
+            <h2 className="text-sm font-bold text-ink mb-2 px-1">{cat}</h2>
+            <div className="space-y-3">
+              {itemsByCategory[cat].map((item) => {
+                const qty = cart[item.id!]?.qty || 0;
+                return (
+                  <div key={item.id} className="card p-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-ink text-sm">{item.name}</p>
+                      {item.description && (
+                        <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{item.description}</p>
+                      )}
+                      <p className="text-terracotta font-bold text-sm mt-1">฿{item.price.replace("฿", "")}</p>
+                    </div>
+                    <div className="relative flex-shrink-0">
+                      <FirebaseImage
+                        src={normalizeImageUrl(item.primaryPhotoPath || item.image)}
+                        fallbackSrc="/logo.png"
+                        alt={item.name}
+                        className="w-20 h-20 rounded-2xl object-cover"
+                        aspectRatio="1/1"
+                      />
+                      {qty === 0 ? (
+                        <button
+                          onClick={() => addToCart(item, 1)}
+                          aria-label={`Add ${item.name}`}
+                          className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-terracotta text-white flex items-center justify-center shadow-md"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <div className="absolute -bottom-2 -right-2 bg-white rounded-full shadow-md border border-gray-100 flex items-center gap-0.5 px-1 py-0.5">
+                          <button onClick={() => addToCart(item, -1)} className="w-6 h-6 rounded-full flex items-center justify-center"><Minus className="w-3 h-3" /></button>
+                          <span className="text-xs font-bold w-4 text-center">{qty}</span>
+                          <button onClick={() => addToCart(item, 1)} className="w-6 h-6 rounded-full bg-terracotta text-white flex items-center justify-center"><Plus className="w-3 h-3" /></button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-        {filteredItems.length === 0 && (
-          <p className="text-center text-gray-400 italic py-12">No items in this category.</p>
+          </div>
+        ))}
+        {visibleCategories.length === 0 && (
+          <p className="text-center text-gray-400 italic py-12">No items available.</p>
         )}
       </main>
 
