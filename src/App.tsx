@@ -66,6 +66,7 @@ import { Toaster } from "sonner";
 import ActivatePage from "./components/ActivatePage";
 import ActivateSuccess from "./components/ActivateSuccess";
 import ActivateError from "./components/ActivateError";
+import LineOrderApp from "./components/LineOrderApp";
 
 const BUSINESS = {
   name: "Cajun Life Cafe",
@@ -561,6 +562,7 @@ function AppContent({ user, setUser }: any) {
         </Route>
         <Route path="/import" element={isAdmin || isMarketing ? <BulkImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
         <Route path="/cashier" element={<CashierPortal />} />
+        <Route path="/order" element={<LineOrderApp />} />
         <Route path="/import-custom-meals" element={isAdmin || isMarketing ? <BulkCustomMealsImport /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>} />
       <Route path="/activate/:token" element={<ActivatePage />} />
         <Route path="/activate/success" element={<ActivateSuccess />} />

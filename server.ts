@@ -451,6 +451,30 @@ Rules:
     }
   });
 
+  // Lookup used by the ordering page to prefill a returning customer's saved
+  // delivery address. Public (no Firebase Auth session exists for a LINE
+  // customer), so this deliberately returns only the address/name fields —
+  // never balance, totalSpend, email, or anything else on the crm_customers doc.
+  app.get("/api/customer/by-line/:lineUserId", async (req, res) => {
+    try {
+      const { lineUserId } = req.params;
+      const snap = await adminDb.collection("crm_customers").where("lineUserId", "==", lineUserId).limit(1).get();
+      if (snap.empty) return res.json({ found: false });
+      const data = snap.docs[0].data();
+      return res.json({
+        found: true,
+        firstName: data.firstName || "",
+        address: data.address || "",
+        deliveryLat: data.deliveryLat ?? null,
+        deliveryLng: data.deliveryLng ?? null,
+        deliveryNotes: data.deliveryNotes || ""
+      });
+    } catch (err) {
+      console.error("Customer lookup by lineUserId error:", err);
+      return res.status(500).json({ found: false, error: "Server error" });
+    }
+  });
+
   // ── LINE Login Activation ─────────────────────────────────────────
   const LINE_LOGIN_CHANNEL_ID = process.env.LINE_LOGIN_CHANNEL_ID || "";
   const LINE_LOGIN_CHANNEL_SECRET = process.env.LINE_LOGIN_CHANNEL_SECRET || "";
