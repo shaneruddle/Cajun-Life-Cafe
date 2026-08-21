@@ -301,6 +301,81 @@ Rules:
     }
   }
 
+  // Pushes messages into a user's chat as the bot (metered push API, unlike
+  // replyLineMessage's free reply). Used for the order-confirmation Flex
+  // Message: liff.sendMessages() (client-side, "on behalf of the user")
+  // only allows URI actions on Flex/template message buttons — LINE rejects
+  // postback actions there with INVALID_MESSAGE. A bot-sent push message has
+  // no such restriction, so the Confirm/Edit/Cancel Flex Message is pushed
+  // here instead of sent from the LIFF app.
+  async function pushLineMessages(lineUserId: string, messages: any[]) {
+    const accessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN || "";
+    if (!accessToken || !lineUserId) return { success: false, error: "Missing access token or lineUserId" };
+    try {
+      const resp = await fetch("https://api.line.me/v2/bot/message/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
+        body: JSON.stringify({ to: lineUserId, messages })
+      });
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        console.error("LINE push error:", errData);
+        return { success: false, error: errData };
+      }
+      return { success: true };
+    } catch (err) {
+      console.error("LINE push exception:", err);
+      return { success: false, error: String(err) };
+    }
+  }
+
+  // Builds the order-confirmation Flex Message (summary + Confirm/Edit/Cancel
+  // postback buttons) — shared by /api/orders/draft's push and available for
+  // reuse (e.g. resending) elsewhere.
+  function buildOrderFlexMessage(opts: {
+    orderRef: string; orderId: string; total: number;
+    items: Array<{ name: string; qty: number; unitPrice: number }>;
+    addressText?: string;
+  }) {
+    const itemLines = opts.items
+      .map((it) => `${it.qty} × ${it.name} — ฿${it.unitPrice * it.qty}`)
+      .join("\n");
+    return {
+      type: "flex",
+      altText: `Your Cajun Life order #${opts.orderRef} — ฿${opts.total}`,
+      contents: {
+        type: "bubble",
+        header: {
+          type: "box",
+          layout: "vertical",
+          contents: [{ type: "text", text: "🥗 Your Cajun Life Order", weight: "bold", size: "lg", color: "#A64B2A" }]
+        },
+        body: {
+          type: "box",
+          layout: "vertical",
+          spacing: "sm",
+          contents: [
+            { type: "text", text: itemLines, wrap: true, size: "sm" },
+            { type: "separator", margin: "md" },
+            { type: "text", text: `Total ฿${opts.total}`, weight: "bold", size: "md", margin: "md" },
+            { type: "text", text: `Delivery: ${opts.addressText || "Address to confirm"}`, wrap: true, size: "xs", color: "#5A5A40", margin: "sm" },
+            { type: "text", text: `Order ref: ${opts.orderRef}`, size: "xs", color: "#999999", margin: "sm" }
+          ]
+        },
+        footer: {
+          type: "box",
+          layout: "vertical",
+          spacing: "sm",
+          contents: [
+            { type: "button", style: "primary", color: "#A64B2A", action: { type: "postback", label: "✅ Confirm Order", data: `action=confirm_order&id=${opts.orderId}`, displayText: "Confirm my order" } },
+            { type: "button", style: "secondary", action: { type: "postback", label: "✏️ Edit Order", data: `action=edit_order&id=${opts.orderId}`, displayText: "I'd like to edit my order" } },
+            { type: "button", style: "link", action: { type: "postback", label: "❌ Cancel", data: `action=cancel_order&id=${opts.orderId}`, displayText: "Cancel my order" } }
+          ]
+        }
+      }
+    };
+  }
+
   // logActivity() (src/utils/logger.ts) is client-side only — it reads
   // auth.currentUser, which doesn't exist for server-driven events like a
   // customer tapping Confirm in LINE. This is the server-side equivalent,
@@ -444,7 +519,24 @@ Rules:
         statusHistory: [{ status: "draft", at: now }]
       });
 
-      return res.json({ success: true, orderId: docRef.id, orderRef, total });
+      // Push the confirmation Flex Message (with Confirm/Edit/Cancel) as the
+      // bot, not via liff.sendMessages() from the client — see
+      // pushLineMessages()'s comment for why. Failure here doesn't fail the
+      // request (the draft order was created successfully either way) but
+      // is surfaced to the client so the LIFF app can tell the customer.
+      const flexMessage = buildOrderFlexMessage({
+        orderRef,
+        orderId: docRef.id,
+        total,
+        items,
+        addressText: deliveryAddress?.addressText
+      });
+      const pushResult = await pushLineMessages(lineUserId, [flexMessage]);
+      if (!pushResult.success) {
+        console.error("Order draft created but push failed:", pushResult.error);
+      }
+
+      return res.json({ success: true, orderId: docRef.id, orderRef, total, messagePushed: pushResult.success });
     } catch (err) {
       console.error("Create draft order error:", err);
       return res.status(500).json({ success: false, error: "Failed to create draft order" });

@@ -170,53 +170,20 @@ const LineOrderApp = () => {
       const draft = await draftResp.json();
       if (!draft.success) throw new Error(draft.error || "Failed to create order");
 
-      const itemLines = orderItems
-        .map((it) => `${it.qty} × ${it.name} — ฿${it.unitPrice * it.qty}`)
-        .join("\n");
-
-      const flexMessage = {
-        type: "flex",
-        altText: `Your Cajun Life order #${draft.orderRef} — ฿${draft.total}`,
-        contents: {
-          type: "bubble",
-          header: {
-            type: "box",
-            layout: "vertical",
-            contents: [{ type: "text", text: "🥗 Your Cajun Life Order", weight: "bold", size: "lg", color: "#A64B2A" }]
-          },
-          body: {
-            type: "box",
-            layout: "vertical",
-            spacing: "sm",
-            contents: [
-              { type: "text", text: itemLines, wrap: true, size: "sm" },
-              { type: "separator", margin: "md" },
-              { type: "text", text: `Total ฿${draft.total}`, weight: "bold", size: "md", margin: "md" },
-              { type: "text", text: `Delivery: ${addressText || "Address to confirm"}`, wrap: true, size: "xs", color: "#5A5A40", margin: "sm" },
-              { type: "text", text: `Order ref: ${draft.orderRef}`, size: "xs", color: "#999999", margin: "sm" }
-            ]
-          },
-          footer: {
-            type: "box",
-            layout: "vertical",
-            spacing: "sm",
-            contents: [
-              { type: "button", style: "primary", color: "#A64B2A", action: { type: "postback", label: "✅ Confirm Order", data: `action=confirm_order&id=${draft.orderId}`, displayText: "Confirm my order" } },
-              { type: "button", style: "secondary", action: { type: "postback", label: "✏️ Edit Order", data: `action=edit_order&id=${draft.orderId}`, displayText: "I'd like to edit my order" } },
-              { type: "button", style: "link", action: { type: "postback", label: "❌ Cancel", data: `action=cancel_order&id=${draft.orderId}`, displayText: "Cancel my order" } }
-            ]
-          }
-        }
-      };
-
-      await liffModule.sendMessages([flexMessage]);
+      // The order-confirmation Flex Message (summary + Confirm/Edit/Cancel) is
+      // pushed by the backend right after it creates the draft — see
+      // buildOrderFlexMessage()/pushLineMessages() in server.ts. It can't be
+      // sent from here via liff.sendMessages(): LINE only allows URI button
+      // actions on a Flex Message sent that way, not postback (confirmed via
+      // an INVALID_MESSAGE rejection during testing) — a bot-side push has
+      // no such restriction, so that's used instead.
       setStage("sent");
       setTimeout(() => {
         try { liffModule.closeWindow(); } catch { /* not always available outside LINE */ }
       }, 1800);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Send order error:", err);
-      setErrorMsg("Couldn't send your order to chat — please reopen this from the Cajun Life LINE chat and try again.");
+      setErrorMsg("Couldn't send your order — please reopen this from the Cajun Life LINE chat and try again.");
       setStage("error");
     }
   }, [lineUserId, cartLines, addressText, addressNotes, liffModule]);
