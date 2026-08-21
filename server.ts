@@ -24,7 +24,13 @@ async function startServer() {
   const app = express();
   const PORT = parseInt(process.env.PORT || "8080");
 
-  app.use(express.json({ limit: "20mb" }));
+  // `verify` stashes the raw request body on `req.rawBody` so the LINE
+  // webhook can compute an HMAC signature over the exact bytes LINE sent —
+  // JSON.stringify(req.body) is not guaranteed to reproduce them byte-for-byte.
+  app.use(express.json({
+    limit: "20mb",
+    verify: (req: any, _res, buf) => { req.rawBody = buf; }
+  }));
 
   // Version endpoint
   app.get("/api/version", (_req, res) => res.json({ version: "2026-07-16 00:00:00 UTC", has_anthropic: !!process.env.ANTHROPIC_API_KEY }));
@@ -274,12 +280,174 @@ Rules:
     res.status(200).send("OK");
   });
 
-  app.post("/api/line-webhook", (req, res) => {
+  // Sends a reply into the chat the triggering event came from. Free (unlike
+  // /api/line-push, which uses the metered push API) but only usable once,
+  // within the request/response cycle for that event's replyToken.
+  async function replyLineMessage(replyToken: string | undefined, messages: any[]) {
+    const accessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN || "";
+    if (!accessToken || !replyToken) return;
+    try {
+      const resp = await fetch("https://api.line.me/v2/bot/message/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
+        body: JSON.stringify({ replyToken, messages })
+      });
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        console.error("LINE reply error:", errData);
+      }
+    } catch (err) {
+      console.error("LINE reply exception:", err);
+    }
+  }
+
+  // logActivity() (src/utils/logger.ts) is client-side only — it reads
+  // auth.currentUser, which doesn't exist for server-driven events like a
+  // customer tapping Confirm in LINE. This is the server-side equivalent,
+  // writing directly to the same system_logs collection/shape.
+  async function logServerActivity(action: string, details: string, category: string) {
+    try {
+      await adminDb.collection("system_logs").add({
+        action,
+        details,
+        category,
+        userEmail: "line-bot@system",
+        userId: "line-webhook",
+        timestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error("Failed to log server activity:", err);
+    }
+  }
+
+  // Handles a postback from the order-confirmation Flex Message the LIFF
+  // ordering app sends into the chat via liff.sendMessages(). Expected
+  // postback.data shape: "action=confirm_order&id=<delivery_orders docId>"
+  // (also cancel_order / edit_order).
+  async function handleOrderPostback(data: string, replyToken: string | undefined) {
+    const params = new URLSearchParams(data);
+    const action = params.get("action");
+    const orderId = params.get("id");
+    if (!action || !orderId) return;
+
+    const orderDocRef = adminDb.collection("delivery_orders").doc(orderId);
+    const snap = await orderDocRef.get();
+    if (!snap.exists) {
+      await replyLineMessage(replyToken, [{ type: "text", text: "Sorry, we couldn't find that order — please tap Order Food to start again." }]);
+      return;
+    }
+    const order = snap.data() as any;
+    const now = new Date().toISOString();
+
+    if (action === "confirm_order") {
+      if (order.status !== "draft") {
+        await replyLineMessage(replyToken, [{ type: "text", text: `Order #${order.orderRef} is already ${order.status}.` }]);
+        return;
+      }
+      await orderDocRef.update({
+        status: "confirmed",
+        updatedAt: now,
+        statusHistory: [...(order.statusHistory || []), { status: "confirmed", at: now }]
+      });
+      await logServerActivity("Delivery Order Confirmed", `Order #${order.orderRef} confirmed by customer via LINE`, "delivery");
+      await replyLineMessage(replyToken, [{
+        type: "text",
+        text: `✅ Order #${order.orderRef} confirmed!\nWe're preparing your food.\nEstimated delivery: 35–45 minutes.`
+      }]);
+    } else if (action === "cancel_order") {
+      if (order.status !== "draft" && order.status !== "confirmed") {
+        await replyLineMessage(replyToken, [{ type: "text", text: `Order #${order.orderRef} can't be cancelled — it's already ${order.status}.` }]);
+        return;
+      }
+      await orderDocRef.update({
+        status: "cancelled",
+        updatedAt: now,
+        statusHistory: [...(order.statusHistory || []), { status: "cancelled", at: now }]
+      });
+      await logServerActivity("Delivery Order Cancelled", `Order #${order.orderRef} cancelled by customer via LINE`, "delivery");
+      await replyLineMessage(replyToken, [{ type: "text", text: `Order #${order.orderRef} has been cancelled. Let us know if you'd like to order again!` }]);
+    } else if (action === "edit_order") {
+      // No state change — the draft is left as-is (harmless if abandoned;
+      // the dispatch view only ever queries non-draft orders) and we just
+      // point the customer back to the ordering flow.
+      await replyLineMessage(replyToken, [{ type: "text", text: `No problem — tap "Order Food" again to make changes to order #${order.orderRef}.` }]);
+    }
+  }
+
+  app.post("/api/line-webhook", async (req, res) => {
     res.status(200).json({ status: "ok" });
+
+    const signature = req.headers["x-line-signature"] as string | undefined;
+    const rawBody = (req as any).rawBody as Buffer | undefined;
+    if (LINE_CHANNEL_SECRET) {
+      if (!signature || !rawBody || !verifyLineSignature(rawBody.toString("utf8"), signature)) {
+        console.error("LINE webhook: signature verification failed");
+        return;
+      }
+    }
+
     const events = req.body?.events || [];
     for (const event of events) {
-      const userId = event.source?.userId;
-      if (userId) console.log(`LINE user ID: ${userId}`);
+      try {
+        const userId = event.source?.userId;
+        if (userId) console.log(`LINE user ID: ${userId}`);
+
+        if (event.type === "postback" && event.postback?.data) {
+          await handleOrderPostback(event.postback.data, event.replyToken);
+        }
+      } catch (err) {
+        console.error("LINE webhook event handling error:", err);
+      }
+    }
+  });
+
+  // ── Delivery Orders (LINE structured ordering) ──────────────────────
+  // Created by the LIFF/MINI App ordering page once the customer taps
+  // "Review Order" — see cajun-line-ordering-spec.md. There's no Firebase
+  // Auth session for a LINE customer, so this has to be a public server
+  // endpoint writing via the Admin SDK, same pattern as /api/activate/:token
+  // and the loyalty signup endpoint above.
+  function generateOrderRef(): string {
+    const n = Math.floor(10000 + Math.random() * 90000);
+    return `CJL-${n}`;
+  }
+
+  app.post("/api/orders/draft", async (req, res) => {
+    try {
+      const { lineUserId, items, deliveryAddress, notes } = req.body || {};
+      if (!lineUserId || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ success: false, error: "lineUserId and at least one item are required" });
+      }
+      const total = items.reduce((sum: number, it: any) => sum + (Number(it.unitPrice) || 0) * (Number(it.qty) || 1), 0);
+
+      // Match an existing CRM customer by lineUserId (set by the LINE Login
+      // activation flow) so the order can be linked to their loyalty/history.
+      let customerId: string | null = null;
+      const custSnap = await adminDb.collection("crm_customers").where("lineUserId", "==", lineUserId).limit(1).get();
+      if (!custSnap.empty) customerId = custSnap.docs[0].id;
+
+      const orderRef = generateOrderRef();
+      const now = new Date().toISOString();
+      const docRef = await adminDb.collection("delivery_orders").add({
+        orderRef,
+        lineUserId,
+        customerId,
+        items,
+        total,
+        deliveryAddress: deliveryAddress || null,
+        notes: notes || "",
+        status: "draft",
+        orderSource: "line_structured",
+        driverName: null,
+        createdAt: now,
+        updatedAt: now,
+        statusHistory: [{ status: "draft", at: now }]
+      });
+
+      return res.json({ success: true, orderId: docRef.id, orderRef, total });
+    } catch (err) {
+      console.error("Create draft order error:", err);
+      return res.status(500).json({ success: false, error: "Failed to create draft order" });
     }
   });
 

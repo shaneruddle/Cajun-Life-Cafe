@@ -212,5 +212,16 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow create: if isAuthenticated();
     }
+
+    // Delivery orders — placed via the LINE LIFF/MINI App ordering flow.
+    // Drafts are created and moved to "confirmed"/"cancelled" server-side
+    // (POST /api/orders/draft, /api/line-webhook) via the Admin SDK, which
+    // bypasses these rules entirely — there's no Firebase-authenticated user
+    // for a LINE customer. This rule exists for the staff dispatch view:
+    // cashiers/managers/admin read the queue and update status/driver as an
+    // order moves through the kitchen, same isCashier() gate as crm_customers.
+    match /delivery_orders/{id} {
+      allow read, write: if isCashier();
+    }
   }
 }
