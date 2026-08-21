@@ -295,22 +295,23 @@ const LineOrderApp = () => {
           Open this from the Cajun Life LINE chat to place an order.
         </div>
       )}
-      <header className="p-4 text-center">
-        <h1 className="text-xl font-display font-bold text-terracotta">Cajun Life — Order Food</h1>
-      </header>
-
-      <div className="flex overflow-x-auto gap-2 px-4 pb-3 no-scrollbar">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className={`whitespace-nowrap px-3 py-1.5 rounded-full font-medium text-xs transition-all ${
-              activeCategory === cat ? "bg-terracotta text-white shadow-md" : "bg-white text-ink shadow-sm border border-gray-100"
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
+      <div className="sticky top-0 z-40 bg-cream/95 backdrop-blur-sm border-b border-gray-100">
+        <header className="px-4 pt-4 pb-2">
+          <h1 className="text-lg font-display font-bold text-terracotta text-center">Cajun Life — Order Food</h1>
+        </header>
+        <div className="flex overflow-x-auto gap-2 px-4 pb-3 no-scrollbar">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={`whitespace-nowrap px-3 py-1.5 rounded-full font-medium text-xs transition-all ${
+                activeCategory === cat ? "bg-terracotta text-white shadow-md" : "bg-white text-ink shadow-sm border border-gray-100"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </div>
 
       <main className="flex-1 overflow-y-auto px-4 pt-2 space-y-3">
@@ -327,7 +328,10 @@ const LineOrderApp = () => {
               />
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-ink text-sm truncate">{item.name}</p>
-                <p className="text-terracotta font-bold text-sm">฿{item.price.replace("฿", "")}</p>
+                {item.description && (
+                  <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{item.description}</p>
+                )}
+                <p className="text-terracotta font-bold text-sm mt-1">฿{item.price.replace("฿", "")}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {qty > 0 && (
@@ -350,16 +354,21 @@ const LineOrderApp = () => {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-50"
+            className="fixed bottom-0 left-0 right-0 z-50 bg-ink text-white shadow-[0_-4px_20px_rgba(0,0,0,0.15)]"
+            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           >
             <button
               onClick={() => setStage("review")}
-              className="w-full bg-ink text-white rounded-full px-6 py-4 flex items-center justify-between shadow-2xl"
+              className="w-full flex items-center justify-between px-4 py-3"
             >
-              <span className="flex items-center gap-2 font-medium text-sm">
-                <ShoppingBag className="w-4 h-4" /> {cartCount} item{cartCount > 1 ? "s" : ""}
+              <span className="flex items-center gap-2 text-sm">
+                <ShoppingBag className="w-4 h-4" />
+                <span><span className="font-bold">{cartCount}</span> item{cartCount > 1 ? "s" : ""}</span>
               </span>
-              <span className="font-bold">฿{cartTotal} — Review</span>
+              <span className="flex items-center gap-3 font-bold text-sm">
+                ฿{cartTotal}
+                <span className="bg-terracotta text-white text-xs font-bold px-4 py-2 rounded-full">Review Order</span>
+              </span>
             </button>
           </motion.div>
         )}
