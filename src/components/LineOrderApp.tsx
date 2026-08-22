@@ -37,6 +37,7 @@ const LineOrderApp = () => {
 
   const [items, setItems] = useState<MenuItem[]>([]);
   const [categoryList, setCategoryList] = useState<Category[]>([]);
+  const [menuDebug, setMenuDebug] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("");
   const [cart, setCart] = useState<Record<string, CartLine>>({});
 
@@ -88,7 +89,10 @@ const LineOrderApp = () => {
     const q = query(collection(db, "categories"), orderBy("order", "asc"));
     const unsub = onSnapshot(q, (snap) => {
       setCategoryList(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Category[]);
-    }, (err) => handleFirestoreError(err, "list", "categories"));
+    }, (err) => {
+      try { handleFirestoreError(err, "list", "categories"); }
+      catch (e) { setMenuDebug(`categories: ${e instanceof Error ? e.message : String(e)}`); }
+    });
     return () => unsub();
   }, []);
 
@@ -97,7 +101,10 @@ const LineOrderApp = () => {
     const unsub = onSnapshot(q, (snap) => {
       const menuItems = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as MenuItem[];
       setItems(menuItems.sort((a, b) => (a.order || 0) - (b.order || 0)));
-    }, (err) => handleFirestoreError(err, "list", "menu"));
+    }, (err) => {
+      try { handleFirestoreError(err, "list", "menu"); }
+      catch (e) { setMenuDebug(`menu: ${e instanceof Error ? e.message : String(e)}`); }
+    });
     return () => unsub();
   }, []);
 
@@ -422,7 +429,12 @@ const LineOrderApp = () => {
           </div>
         ))}
         {visibleCategories.length === 0 && (
-          <p className="text-center text-gray-400 italic py-12">No items available.</p>
+          <div className="text-center py-12 px-4">
+            <p className="text-gray-400 italic">No items available.</p>
+            {menuDebug && (
+              <p className="text-red-500 text-xs mt-3 break-words whitespace-pre-wrap">{menuDebug}</p>
+            )}
+          </div>
         )}
       </main>
 
