@@ -10,6 +10,10 @@ interface ImportMetaEnv {
     readonly VITE_FIREBASE_MESSAGING_SENDER_ID: string;
     readonly VITE_FIREBASE_APP_ID: string;
     readonly VITE_FIREBASE_DATABASE_ID: string;
+    // LINE LIFF/MINI App ID for the in-chat ordering page (/order) — issued
+    // when the app is registered in the LINE Developers Console, see
+    // cajun-line-ordering-spec.md §9.
+    readonly VITE_LIFF_ID: string;
 }
 interface ImportMeta {
     readonly env: ImportMetaEnv;

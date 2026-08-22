@@ -20,7 +20,8 @@ import {
   Image as ImageIcon,
   Briefcase,
   Newspaper,
-  CalendarDays
+  CalendarDays,
+  Truck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../firebase';
@@ -252,6 +253,16 @@ export default function DashboardLayout({ user }: { user: any }) {
               to="/dashboard/loyalty"
               isCollapsed={isCollapsed}
               isActive={isActive('/dashboard/loyalty')}
+            />
+          )}
+
+          {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'cashier') && (
+            <SidebarItem
+              icon={<Truck size={20} />}
+              label="Deliveries"
+              to="/dashboard/deliveries"
+              isCollapsed={isCollapsed}
+              isActive={isActive('/dashboard/deliveries')}
             />
           )}
 

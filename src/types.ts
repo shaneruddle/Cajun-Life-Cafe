@@ -166,7 +166,54 @@ export interface SystemLog {
   userEmail: string;
   userId: string;
   timestamp: string;
-  category: 'menu' | 'category' | 'custom_meal' | 'finance' | 'user' | 'system' | 'image' | 'crm' | 'loyalty' | 'job' | 'blog' | 'calendar';
+  category: 'menu' | 'category' | 'custom_meal' | 'finance' | 'user' | 'system' | 'image' | 'crm' | 'loyalty' | 'job' | 'blog' | 'calendar' | 'delivery';
+}
+
+// A single line item within a DeliveryOrder — one menu item (or custom meal),
+// its quantity, and any modifiers selected in the ordering UI.
+export interface DeliveryOrderItem {
+  name: string;
+  qty: number;
+  unitPrice: number;
+  modifiers?: string[];
+}
+
+export type DeliveryOrderStatus =
+  | 'draft'
+  | 'confirmed'
+  | 'preparing'
+  | 'ready'
+  | 'driver_assigned'
+  | 'out_for_delivery'
+  | 'delivered'
+  | 'cancelled';
+
+// Structured delivery order placed through the LINE LIFF/MINI App ordering
+// flow — lives in the delivery_orders collection. `orderId` (the draft) is
+// created server-side (POST /api/orders/draft) via the LINE user's chat
+// context, since the customer isn't a Firebase-authenticated user; status
+// then moves forward either via the LINE webhook (customer taps Confirm/
+// Cancel) or from the staff dispatch view (see DeliveryDashboard).
+export interface DeliveryOrder {
+  id?: string;
+  orderRef: string; // short customer-facing ref, e.g. "CJL-83921"
+  lineUserId: string;
+  customerId: string | null; // linked crm_customers doc, if matched by lineUserId
+  items: DeliveryOrderItem[];
+  total: number; // THB
+  deliveryAddress: {
+    addressText: string;
+    notes?: string;
+    lat?: number;
+    lng?: number;
+  } | null;
+  notes?: string;
+  status: DeliveryOrderStatus;
+  orderSource: 'line_structured' | 'line_text';
+  driverName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  statusHistory: { status: DeliveryOrderStatus; at: string }[];
 }
 
 // Single unified customer record — lives in crm_customers collection.
