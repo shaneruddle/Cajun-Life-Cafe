@@ -204,11 +204,20 @@ export default function DeliveryDashboard() {
                 </div>
                 <p className="font-bold text-terracotta text-sm mb-3">Total ฿{order.total}</p>
 
-                {order.deliveryAddress?.addressText && (
-                  <p className="text-xs text-gray-500 flex items-start gap-1 mb-1">
-                    <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" /> {order.deliveryAddress.addressText}
-                    {order.deliveryAddress.notes ? ` — ${order.deliveryAddress.notes}` : ''}
-                  </p>
+                <p className="text-xs text-gray-500 flex items-start gap-1 mb-1">
+                  <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                  {order.deliveryAddress?.addressText ? (
+                    <span>
+                      {order.deliveryAddress.addressText}
+                      {order.deliveryAddress.notes ? ` — ${order.deliveryAddress.notes}` : ''}
+                    </span>
+                  ) : (
+                    <span className="italic text-gray-400">No address provided</span>
+                  )}
+                </p>
+
+                {order.notes && (
+                  <p className="text-xs text-gray-500 mb-1"><span className="font-medium text-gray-600">Notes:</span> {order.notes}</p>
                 )}
 
                 {(order.status === 'ready' || order.status === 'driver_assigned' || order.status === 'out_for_delivery') && (

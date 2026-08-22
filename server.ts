@@ -336,10 +336,24 @@ Rules:
     orderRef: string; orderId: string; total: number;
     items: Array<{ name: string; qty: number; unitPrice: number }>;
     addressText?: string;
+    orderNotes?: string;
   }) {
     const itemLines = opts.items
       .map((it) => `${it.qty} × ${it.name} — ฿${it.unitPrice * it.qty}`)
       .join("\n");
+    const bodyContents: any[] = [
+      { type: "text", text: itemLines, wrap: true, size: "sm" },
+      { type: "separator", margin: "md" },
+      { type: "text", text: `Total ฿${opts.total}`, weight: "bold", size: "md", margin: "md" },
+      // Address is optional (pickup / phone-in orders leave it blank) - say
+      // so explicitly rather than the old "Address to confirm", which read
+      // as if one was always expected.
+      { type: "text", text: `Delivery: ${opts.addressText || "No address provided"}`, wrap: true, size: "xs", color: "#5A5A40", margin: "sm" }
+    ];
+    if (opts.orderNotes && opts.orderNotes.trim()) {
+      bodyContents.push({ type: "text", text: `Notes: ${opts.orderNotes.trim()}`, wrap: true, size: "xs", color: "#5A5A40", margin: "sm" });
+    }
+    bodyContents.push({ type: "text", text: `Order ref: ${opts.orderRef}`, size: "xs", color: "#999999", margin: "sm" });
     return {
       type: "flex",
       altText: `Your Cajun Life order #${opts.orderRef} — ฿${opts.total}`,
@@ -354,13 +368,7 @@ Rules:
           type: "box",
           layout: "vertical",
           spacing: "sm",
-          contents: [
-            { type: "text", text: itemLines, wrap: true, size: "sm" },
-            { type: "separator", margin: "md" },
-            { type: "text", text: `Total ฿${opts.total}`, weight: "bold", size: "md", margin: "md" },
-            { type: "text", text: `Delivery: ${opts.addressText || "Address to confirm"}`, wrap: true, size: "xs", color: "#5A5A40", margin: "sm" },
-            { type: "text", text: `Order ref: ${opts.orderRef}`, size: "xs", color: "#999999", margin: "sm" }
-          ]
+          contents: bodyContents
         }
       }
     };
@@ -491,6 +499,49 @@ Rules:
       const custSnap = await adminDb.collection("crm_customers").where("lineUserId", "==", lineUserId).limit(1).get();
       if (!custSnap.empty) customerId = custSnap.docs[0].id;
 
+      // Save the address for next time, kept in fields separate from the
+      // CRM's own registered address/deliveryNotes so an in-store
+      // registration is never silently overwritten by a one-off LINE order
+      // address - GET /api/customer/by-line prefers these when present.
+      // Only bother when an address was actually given; skip entirely for a
+      // blank/pickup order rather than saving nothing over something.
+      const addressToSave = (deliveryAddress?.addressText || "").trim();
+      if (addressToSave) {
+        const now2 = new Date().toISOString();
+        const lastOrderFields = {
+          lastOrderAddress: addressToSave,
+          lastOrderDeliveryNotes: deliveryAddress?.notes || "",
+          lastOrderAt: now2
+        };
+        if (customerId) {
+          await adminDb.collection("crm_customers").doc(customerId).update(lastOrderFields);
+        } else {
+          // No CRM record yet for this LINE user - create a minimal one
+          // purely so the address can be reused next time. Mirrors the
+          // shape CRMDirectory.tsx/the loyalty-signup endpoint create,
+          // since CRMDirectory's list view assumes firstName/lastName exist.
+          const stubRef = await adminDb.collection("crm_customers").add({
+            firstName: "",
+            lastName: "",
+            email: "",
+            mobile: "",
+            notes: "Auto-created from a LINE order",
+            status: "active",
+            lineUserId,
+            address: "",
+            deliveryLat: null,
+            deliveryLng: null,
+            deliveryNotes: "",
+            ...lastOrderFields,
+            totalSpend: 0,
+            uid: "line-order",
+            createdAt: now2,
+            updatedAt: now2
+          });
+          customerId = stubRef.id;
+        }
+      }
+
       const orderRef = generateOrderRef();
       const now = new Date().toISOString();
       const docRef = await adminDb.collection("delivery_orders").add({
@@ -520,7 +571,8 @@ Rules:
         orderId: docRef.id,
         total,
         items,
-        addressText: deliveryAddress?.addressText
+        addressText: deliveryAddress?.addressText,
+        orderNotes: notes
       });
       const pushResult = await pushLineMessages(lineUserId, [flexMessage]);
       if (!pushResult.success) {
@@ -550,7 +602,11 @@ Rules:
         address: data.address || "",
         deliveryLat: data.deliveryLat ?? null,
         deliveryLng: data.deliveryLng ?? null,
-        deliveryNotes: data.deliveryNotes || ""
+        deliveryNotes: data.deliveryNotes || "",
+        // From their last LINE order, if any - kept separate from the CRM's
+        // own address fields above; the client prefers these when present.
+        lastOrderAddress: data.lastOrderAddress || "",
+        lastOrderDeliveryNotes: data.lastOrderDeliveryNotes || ""
       });
     } catch (err) {
       console.error("Customer lookup by lineUserId error:", err);

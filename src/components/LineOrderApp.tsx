@@ -43,6 +43,7 @@ const LineOrderApp = () => {
 
   const [addressText, setAddressText] = useState("");
   const [addressNotes, setAddressNotes] = useState("");
+  const [orderNotes, setOrderNotes] = useState("");
   const [addressLoaded, setAddressLoaded] = useState(false);
 
   // ── Single-page menu scroll-spy (all categories on one scroll, pill
@@ -178,8 +179,12 @@ const LineOrderApp = () => {
         const resp = await fetch(`/api/customer/by-line/${encodeURIComponent(lineUserId)}`);
         const data = await resp.json();
         if (data.found) {
-          setAddressText(data.address || "");
-          setAddressNotes(data.deliveryNotes || "");
+          // Prefer the address saved from this customer's last LINE order
+          // (kept separate from the CRM's own registered address so an
+          // in-store registration never gets silently overwritten by a
+          // one-off delivery address) - fall back to the CRM address.
+          setAddressText(data.lastOrderAddress || data.address || "");
+          setAddressNotes(data.lastOrderDeliveryNotes || data.deliveryNotes || "");
         }
       } catch (err) {
         console.error("Address prefill error:", err);
@@ -227,7 +232,7 @@ const LineOrderApp = () => {
           lineUserId,
           items: orderItems,
           deliveryAddress: { addressText, notes: addressNotes },
-          notes: addressNotes
+          notes: orderNotes
         })
       });
       const draft = await draftResp.json();
@@ -249,7 +254,7 @@ const LineOrderApp = () => {
       setErrorMsg("Couldn't send your order — please reopen this from the Cajun Life LINE chat and try again.");
       setStage("error");
     }
-  }, [lineUserId, cartLines, addressText, addressNotes, liffModule]);
+  }, [lineUserId, cartLines, addressText, addressNotes, orderNotes, liffModule]);
 
   // ── Render ───────────────────────────────────────────────────────
   if (stage === "loading") {
@@ -311,13 +316,23 @@ const LineOrderApp = () => {
           </div>
 
           <div className="card p-4 space-y-3">
+            <div className="text-ink font-medium text-sm">Notes for your order</div>
+            <textarea
+              value={orderNotes}
+              onChange={(e) => setOrderNotes(e.target.value)}
+              placeholder="Any special requests - e.g. no cilantro, extra spicy, split into two bags (optional)"
+              className="w-full rounded-xl border border-gray-200 p-3 text-sm min-h-[60px]"
+            />
+          </div>
+
+          <div className="card p-4 space-y-3">
             <div className="flex items-center gap-2 text-ink font-medium text-sm">
-              <MapPin className="w-4 h-4 text-terracotta" /> Delivery address
+              <MapPin className="w-4 h-4 text-terracotta" /> Delivery address (optional)
             </div>
             <textarea
               value={addressText}
               onChange={(e) => setAddressText(e.target.value)}
-              placeholder="e.g. The Cliff Condo, Pratumnak, Building B Room 1406"
+              placeholder="e.g. The Cliff Condo, Pratumnak, Building B Room 1406 - leave blank for pickup or if you'll confirm by chat"
               className="w-full rounded-xl border border-gray-200 p-3 text-sm min-h-[70px]"
             />
             <textarea
@@ -331,7 +346,7 @@ const LineOrderApp = () => {
         <footer className="p-4 bg-white border-t border-gray-100">
           <button
             onClick={handleReviewSend}
-            disabled={!addressText.trim() || stage !== "review"}
+            disabled={stage !== "review"}
             className="terracotta-button w-full text-center font-bold disabled:opacity-40"
           >
             Send Order to Chat
