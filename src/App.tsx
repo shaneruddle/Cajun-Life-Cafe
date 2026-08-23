@@ -22,8 +22,9 @@ import {
   LogOut,
   Users,
   MessageCircle,
+  ChevronDown,
 } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -86,6 +87,72 @@ const BUSINESS = {
   mapsEmbed: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3888.9527165100435!2d100.85711997507538!3d12.91076058739904!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3102975c05c028d1%3A0xa178d3cf54569695!2sCajun%20Life%20Cafe!5e0!3m2!1sen!2sth!4v1780393736349!5m2!1sen!2sth",
 };
 
+type NavLinkItem = { label: string; to?: string; href?: string; external?: boolean };
+type NavGroup = { title: string; links: NavLinkItem[] };
+
+// Shared link groups used by the header mega menu, the mobile menu, and the
+// footer — one place to add/remove/re-order a page across all three.
+const NAV_GROUPS: NavGroup[] = [
+  {
+    title: "Order",
+    links: [
+      { label: "Menu", href: "#menu" },
+      { label: "Digital Menu", to: "/menu" },
+      { label: "Meal Prep", to: "/meal-prep" },
+      { label: "Healthy Eating Guide", to: "/healthy-eating" },
+    ],
+  },
+  {
+    title: "Programs",
+    links: [
+      { label: "Loyalty Program", to: "/loyalty" },
+      { label: "Influencer Program", to: "/influencers" },
+      { label: "Feedback", to: "/feedback" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "Our Story", href: "#about" },
+      { label: "Location", href: "#location" },
+      { label: "Blog", to: "/blog" },
+      { label: "Careers", to: "/careers" },
+    ],
+  },
+];
+
+const NAV_CONNECT_LINKS: NavLinkItem[] = [
+  { label: `Call ${BUSINESS.phone}`, href: `tel:${BUSINESS.phone.replace(/\s/g, "")}` },
+  { label: "Message on LINE", href: BUSINESS.line, external: true },
+];
+
+const FOOTER_CONNECT_LINKS: NavLinkItem[] = [
+  { label: "LINE: @cajunlifecafe", href: BUSINESS.line, external: true },
+  { label: "Admin Login", to: "/dashboard" },
+];
+
+const NavLink = ({ link, onClick, className }: { link: NavLinkItem; onClick?: () => void; className?: string }) => {
+  if (link.to) {
+    return (
+      <Link to={link.to} onClick={onClick} className={className}>
+        {link.label}
+      </Link>
+    );
+  }
+  if (link.external) {
+    return (
+      <a href={link.href} target="_blank" rel="noopener noreferrer" onClick={onClick} className={className}>
+        {link.label}
+      </a>
+    );
+  }
+  return (
+    <a href={link.href} onClick={onClick} className={className}>
+      {link.label}
+    </a>
+  );
+};
+
 type Language = "en" | "zh" | "ru" | "th";
 
 const Navbar = ({
@@ -98,8 +165,10 @@ const Navbar = ({
   setUser: (user: any) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [megaOpen, setMegaOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const megaRef = useRef<HTMLDivElement>(null);
   const isDashboard =
     location.pathname.startsWith("/dashboard") ||
     location.pathname === "/import" ||
@@ -111,6 +180,29 @@ const Navbar = ({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    setMegaOpen(false);
+    setIsOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!megaOpen) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (megaRef.current && !megaRef.current.contains(e.target as Node)) setMegaOpen(false);
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMegaOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [megaOpen]);
+
+  const megaGroups: NavGroup[] = [...NAV_GROUPS, { title: "Connect", links: NAV_CONNECT_LINKS }];
+
   return (
     <nav className={`${isDashboard ? "sticky top-0 bg-white border-b border-gray-100 py-3 shadow-sm" : "fixed top-0 w-full transition-all duration-300 " + (scrolled ? "bg-white shadow-md py-3" : "bg-transparent py-6")} z-50 w-full`}>
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
@@ -118,9 +210,41 @@ const Navbar = ({
         <div className="hidden lg:flex space-x-8 items-center">
           {!isDashboard ? (
             <>
-              {["Menu", "About", "Location"].map((item) => (
-                <a key={item} href={`#${item.toLowerCase()}`} className={`font-medium hover:text-terracotta transition-colors ${scrolled ? "text-ink" : "text-white"}`}>{item}</a>
-              ))}
+              <div className="relative" ref={megaRef}>
+                <button
+                  type="button"
+                  onClick={() => setMegaOpen((o) => !o)}
+                  aria-expanded={megaOpen}
+                  className={`flex items-center gap-1.5 font-medium hover:text-terracotta transition-colors ${scrolled ? "text-ink" : "text-white"}`}
+                >
+                  Menu
+                  <ChevronDown size={16} className={`transition-transform ${megaOpen ? "rotate-180" : ""}`} />
+                </button>
+                <AnimatePresence>
+                  {megaOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute left-1/2 -translate-x-1/2 top-full mt-4 w-[680px] max-w-[90vw] bg-white rounded-[24px] shadow-2xl border border-gray-100 p-8 grid grid-cols-4 gap-8"
+                    >
+                      {megaGroups.map((group) => (
+                        <div key={group.title}>
+                          <h4 className="font-bold text-ink text-xs uppercase tracking-wider mb-4">{group.title}</h4>
+                          <ul className="space-y-3">
+                            {group.links.map((link) => (
+                              <li key={link.label}>
+                                <NavLink link={link} onClick={() => setMegaOpen(false)} className="text-gray-500 hover:text-terracotta transition-colors text-sm leading-snug" />
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
               {canAccessDashboard && (
                 <Link to="/dashboard" className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all ${scrolled ? "bg-cream text-olive hover:bg-olive hover:text-white" : "bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"}`}>
                   <Settings size={16} /> Dashboard
@@ -148,11 +272,18 @@ const Navbar = ({
       </div>
       <AnimatePresence>
         {isOpen && (
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="lg:hidden bg-white absolute top-full left-0 w-full shadow-xl p-6 flex flex-col space-y-4">
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="lg:hidden bg-white absolute top-full left-0 w-full shadow-xl p-6 flex flex-col space-y-6 max-h-[calc(100vh-5rem)] overflow-y-auto">
             {!isDashboard ? (
               <>
-                {["Menu", "About", "Location"].map((item) => (
-                  <a key={item} href={`#${item.toLowerCase()}`} className="text-lg font-medium text-ink" onClick={() => setIsOpen(false)}>{item}</a>
+                {megaGroups.map((group) => (
+                  <div key={group.title}>
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">{group.title}</p>
+                    <div className="flex flex-col gap-3">
+                      {group.links.map((link) => (
+                        <NavLink key={link.label} link={link} onClick={() => setIsOpen(false)} className="text-lg font-medium text-ink" />
+                      ))}
+                    </div>
+                  </div>
                 ))}
                 <Auth onUserChange={setUser} />
                 {canAccessDashboard && (
@@ -450,50 +581,48 @@ const Location = () => (
   </section>
 );
 
-const Footer = () => (
-  <footer className="bg-ink text-white py-16 px-6">
-    <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-12">
-      <div className="col-span-2">
-        <h3 className="text-3xl font-display font-bold mb-6">{BUSINESS.name}</h3>
-        <p className="text-gray-400 max-w-sm mb-8">Bringing the authentic heart and soul of Louisiana cooking to your neighbourhood. Join us for a taste of the bayou.</p>
-        <div className="flex flex-col gap-4">
-          <div className="flex gap-4">
-            <a href={BUSINESS.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-gray-400 hover:text-white transition-colors"><Instagram size={24} /></a>
-            <a href={BUSINESS.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-gray-400 hover:text-white transition-colors"><Facebook size={24} /></a>
-            <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm font-bold flex items-center">LINE</a>
+const Footer = () => {
+  const footerGroups: NavGroup[] = [...NAV_GROUPS, { title: "Connect", links: FOOTER_CONNECT_LINKS }];
+
+  return (
+    <footer className="bg-ink text-white py-16 px-6">
+      <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-8 gap-y-12 lg:gap-8">
+        <div className="col-span-2 md:col-span-4 lg:col-span-2">
+          <h3 className="text-3xl font-display font-bold mb-6">{BUSINESS.name}</h3>
+          <p className="text-gray-400 max-w-sm mb-8">Bringing the authentic heart and soul of Louisiana cooking to your neighbourhood. Join us for a taste of the bayou.</p>
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-4">
+              <a href={BUSINESS.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-gray-400 hover:text-white transition-colors"><Instagram size={24} /></a>
+              <a href={BUSINESS.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-gray-400 hover:text-white transition-colors"><Facebook size={24} /></a>
+              <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm font-bold flex items-center">LINE</a>
+            </div>
+            <a href={`tel:${BUSINESS.phone.replace(/\s/g, "")}`} className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
+              <Phone size={16} /> {BUSINESS.phone}
+            </a>
+            <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
+              <MessageCircle size={16} /> @cajunlifecafe
+            </a>
           </div>
-          <a href={`tel:${BUSINESS.phone.replace(/\s/g, "")}`} className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
-            <Phone size={16} /> {BUSINESS.phone}
-          </a>
-          <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
-            <MessageCircle size={16} /> @cajunlifecafe
-          </a>
         </div>
+        {footerGroups.map((group) => (
+          <div key={group.title}>
+            <h4 className="font-bold mb-6 text-terracotta uppercase tracking-wider text-sm">{group.title}</h4>
+            <ul className="space-y-4 text-gray-400">
+              {group.links.map((link) => (
+                <li key={link.label}>
+                  <NavLink link={link} className="hover:text-white transition-colors" />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
-      <div>
-        <h4 className="font-bold mb-6 text-terracotta uppercase tracking-wider text-sm">Quick Links</h4>
-        <ul className="space-y-4 text-gray-400">
-          <li><a href="#menu" className="hover:text-white transition-colors">Menu</a></li>
-          <li><Link to="/menu" className="hover:text-white transition-colors">Digital Menu</Link></li>
-          <li><Link to="/meal-prep" className="hover:text-white transition-colors">Meal Prep</Link></li>
-          <li><Link to="/healthy-eating" className="hover:text-white transition-colors">Healthy Eating Guide</Link></li>
-          <li><Link to="/loyalty" className="hover:text-white transition-colors">Loyalty Program</Link></li>
-          <li><a href="#about" className="hover:text-white transition-colors">Our Story</a></li>
-          <li><a href="#location" className="hover:text-white transition-colors">Location</a></li>
-          <li><Link to="/blog" className="hover:text-white transition-colors">Blog</Link></li>
-          <li><Link to="/careers" className="hover:text-white transition-colors">Careers</Link></li>
-          <li><Link to="/influencers" className="hover:text-white transition-colors">Influencer Program</Link></li>
-          <li><Link to="/feedback" className="hover:text-white transition-colors">Feedback</Link></li>
-          <li><a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">LINE: @cajunlifecafe</a></li>
-          <li><Link to="/dashboard" className="hover:text-white transition-colors">Admin Login</Link></li>
-        </ul>
+      <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-gray-800 text-center text-gray-500 text-sm">
+        <p>&copy; {new Date().getFullYear()} {BUSINESS.name}. All rights reserved.</p>
       </div>
-    </div>
-    <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-gray-800 text-center text-gray-500 text-sm">
-      <p>&copy; {new Date().getFullYear()} {BUSINESS.name}. All rights reserved.</p>
-    </div>
-  </footer>
-);
+    </footer>
+  );
+};
 
 const MainSite = ({ isAdmin }: { isAdmin: boolean }) => (
   <div className="min-h-screen">
