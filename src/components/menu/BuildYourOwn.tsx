@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from "motion/react";
 import { Flame, Zap, Wheat, Droplets, Plus, Minus } from "lucide-react";
 import { CustomMealItem } from '../../types';
+import NutritionButton, { hasNutritionData } from './NutritionInfo';
 
 interface BuildYourOwnProps {
   customMealTypes: string[];
@@ -64,17 +65,36 @@ const BuildYourOwn: React.FC<BuildYourOwnProps> = React.memo(({
                 .map(({ opt, originalIdx }) => {
                 const selected = isSelected(item.id!, originalIdx);
                 return (
-                  <button
+                  <div
                     key={originalIdx}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => toggleIngredient(item, originalIdx)}
-                    className={`w-full text-left p-4 sm:p-6 rounded-2xl sm:rounded-3xl border transition-all ${
-                      selected 
-                      ? "bg-terracotta border-terracotta shadow-md ring-2 ring-terracotta/20" 
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleIngredient(item, originalIdx);
+                      }
+                    }}
+                    className={`w-full text-left p-4 sm:p-6 rounded-2xl sm:rounded-3xl border transition-all cursor-pointer ${
+                      selected
+                      ? "bg-terracotta border-terracotta shadow-md ring-2 ring-terracotta/20"
                       : "bg-gray-50 border-gray-100 hover:border-terracotta/30"
                     }`}
                   >
                     <div className="flex justify-between items-center mb-3 sm:mb-4">
-                      <span className={`font-bold text-sm sm:text-lg ${selected ? "text-white" : "text-olive"}`}>{opt.weight}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-bold text-sm sm:text-lg ${selected ? "text-white" : "text-olive"}`}>{opt.weight}</span>
+                        {hasNutritionData(opt) && (
+                          <NutritionButton
+                            name={`${item.name} (${opt.weight})`}
+                            nutrition={opt}
+                            className={`inline-flex items-center justify-center w-7 h-7 rounded-full transition-colors flex-shrink-0 ${
+                              selected ? "bg-white/20 text-white hover:bg-white/30" : "bg-olive/10 text-olive hover:bg-olive/20"
+                            }`}
+                          />
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 sm:gap-3">
                         <span className={`font-bold text-lg sm:text-2xl ${selected ? "text-white" : "text-terracotta"}`}>฿{opt.price}</span>
                         <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${selected ? "bg-white text-terracotta" : "bg-terracotta text-white"}`}>
@@ -108,7 +128,7 @@ const BuildYourOwn: React.FC<BuildYourOwnProps> = React.memo(({
                         </div>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>

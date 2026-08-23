@@ -3,6 +3,7 @@ import { MenuItem } from '../../types';
 import { normalizeImageUrl } from '../../utils/images';
 import { FirebaseImage } from '../ui/FirebaseImage';
 import { ImageModal } from '../ui/ImageModal';
+import NutritionButton from './NutritionInfo';
 
 interface MenuItemCardProps {
   item: MenuItem;
@@ -51,14 +52,18 @@ const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({
           }
         }}
       >
-        <FirebaseImage 
-          src={imageUrl} 
+        <FirebaseImage
+          src={imageUrl}
           fallbackSrc="/logo.png"
-          alt={localizedName} 
+          alt={localizedName}
           className="w-full h-full object-cover"
           priority={priority}
           aspectRatio="3/2"
         />
+
+        <div className="absolute top-3 right-3">
+          <NutritionButton name={localizedName} nutrition={item} />
+        </div>
       </div>
 
       <div className="flex-1 w-full p-6 text-left flex flex-col justify-start">
