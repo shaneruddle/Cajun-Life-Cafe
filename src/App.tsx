@@ -457,8 +457,8 @@ const Footer = () => (
         <p className="text-gray-400 max-w-sm mb-8">Bringing the authentic heart and soul of Louisiana cooking to your neighbourhood. Join us for a taste of the bayou.</p>
         <div className="flex flex-col gap-4">
           <div className="flex gap-4">
-            <a href={BUSINESS.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors"><Instagram size={24} /></a>
-            <a href={BUSINESS.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors"><Facebook size={24} /></a>
+            <a href={BUSINESS.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-gray-400 hover:text-white transition-colors"><Instagram size={24} /></a>
+            <a href={BUSINESS.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-gray-400 hover:text-white transition-colors"><Facebook size={24} /></a>
             <a href={BUSINESS.line} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm font-bold flex items-center">LINE</a>
           </div>
           <a href={`tel:${BUSINESS.phone.replace(/\s/g, "")}`} className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
