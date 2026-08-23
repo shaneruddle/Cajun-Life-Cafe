@@ -68,6 +68,7 @@ import ActivateSuccess from "./components/ActivateSuccess";
 import ActivateError from "./components/ActivateError";
 import LineOrderApp from "./components/LineOrderApp";
 import DeliveryDashboard from "./components/DeliveryDashboard";
+import MealPrepPage from "./components/MealPrepPage";
 
 const BUSINESS = {
   name: "Cajun Life Cafe",
@@ -470,6 +471,7 @@ const Footer = () => (
         <ul className="space-y-4 text-gray-400">
           <li><a href="#menu" className="hover:text-white transition-colors">Menu</a></li>
           <li><Link to="/menu" className="hover:text-white transition-colors">Digital Menu</Link></li>
+          <li><Link to="/meal-prep" className="hover:text-white transition-colors">Meal Prep</Link></li>
           <li><a href="#about" className="hover:text-white transition-colors">Our Story</a></li>
           <li><a href="#location" className="hover:text-white transition-colors">Location</a></li>
           <li><Link to="/blog" className="hover:text-white transition-colors">Blog</Link></li>
@@ -514,6 +516,7 @@ function AppContent({ user, setUser }: any) {
   const isCareers = location.pathname === "/careers";
   const isBlog = location.pathname === "/blog" || location.pathname.startsWith("/blog/");
   const isOrder = location.pathname === "/order";
+  const isMealPrep = location.pathname === "/meal-prep";
 
   const isAdmin = useMemo(() => {
     if (!user) return false;
@@ -539,12 +542,13 @@ function AppContent({ user, setUser }: any) {
           </button>
         </div>
       )}
-      {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && !isCareers && !isBlog && !isOrder && <Navbar canAccessDashboard={isMarketing} canAccessStaffPortal={isCashier || isManager} setUser={setUser} />}
+      {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && !isCareers && !isBlog && !isOrder && !isMealPrep && <Navbar canAccessDashboard={isMarketing} canAccessStaffPortal={isCashier || isManager} setUser={setUser} />}
       <Routes>
         <Route path="/" element={<MainSite isAdmin={isAdmin} />} />
         <Route path="/menu" element={<DigitalMenuDisplay />} />
         <Route path="/digital-menu" element={<DigitalMenuDisplay />} />
         <Route path="/careers" element={<><CareersPage /><Footer /></>} />
+        <Route path="/meal-prep" element={<><MealPrepPage /><Footer /></>} />
         <Route path="/blog" element={<><BlogPage /><Footer /></>} />
         <Route path="/blog/:slug" element={<><BlogPostPage /><Footer /></>} />
         <Route path="/dashboard" element={isAdmin || isMarketing || isStaff || isManager ? <DashboardLayout user={user} /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>}>

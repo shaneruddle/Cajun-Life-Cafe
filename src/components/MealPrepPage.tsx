@@ -76,10 +76,10 @@ export default function MealPrepPage() {
               Meal Prep
             </span>
             <h1 className="text-4xl md:text-6xl font-display font-bold mb-6 leading-tight">
-              Fuel your week.<br />We\'ve got the kitchen.
+              Fuel your week.<br />We've got the kitchen.
             </h1>
             <p className="text-xl text-white/70 max-w-xl mx-auto leading-relaxed">
-              Clean, macro-tracked meals built to your spec — prepped fresh and delivered to your door. Message us on LINE and we\'ll sort the rest.
+              Clean, macro-tracked meals built to your spec — prepped fresh and delivered to your door. Message us on LINE and we'll sort the rest.
             </p>
             <div className="mt-10">
               <a
@@ -157,7 +157,7 @@ export default function MealPrepPage() {
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-display font-bold mb-4">Build Your Prep Meals</h2>
             <p className="text-lg text-gray-600 italic max-w-2xl mx-auto">
-              Choose your ingredients and message us on LINE with your selection. We\'ll confirm portions, days, and pricing.
+              Choose your ingredients and message us on LINE with your selection. We'll confirm portions, days, and pricing.
             </p>
             <div className="h-1 w-24 bg-terracotta mx-auto mt-6 rounded-full" />
           </div>
