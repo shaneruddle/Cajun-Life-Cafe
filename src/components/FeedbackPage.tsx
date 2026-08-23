@@ -66,7 +66,7 @@ export default function FeedbackPage() {
           {contact && (
             <div className="bg-cream rounded-2xl p-4 text-sm text-gray-500">
               <Gift size={16} className="inline mr-2 text-terracotta" />
-              We have your contact details. If your feedback is selected for the <strong className="text-terracotta">฿300 gift voucher</strong>, we\'ll be in touch.
+              We have your contact details. If your feedback is selected for the <strong className="text-terracotta">฿300 gift voucher</strong>, we'll be in touch.
             </div>
           )}
         </motion.div>
@@ -116,7 +116,7 @@ export default function FeedbackPage() {
 
             {/* Category */}
             <div>
-              <label className="block text-sm font-bold text-ink mb-4 uppercase tracking-wider">What\'s your feedback about?</label>
+              <label className="block text-sm font-bold text-ink mb-4 uppercase tracking-wider">What's your feedback about?</label>
               <div className="grid grid-cols-2 gap-3">
                 {CATEGORIES.map(({ value, label, emoji }) => (
                   <button
