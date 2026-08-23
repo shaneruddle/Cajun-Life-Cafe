@@ -72,6 +72,7 @@ import MealPrepPage from "./components/MealPrepPage";
 import LoyaltyPage from "./components/LoyaltyPage";
 import InfluencerPage from "./components/InfluencerPage";
 import FeedbackPage from "./components/FeedbackPage";
+import HealthyEatingPage from "./components/HealthyEatingPage";
 
 const BUSINESS = {
   name: "Cajun Life Cafe",
@@ -475,6 +476,7 @@ const Footer = () => (
           <li><a href="#menu" className="hover:text-white transition-colors">Menu</a></li>
           <li><Link to="/menu" className="hover:text-white transition-colors">Digital Menu</Link></li>
           <li><Link to="/meal-prep" className="hover:text-white transition-colors">Meal Prep</Link></li>
+          <li><Link to="/healthy-eating" className="hover:text-white transition-colors">Healthy Eating Guide</Link></li>
           <li><Link to="/loyalty" className="hover:text-white transition-colors">Loyalty Program</Link></li>
           <li><a href="#about" className="hover:text-white transition-colors">Our Story</a></li>
           <li><a href="#location" className="hover:text-white transition-colors">Location</a></li>
@@ -526,6 +528,7 @@ function AppContent({ user, setUser }: any) {
   const isLoyaltyPage = location.pathname === "/loyalty";
   const isInfluencer = location.pathname === "/influencers";
   const isFeedback = location.pathname === "/feedback";
+  const isHealthyEating = location.pathname === "/healthy-eating";
 
   const isAdmin = useMemo(() => {
     if (!user) return false;
@@ -551,7 +554,7 @@ function AppContent({ user, setUser }: any) {
           </button>
         </div>
       )}
-      {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && !isCareers && !isBlog && !isOrder && !isMealPrep && !isLoyaltyPage && !isInfluencer && !isFeedback && <Navbar canAccessDashboard={isMarketing} canAccessStaffPortal={isCashier || isManager} setUser={setUser} />}
+      {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && !isCareers && !isBlog && !isOrder && !isMealPrep && !isLoyaltyPage && !isInfluencer && !isFeedback && !isHealthyEating && <Navbar canAccessDashboard={isMarketing} canAccessStaffPortal={isCashier || isManager} setUser={setUser} />}
       <Routes>
         <Route path="/" element={<MainSite isAdmin={isAdmin} />} />
         <Route path="/menu" element={<DigitalMenuDisplay />} />
@@ -561,6 +564,7 @@ function AppContent({ user, setUser }: any) {
         <Route path="/loyalty" element={<><LoyaltyPage /><Footer /></>} />
         <Route path="/influencers" element={<><InfluencerPage /><Footer /></>} />
         <Route path="/feedback" element={<><FeedbackPage /><Footer /></>} />
+        <Route path="/healthy-eating" element={<><HealthyEatingPage /><Footer /></>} />
         <Route path="/blog" element={<><BlogPage /><Footer /></>} />
         <Route path="/blog/:slug" element={<><BlogPostPage /><Footer /></>} />
         <Route path="/dashboard" element={isAdmin || isMarketing || isStaff || isManager ? <DashboardLayout user={user} /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>}>
