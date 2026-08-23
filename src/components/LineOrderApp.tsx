@@ -23,8 +23,41 @@ import { normalizeImageUrl } from "../utils/images";
 import { FirebaseImage } from "./ui/FirebaseImage";
 import { ShoppingBag, Plus, Minus, X, MapPin, Loader2 } from "lucide-react";
 
+// A selectable price variant on a regular menu item — e.g. Tom Yam's
+// Chicken/Prawn/Seafood options, stored as the existing price/priceLabel,
+// price2/price2Label, price3/price3Label, price4/price4Label fields (already
+// used to display these as extra labeled lines on the Digital Menu — see
+// MenuItemCard.tsx/DigitalMenuDisplay.tsx's renderPrice). An item with only
+// one populated price has no real "choice" to make, so it's treated as a
+// single default option with an empty label, keeping the rest of the cart
+// logic uniform whether or not an item has options.
+interface ItemOption {
+  index: number;
+  label: string;
+  price: number;
+}
+
+const getItemOptions = (item: MenuItem): ItemOption[] => {
+  const candidates: Array<{ raw?: string; label?: string }> = [
+    { raw: item.price, label: item.priceLabel },
+    { raw: item.price2, label: item.price2Label },
+    { raw: item.price3, label: item.price3Label },
+    { raw: item.price4, label: item.price4Label },
+  ];
+  const options: ItemOption[] = [];
+  candidates.forEach((c, index) => {
+    if (c.raw && c.raw.trim() !== "") {
+      options.push({ index, label: (c.label || "").trim(), price: parseFloat(c.raw.replace("฿", "")) || 0 });
+    }
+  });
+  return options;
+};
+
 interface CartLine {
   item: MenuItem;
+  optionIndex: number;
+  optionLabel: string; // "" when the item has no distinct options
+  unitPrice: number;
   qty: number;
 }
 
@@ -68,6 +101,12 @@ const LineOrderApp = () => {
   const [menuDebug, setMenuDebug] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("");
   const [cart, setCart] = useState<Record<string, CartLine>>({});
+
+  // ── Option picker (items with multiple price/label variants, e.g. Tom
+  // Yam's Chicken/Prawn/Seafood — see getItemOptions) ─────────────────
+  const [optionPickerFor, setOptionPickerFor] = useState<string | null>(null);
+  const [pickerOption, setPickerOption] = useState<ItemOption | null>(null);
+  const [pickerQty, setPickerQty] = useState(1);
 
   const [customMeals, setCustomMeals] = useState<CustomMealItem[]>([]);
   const [activeCustomType, setActiveCustomType] = useState("All");
@@ -256,16 +295,25 @@ const LineOrderApp = () => {
   }, [lineUserId, addressLoaded]);
 
   // ── Cart ─────────────────────────────────────────────────────────
-  const addToCart = useCallback((item: MenuItem, delta: number) => {
+  // `option` picks which price/label variant this line is for (see
+  // getItemOptions) — omit it for a plain single-price item, or when
+  // adjusting qty on a cart line that's already resolved to one option.
+  // Each option gets its own cart line (keyed by item id + option index) so
+  // e.g. Tom Yam (Chicken) and Tom Yam (Prawn) can both sit in the cart at
+  // once, each at the right price.
+  const addToCart = useCallback((item: MenuItem, delta: number, option?: ItemOption) => {
     setCart((prev) => {
-      const id = item.id!;
-      const existingQty = prev[id]?.qty || 0;
+      const opts = getItemOptions(item);
+      const chosen = option || opts[0];
+      if (!chosen) return prev;
+      const key = `${item.id}::${chosen.index}`;
+      const existingQty = prev[key]?.qty || 0;
       const nextQty = Math.max(0, existingQty + delta);
       if (nextQty === 0) {
-        const { [id]: _drop, ...rest } = prev;
+        const { [key]: _drop, ...rest } = prev;
         return rest;
       }
-      return { ...prev, [id]: { item, qty: nextQty } };
+      return { ...prev, [key]: { item, optionIndex: chosen.index, optionLabel: chosen.label, unitPrice: chosen.price, qty: nextQty } };
     });
   }, []);
 
@@ -276,10 +324,29 @@ const LineOrderApp = () => {
   );
   const cartTotal = useMemo(
     () =>
-      cartLines.reduce((s, l) => s + (parseFloat(l.item.price.replace("฿", "")) || 0) * l.qty, 0) +
+      cartLines.reduce((s, l) => s + l.unitPrice * l.qty, 0) +
       customCart.reduce((s, l) => s + l.unitPrice * l.qty, 0),
     [cartLines, customCart]
   );
+
+  const openOptionPicker = useCallback((item: MenuItem) => {
+    const opts = getItemOptions(item);
+    setOptionPickerFor(item.id!);
+    setPickerOption(opts[0] || null);
+    setPickerQty(1);
+  }, []);
+
+  const closeOptionPicker = useCallback(() => {
+    setOptionPickerFor(null);
+    setPickerOption(null);
+    setPickerQty(1);
+  }, []);
+
+  const confirmOptionAdd = useCallback((item: MenuItem) => {
+    if (!pickerOption) return;
+    addToCart(item, pickerQty, pickerOption);
+    closeOptionPicker();
+  }, [pickerOption, pickerQty, addToCart, closeOptionPicker]);
 
   // ── Build Your Own: toggle ingredient options, bundle a build into one
   // cart line ─────────────────────────────────────────────────────────
@@ -370,9 +437,9 @@ const LineOrderApp = () => {
     try {
       const orderItems = [
         ...cartLines.map((l) => ({
-          name: l.item.name,
+          name: l.optionLabel ? `${l.item.name} (${l.optionLabel})` : l.item.name,
           qty: l.qty,
-          unitPrice: parseFloat(l.item.price.replace("฿", "")) || 0
+          unitPrice: l.unitPrice
         })),
         ...customCart.map((l) => ({
           name: `Custom Meal: ${l.label}`,
@@ -451,19 +518,22 @@ const LineOrderApp = () => {
         </header>
         <main className="flex-1 overflow-y-auto p-4 space-y-4">
           <div className="card p-4 space-y-3">
-            {cartLines.map((l) => (
-              <div key={l.item.id} className="flex items-center justify-between gap-3">
-                <div className="flex-1">
-                  <p className="font-medium text-ink text-sm">{l.item.name}</p>
-                  <p className="text-xs text-gray-400">฿{l.item.price.replace("฿", "")} each</p>
+            {cartLines.map((l) => {
+              const opt = { index: l.optionIndex, label: l.optionLabel, price: l.unitPrice };
+              return (
+                <div key={`${l.item.id}-${l.optionIndex}`} className="flex items-center justify-between gap-3">
+                  <div className="flex-1">
+                    <p className="font-medium text-ink text-sm">{l.item.name}{l.optionLabel ? ` (${l.optionLabel})` : ""}</p>
+                    <p className="text-xs text-gray-400">฿{l.unitPrice} each</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => addToCart(l.item, -1, opt)} className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center"><Minus className="w-3 h-3" /></button>
+                    <span className="w-5 text-center text-sm font-bold">{l.qty}</span>
+                    <button onClick={() => addToCart(l.item, 1, opt)} className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center"><Plus className="w-3 h-3" /></button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => addToCart(l.item, -1)} className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center"><Minus className="w-3 h-3" /></button>
-                  <span className="w-5 text-center text-sm font-bold">{l.qty}</span>
-                  <button onClick={() => addToCart(l.item, 1)} className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center"><Plus className="w-3 h-3" /></button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {customCart.map((l) => (
               <div key={l.id} className="flex items-center justify-between gap-3">
                 <div className="flex-1">
@@ -636,40 +706,109 @@ const LineOrderApp = () => {
               <h2 className="text-sm font-bold text-ink mb-2 px-1">{cat}</h2>
               <div className="space-y-3">
                 {itemsByCategory[cat].map((item) => {
-                  const qty = cart[item.id!]?.qty || 0;
+                  const itemOptions = getItemOptions(item);
+                  const isMulti = itemOptions.length > 1;
+                  const qty = isMulti
+                    ? itemOptions.reduce((s, o) => s + (cart[`${item.id}::${o.index}`]?.qty || 0), 0)
+                    : cart[`${item.id}::${itemOptions[0]?.index ?? 0}`]?.qty || 0;
+                  const pickerOpen = optionPickerFor === item.id;
                   return (
-                    <div key={item.id} className="card p-3 flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-ink text-sm">{item.name}</p>
-                        {item.description && (
-                          <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{item.description}</p>
-                        )}
-                        <p className="text-terracotta font-bold text-sm mt-1">฿{item.price.replace("฿", "")}</p>
+                    <div key={item.id} className="card p-3">
+                      <div
+                        className={`flex items-center gap-3 ${isMulti ? "cursor-pointer" : ""}`}
+                        onClick={isMulti ? () => (pickerOpen ? closeOptionPicker() : openOptionPicker(item)) : undefined}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-ink text-sm">{item.name}</p>
+                          {item.description && (
+                            <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{item.description}</p>
+                          )}
+                          {isMulti ? (
+                            <p className="text-terracotta font-bold text-sm mt-1">
+                              from ฿{Math.min(...itemOptions.map((o) => o.price))}
+                            </p>
+                          ) : (
+                            <p className="text-terracotta font-bold text-sm mt-1">฿{item.price.replace("฿", "")}</p>
+                          )}
+                        </div>
+                        <div className="relative flex-shrink-0">
+                          <FirebaseImage
+                            src={normalizeImageUrl(item.primaryPhotoPath || item.image)}
+                            fallbackSrc="/logo.png"
+                            alt={item.name}
+                            className="w-20 h-20 rounded-2xl object-cover"
+                            aspectRatio="1/1"
+                          />
+                          {isMulti ? (
+                            <div
+                              className={`absolute -bottom-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center shadow-md ${
+                                qty > 0 ? "bg-terracotta text-white text-xs font-bold" : "bg-white border border-gray-100"
+                              }`}
+                            >
+                              {qty > 0 ? qty : <Plus className="w-4 h-4 text-terracotta" />}
+                            </div>
+                          ) : qty === 0 ? (
+                            <button
+                              onClick={() => addToCart(item, 1)}
+                              aria-label={`Add ${item.name}`}
+                              className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-terracotta text-white flex items-center justify-center shadow-md"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <div className="absolute -bottom-2 -right-2 bg-white rounded-full shadow-md border border-gray-100 flex items-center gap-0.5 px-1 py-0.5">
+                              <button onClick={() => addToCart(item, -1)} className="w-6 h-6 rounded-full flex items-center justify-center"><Minus className="w-3 h-3" /></button>
+                              <span className="text-xs font-bold w-4 text-center">{qty}</span>
+                              <button onClick={() => addToCart(item, 1)} className="w-6 h-6 rounded-full bg-terracotta text-white flex items-center justify-center"><Plus className="w-3 h-3" /></button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="relative flex-shrink-0">
-                        <FirebaseImage
-                          src={normalizeImageUrl(item.primaryPhotoPath || item.image)}
-                          fallbackSrc="/logo.png"
-                          alt={item.name}
-                          className="w-20 h-20 rounded-2xl object-cover"
-                          aspectRatio="1/1"
-                        />
-                        {qty === 0 ? (
-                          <button
-                            onClick={() => addToCart(item, 1)}
-                            aria-label={`Add ${item.name}`}
-                            className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-terracotta text-white flex items-center justify-center shadow-md"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
-                        ) : (
-                          <div className="absolute -bottom-2 -right-2 bg-white rounded-full shadow-md border border-gray-100 flex items-center gap-0.5 px-1 py-0.5">
-                            <button onClick={() => addToCart(item, -1)} className="w-6 h-6 rounded-full flex items-center justify-center"><Minus className="w-3 h-3" /></button>
-                            <span className="text-xs font-bold w-4 text-center">{qty}</span>
-                            <button onClick={() => addToCart(item, 1)} className="w-6 h-6 rounded-full bg-terracotta text-white flex items-center justify-center"><Plus className="w-3 h-3" /></button>
+
+                      {isMulti && pickerOpen && (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {itemOptions.map((opt) => {
+                              const selected = pickerOption?.index === opt.index;
+                              return (
+                                <button
+                                  key={opt.index}
+                                  onClick={() => setPickerOption(opt)}
+                                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                    selected ? "bg-terracotta border-terracotta text-white" : "bg-white border-gray-200 text-ink"
+                                  }`}
+                                >
+                                  {opt.label ? `${opt.label} - ` : ""}฿{opt.price}
+                                </button>
+                              );
+                            })}
                           </div>
-                        )}
-                      </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setPickerQty((q) => Math.max(1, q - 1))}
+                                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="w-5 text-center text-sm font-bold">{pickerQty}</span>
+                              <button
+                                onClick={() => setPickerQty((q) => q + 1)}
+                                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => confirmOptionAdd(item)}
+                              disabled={!pickerOption}
+                              className="bg-terracotta text-white text-xs font-bold px-4 py-2 rounded-full disabled:opacity-40"
+                            >
+                              Add to Cart
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
