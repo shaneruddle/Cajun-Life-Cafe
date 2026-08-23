@@ -227,6 +227,7 @@ const Navbar = ({
             fallbackSrc="/logo.png"
             alt={BUSINESS.name}
             className="w-11 h-11 rounded-xl object-cover"
+            priority
           />
         </Link>
         <div className="hidden lg:flex space-x-8 items-center">
