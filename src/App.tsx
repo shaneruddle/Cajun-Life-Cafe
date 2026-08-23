@@ -255,7 +255,6 @@ const Navbar = ({
                   <Receipt size={16} /> Staff Portal
                 </Link>
               )}
-              <Auth onUserChange={setUser} />
             </>
           ) : (
             <div className="flex items-center gap-4">
@@ -285,7 +284,6 @@ const Navbar = ({
                     </div>
                   </div>
                 ))}
-                <Auth onUserChange={setUser} />
                 {canAccessDashboard && (
                   <Link to="/dashboard" className="flex items-center gap-2 text-lg font-medium text-olive" onClick={() => setIsOpen(false)}>
                     <Settings size={18} /> Dashboard
@@ -650,14 +648,7 @@ function AppContent({ user, setUser }: any) {
   const isDigitalMenu = location.pathname === "/menu" || location.pathname === "/digital-menu";
   const isDashboard = location.pathname.startsWith("/dashboard") || location.pathname === "/import" || location.pathname === "/import-custom-meals";
   const isActivate = location.pathname.startsWith("/activate");
-  const isCareers = location.pathname === "/careers";
-  const isBlog = location.pathname === "/blog" || location.pathname.startsWith("/blog/");
   const isOrder = location.pathname === "/order";
-  const isMealPrep = location.pathname === "/meal-prep";
-  const isLoyaltyPage = location.pathname === "/loyalty";
-  const isInfluencer = location.pathname === "/influencers";
-  const isFeedback = location.pathname === "/feedback";
-  const isHealthyEating = location.pathname === "/healthy-eating";
 
   const isAdmin = useMemo(() => {
     if (!user) return false;
@@ -683,7 +674,7 @@ function AppContent({ user, setUser }: any) {
           </button>
         </div>
       )}
-      {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && !isCareers && !isBlog && !isOrder && !isMealPrep && !isLoyaltyPage && !isInfluencer && !isFeedback && !isHealthyEating && <Navbar canAccessDashboard={isMarketing} canAccessStaffPortal={isCashier || isManager} setUser={setUser} />}
+      {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && !isOrder && <Navbar canAccessDashboard={isMarketing} canAccessStaffPortal={isCashier || isManager} setUser={setUser} />}
       <Routes>
         <Route path="/" element={<MainSite isAdmin={isAdmin} />} />
         <Route path="/menu" element={<DigitalMenuDisplay />} />
