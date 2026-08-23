@@ -227,7 +227,7 @@ const Navbar = ({
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute left-1/2 -translate-x-1/2 top-full mt-4 w-[680px] max-w-[90vw] bg-white rounded-[24px] shadow-2xl border border-gray-100 p-8 grid grid-cols-4 gap-8"
+                      className="absolute right-0 top-full mt-4 w-[680px] max-w-[90vw] bg-white rounded-[24px] shadow-2xl border border-gray-100 p-8 grid grid-cols-4 gap-8"
                     >
                       {megaGroups.map((group) => (
                         <div key={group.title}>
