@@ -9,14 +9,15 @@
 //
 // V1 scope: published `menu` items with a quantity stepper, delivery address
 // (prefilled from crm_customers if this LINE user has ordered/enrolled
-// before), and a "Build Your Own" bowl configurator is NOT included yet —
-// same categories/items as DigitalMenu, just with quantities added, kept
-// deliberately small for a first pass (fast-follow, not forgotten).
+// before). "Build Your Own" (custom ingredient meals) added as a fast-follow -
+// same freeform ingredient picker as the main digital menu's configurator,
+// but each finished build bundles into a single cart line (see
+// addCustomToCart) rather than the main menu's freeform running total.
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
-import { MenuItem, Category } from "../types";
+import { MenuItem, Category, CustomMealItem } from "../types";
 import { handleFirestoreError } from "../utils/firestore";
 import { normalizeImageUrl } from "../utils/images";
 import { FirebaseImage } from "./ui/FirebaseImage";
@@ -24,6 +25,33 @@ import { ShoppingBag, Plus, Minus, X, MapPin, Loader2 } from "lucide-react";
 
 interface CartLine {
   item: MenuItem;
+  qty: number;
+}
+
+// One toggled ingredient option within an in-progress "Build Your Own" build.
+interface CustomSelection {
+  itemId: string;
+  itemName: string;
+  optionIndex: number;
+  weight: string;
+  price: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+// One finished "Build Your Own" build, bundled into a single cart entry -
+// per Shane's call: a whole build is one line (e.g. "Custom Meal - 275 baht"),
+// not one line per ingredient, so a customer can add several different
+// custom meals to the same order.
+interface CustomCartLine {
+  id: string;
+  label: string;
+  ingredients: CustomSelection[];
+  unitPrice: number;
+  calories: number;
+  protein: number;
   qty: number;
 }
 
@@ -40,6 +68,11 @@ const LineOrderApp = () => {
   const [menuDebug, setMenuDebug] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("");
   const [cart, setCart] = useState<Record<string, CartLine>>({});
+
+  const [customMeals, setCustomMeals] = useState<CustomMealItem[]>([]);
+  const [activeCustomType, setActiveCustomType] = useState("All");
+  const [customSelected, setCustomSelected] = useState<CustomSelection[]>([]);
+  const [customCart, setCustomCart] = useState<CustomCartLine[]>([]);
 
   const [addressText, setAddressText] = useState("");
   const [addressNotes, setAddressNotes] = useState("");
@@ -109,6 +142,19 @@ const LineOrderApp = () => {
     return () => unsub();
   }, []);
 
+  // "Build Your Own" ingredient list - same collection/shape the main
+  // digital menu's configurator reads (see BuildYourOwn.tsx/DigitalMenu.tsx).
+  useEffect(() => {
+    const q = query(collection(db, "custom_meals"), orderBy("order", "asc"));
+    const unsub = onSnapshot(q, (snap) => {
+      setCustomMeals(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as CustomMealItem[]);
+    }, (err) => {
+      try { handleFirestoreError(err, "list", "custom_meals"); }
+      catch (e) { setMenuDebug(`custom_meals: ${e instanceof Error ? e.message : String(e)}`); }
+    });
+    return () => unsub();
+  }, []);
+
   const categories = useMemo(() => {
     const itemCats = Array.from(new Set(items.map((i) => i.category)));
     const definedCats = categoryList.map((c) => c.name);
@@ -130,15 +176,23 @@ const LineOrderApp = () => {
     [categories, itemsByCategory]
   );
 
+  // "Build Your Own" rendered as one more section/pill tacked onto the end
+  // of the same continuous scroll - everywhere the page tracks "which
+  // section pill is active" uses this list, not visibleCategories alone.
+  const allSections = useMemo(
+    () => (customMeals.length > 0 ? [...visibleCategories, "Build Your Own"] : visibleCategories),
+    [visibleCategories, customMeals]
+  );
+
   useEffect(() => {
-    if (!activeCategory && visibleCategories.length > 0) setActiveCategory(visibleCategories[0]);
-  }, [visibleCategories, activeCategory]);
+    if (!activeCategory && allSections.length > 0) setActiveCategory(allSections[0]);
+  }, [allSections, activeCategory]);
 
   // Sticky header (title + pill row) height changes as categories load in —
   // re-measure so section scroll-margin/scroll-spy math stays accurate.
   useEffect(() => {
     if (headerRef.current) setHeaderHeight(headerRef.current.offsetHeight);
-  }, [visibleCategories]);
+  }, [allSections]);
 
   // Keep the active pill scrolled into view in the horizontal pill row.
   useEffect(() => {
@@ -151,15 +205,15 @@ const LineOrderApp = () => {
   const handleMenuScroll = useCallback(() => {
     if (isProgrammaticScroll.current) return;
     const container = mainRef.current;
-    if (!container || visibleCategories.length === 0) return;
+    if (!container || allSections.length === 0) return;
     const scrollTop = container.scrollTop;
-    let current = visibleCategories[0];
-    for (const cat of visibleCategories) {
+    let current = allSections[0];
+    for (const cat of allSections) {
       const el = sectionRefs.current[cat];
       if (el && el.offsetTop - headerHeight - 16 <= scrollTop) current = cat;
     }
     setActiveCategory((prev) => (prev === current ? prev : current));
-  }, [visibleCategories, headerHeight]);
+  }, [allSections, headerHeight]);
 
   // Tapping a pill jump-scrolls the page to that category's section.
   const scrollToCategory = useCallback((cat: string) => {
@@ -209,22 +263,116 @@ const LineOrderApp = () => {
   }, []);
 
   const cartLines = useMemo(() => Object.values(cart), [cart]);
-  const cartCount = useMemo(() => cartLines.reduce((s, l) => s + l.qty, 0), [cartLines]);
-  const cartTotal = useMemo(
-    () => cartLines.reduce((s, l) => s + (parseFloat(l.item.price.replace("฿", "")) || 0) * l.qty, 0),
-    [cartLines]
+  const cartCount = useMemo(
+    () => cartLines.reduce((s, l) => s + l.qty, 0) + customCart.reduce((s, l) => s + l.qty, 0),
+    [cartLines, customCart]
   );
+  const cartTotal = useMemo(
+    () =>
+      cartLines.reduce((s, l) => s + (parseFloat(l.item.price.replace("฿", "")) || 0) * l.qty, 0) +
+      customCart.reduce((s, l) => s + l.unitPrice * l.qty, 0),
+    [cartLines, customCart]
+  );
+
+  // ── Build Your Own: toggle ingredient options, bundle a build into one
+  // cart line ─────────────────────────────────────────────────────────
+  const customMealTypes = useMemo(() => {
+    const types = Array.from(new Set(customMeals.map((i) => i.type)));
+    return ["All", ...types.sort()];
+  }, [customMeals]);
+
+  const filteredCustomMeals = useMemo(() => {
+    if (activeCustomType === "All") return customMeals;
+    return customMeals.filter((i) => i.type === activeCustomType);
+  }, [customMeals, activeCustomType]);
+
+  const customSelectedTotals = useMemo(
+    () =>
+      customSelected.reduce(
+        (acc, s) => ({
+          price: acc.price + s.price,
+          calories: acc.calories + s.calories,
+          protein: acc.protein + s.protein
+        }),
+        { price: 0, calories: 0, protein: 0 }
+      ),
+    [customSelected]
+  );
+
+  const isCustomSelected = useCallback(
+    (itemId: string, optionIndex: number) =>
+      customSelected.some((s) => s.itemId === itemId && s.optionIndex === optionIndex),
+    [customSelected]
+  );
+
+  const toggleCustomIngredient = useCallback((item: CustomMealItem, optionIndex: number) => {
+    const option = item.options[optionIndex];
+    setCustomSelected((prev) => {
+      const existingIndex = prev.findIndex((s) => s.itemId === item.id && s.optionIndex === optionIndex);
+      if (existingIndex > -1) return prev.filter((_, i) => i !== existingIndex);
+      return [
+        ...prev,
+        {
+          itemId: item.id!,
+          itemName: item.name,
+          optionIndex,
+          weight: option.weight,
+          price: option.price,
+          calories: option.calories,
+          protein: option.protein,
+          carbs: option.carbs,
+          fat: option.fat
+        }
+      ];
+    });
+  }, []);
+
+  // Bundles the in-progress ingredient selection into one cart line (a
+  // readable ingredient list is built now, while we still have the names,
+  // so the kitchen/Flex Message can show exactly what to make - see
+  // handleReviewSend) and clears the picker so a second custom meal can be
+  // built and added separately.
+  const addCustomToCart = useCallback(() => {
+    if (customSelected.length === 0) return;
+    const label = customSelected.map((s) => `${s.itemName} ${s.weight}`).join(", ");
+    setCustomCart((prev) => [
+      ...prev,
+      {
+        id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        label,
+        ingredients: customSelected,
+        unitPrice: customSelectedTotals.price,
+        calories: customSelectedTotals.calories,
+        protein: customSelectedTotals.protein,
+        qty: 1
+      }
+    ]);
+    setCustomSelected([]);
+  }, [customSelected, customSelectedTotals]);
+
+  const adjustCustomCartQty = useCallback((id: string, delta: number) => {
+    setCustomCart((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, qty: Math.max(0, l.qty + delta) } : l)).filter((l) => l.qty > 0)
+    );
+  }, []);
 
   // ── Submit: create draft order, send Flex Message into the chat ────
   const handleReviewSend = useCallback(async () => {
-    if (!lineUserId || cartLines.length === 0) return;
+    if (!lineUserId || (cartLines.length === 0 && customCart.length === 0)) return;
     setStage("sending");
     try {
-      const orderItems = cartLines.map((l) => ({
-        name: l.item.name,
-        qty: l.qty,
-        unitPrice: parseFloat(l.item.price.replace("฿", "")) || 0
-      }));
+      const orderItems = [
+        ...cartLines.map((l) => ({
+          name: l.item.name,
+          qty: l.qty,
+          unitPrice: parseFloat(l.item.price.replace("฿", "")) || 0
+        })),
+        ...customCart.map((l) => ({
+          name: `Custom Meal: ${l.label}`,
+          qty: l.qty,
+          unitPrice: l.unitPrice
+        }))
+      ];
       const draftResp = await fetch("/api/orders/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -254,7 +402,7 @@ const LineOrderApp = () => {
       setErrorMsg("Couldn't send your order — please reopen this from the Cajun Life LINE chat and try again.");
       setStage("error");
     }
-  }, [lineUserId, cartLines, addressText, addressNotes, orderNotes, liffModule]);
+  }, [lineUserId, cartLines, customCart, addressText, addressNotes, orderNotes, liffModule]);
 
   // ── Render ───────────────────────────────────────────────────────
   if (stage === "loading") {
@@ -306,6 +454,20 @@ const LineOrderApp = () => {
                   <button onClick={() => addToCart(l.item, -1)} className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center"><Minus className="w-3 h-3" /></button>
                   <span className="w-5 text-center text-sm font-bold">{l.qty}</span>
                   <button onClick={() => addToCart(l.item, 1)} className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center"><Plus className="w-3 h-3" /></button>
+                </div>
+              </div>
+            ))}
+            {customCart.map((l) => (
+              <div key={l.id} className="flex items-center justify-between gap-3">
+                <div className="flex-1">
+                  <p className="font-medium text-ink text-sm">Custom Meal</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{l.label}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">฿{l.unitPrice} each</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => adjustCustomCartQty(l.id, -1)} className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center"><Minus className="w-3 h-3" /></button>
+                  <span className="w-5 text-center text-sm font-bold">{l.qty}</span>
+                  <button onClick={() => adjustCustomCartQty(l.id, 1)} className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center"><Plus className="w-3 h-3" /></button>
                 </div>
               </div>
             ))}
@@ -378,7 +540,7 @@ const LineOrderApp = () => {
           <h1 className="text-lg font-display font-bold text-terracotta text-center">Cajun Life — Order Food</h1>
         </header>
         <div className="flex overflow-x-auto gap-2 px-4 pb-3 no-scrollbar">
-          {visibleCategories.map((cat) => (
+          {allSections.map((cat) => (
             <button
               key={cat}
               ref={(el) => { pillRefs.current[cat] = el; }}
@@ -394,56 +556,121 @@ const LineOrderApp = () => {
       </div>
 
       <main ref={mainRef} onScroll={handleMenuScroll} className="flex-1 overflow-y-auto px-4 pt-2 pb-28 space-y-6">
-        {visibleCategories.map((cat) => (
-          <div
-            key={cat}
-            ref={(el) => { sectionRefs.current[cat] = el; }}
-            style={{ scrollMarginTop: headerHeight + 8 }}
-          >
-            <h2 className="text-sm font-bold text-ink mb-2 px-1">{cat}</h2>
-            <div className="space-y-3">
-              {itemsByCategory[cat].map((item) => {
-                const qty = cart[item.id!]?.qty || 0;
-                return (
-                  <div key={item.id} className="card p-3 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-ink text-sm">{item.name}</p>
-                      {item.description && (
-                        <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{item.description}</p>
-                      )}
-                      <p className="text-terracotta font-bold text-sm mt-1">฿{item.price.replace("฿", "")}</p>
-                    </div>
-                    <div className="relative flex-shrink-0">
-                      <FirebaseImage
-                        src={normalizeImageUrl(item.primaryPhotoPath || item.image)}
-                        fallbackSrc="/logo.png"
-                        alt={item.name}
-                        className="w-20 h-20 rounded-2xl object-cover"
-                        aspectRatio="1/1"
-                      />
-                      {qty === 0 ? (
-                        <button
-                          onClick={() => addToCart(item, 1)}
-                          aria-label={`Add ${item.name}`}
-                          className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-terracotta text-white flex items-center justify-center shadow-md"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      ) : (
-                        <div className="absolute -bottom-2 -right-2 bg-white rounded-full shadow-md border border-gray-100 flex items-center gap-0.5 px-1 py-0.5">
-                          <button onClick={() => addToCart(item, -1)} className="w-6 h-6 rounded-full flex items-center justify-center"><Minus className="w-3 h-3" /></button>
-                          <span className="text-xs font-bold w-4 text-center">{qty}</span>
-                          <button onClick={() => addToCart(item, 1)} className="w-6 h-6 rounded-full bg-terracotta text-white flex items-center justify-center"><Plus className="w-3 h-3" /></button>
-                        </div>
-                      )}
+        {allSections.map((cat) =>
+          cat === "Build Your Own" ? (
+            <div
+              key={cat}
+              ref={(el) => { sectionRefs.current[cat] = el; }}
+              style={{ scrollMarginTop: headerHeight + 8 }}
+            >
+              <h2 className="text-sm font-bold text-ink mb-1 px-1">Build Your Own</h2>
+              <p className="text-xs text-gray-400 mb-3 px-1">Mix and match ingredients to build a custom high-protein meal.</p>
+
+              <div className="flex overflow-x-auto gap-2 mb-3 no-scrollbar">
+                {customMealTypes.map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setActiveCustomType(type)}
+                    className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                      activeCustomType === type ? "bg-olive border-olive text-white" : "bg-white border-gray-200 text-gray-500"
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+
+              {customSelected.length > 0 && (
+                <div className="card p-3 mb-3 bg-ink text-white flex items-center justify-between gap-3">
+                  <div className="text-xs">
+                    <div className="font-bold">{customSelected.length} ingredient{customSelected.length > 1 ? "s" : ""} selected</div>
+                    <div className="text-white/60">{customSelectedTotals.calories} cal - {customSelectedTotals.protein}g protein</div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="font-bold text-terracotta">฿{customSelectedTotals.price}</span>
+                    <button onClick={addCustomToCart} className="bg-terracotta text-white text-xs font-bold px-3 py-2 rounded-full">
+                      Add to Cart
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {filteredCustomMeals.map((item) => (
+                  <div key={item.id} className="card p-3">
+                    <p className="font-medium text-ink text-sm mb-2">{item.name}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {item.options.map((opt, idx) => {
+                        const selected = isCustomSelected(item.id!, idx);
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => toggleCustomIngredient(item, idx)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium border flex items-center gap-1.5 transition-all ${
+                              selected ? "bg-terracotta border-terracotta text-white" : "bg-white border-gray-200 text-ink"
+                            }`}
+                          >
+                            {selected ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                            {opt.weight} - ฿{opt.price}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-        {visibleCategories.length === 0 && (
+          ) : (
+            <div
+              key={cat}
+              ref={(el) => { sectionRefs.current[cat] = el; }}
+              style={{ scrollMarginTop: headerHeight + 8 }}
+            >
+              <h2 className="text-sm font-bold text-ink mb-2 px-1">{cat}</h2>
+              <div className="space-y-3">
+                {itemsByCategory[cat].map((item) => {
+                  const qty = cart[item.id!]?.qty || 0;
+                  return (
+                    <div key={item.id} className="card p-3 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-ink text-sm">{item.name}</p>
+                        {item.description && (
+                          <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{item.description}</p>
+                        )}
+                        <p className="text-terracotta font-bold text-sm mt-1">฿{item.price.replace("฿", "")}</p>
+                      </div>
+                      <div className="relative flex-shrink-0">
+                        <FirebaseImage
+                          src={normalizeImageUrl(item.primaryPhotoPath || item.image)}
+                          fallbackSrc="/logo.png"
+                          alt={item.name}
+                          className="w-20 h-20 rounded-2xl object-cover"
+                          aspectRatio="1/1"
+                        />
+                        {qty === 0 ? (
+                          <button
+                            onClick={() => addToCart(item, 1)}
+                            aria-label={`Add ${item.name}`}
+                            className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-terracotta text-white flex items-center justify-center shadow-md"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <div className="absolute -bottom-2 -right-2 bg-white rounded-full shadow-md border border-gray-100 flex items-center gap-0.5 px-1 py-0.5">
+                            <button onClick={() => addToCart(item, -1)} className="w-6 h-6 rounded-full flex items-center justify-center"><Minus className="w-3 h-3" /></button>
+                            <span className="text-xs font-bold w-4 text-center">{qty}</span>
+                            <button onClick={() => addToCart(item, 1)} className="w-6 h-6 rounded-full bg-terracotta text-white flex items-center justify-center"><Plus className="w-3 h-3" /></button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )
+        )}
+        {allSections.length === 0 && (
           <div className="text-center py-12 px-4">
             <p className="text-gray-400 italic">No items available.</p>
             {menuDebug && (
