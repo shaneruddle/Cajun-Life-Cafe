@@ -146,6 +146,21 @@ const NavLink = ({ link, onClick, className }: { link: NavLinkItem; onClick?: ()
       </a>
     );
   }
+  // Homepage-section links (Menu #menu, Our Story #about, Location #location).
+  // On the homepage itself a plain <a href="#..."> is a same-page anchor jump,
+  // which works fine natively. From any other page that same plain anchor just
+  // appends the hash to the current URL (e.g. /blog#menu) and goes nowhere,
+  // since there's no matching id on that page — so from elsewhere this instead
+  // routes to "/" with the hash, and MainSite's hash-scroll effect (below)
+  // picks it up once the homepage has mounted and scrolls to the section.
+  const location = useLocation();
+  if (location.pathname !== "/") {
+    return (
+      <Link to={`/${link.href}`} onClick={onClick} className={className}>
+        {link.label}
+      </Link>
+    );
+  }
   return (
     <a href={link.href} onClick={onClick} className={className}>
       {link.label}
@@ -206,7 +221,14 @@ const Navbar = ({
   return (
     <nav className={`${isDashboard ? "sticky top-0 bg-white border-b border-gray-100 py-3 shadow-sm" : "fixed top-0 w-full transition-all duration-300 " + (scrolled ? "bg-white shadow-md py-3" : "bg-transparent py-6")} z-50 w-full`}>
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-        <div className="flex items-center" />
+        <Link to="/" className="flex items-center" aria-label={`${BUSINESS.name} — home`}>
+          <FirebaseImage
+            src={normalizeImageUrl("gs://cajun-life-cafe.firebasestorage.app/logos/square_logo.png")}
+            fallbackSrc="/logo.png"
+            alt={BUSINESS.name}
+            className="w-11 h-11 rounded-xl object-cover"
+          />
+        </Link>
         <div className="hidden lg:flex space-x-8 items-center">
           {!isDashboard ? (
             <>
@@ -622,16 +644,36 @@ const Footer = () => {
   );
 };
 
-const MainSite = ({ isAdmin }: { isAdmin: boolean }) => (
-  <div className="min-h-screen">
-    <Hero />
-    <About />
-    <Menu />
-    <CustomMeals />
-    <Location />
-    <Footer />
-  </div>
-);
+const MainSite = ({ isAdmin }: { isAdmin: boolean }) => {
+  const location = useLocation();
+
+  // Scrolls to a homepage section (#menu/#about/#location) when the URL
+  // already carries that hash on mount/navigation-in — needed for the
+  // "navigate home + scroll" links added to NavLink above, since react-router
+  // doesn't auto-scroll to a fragment after a route change the way a native
+  // same-page anchor click does. A short delay lets the section (in
+  // particular #menu, which renders its own Firestore-driven content) finish
+  // its initial layout before we measure its position.
+  useEffect(() => {
+    if (!location.hash) return;
+    const id = location.hash.slice(1);
+    const timer = setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [location.hash]);
+
+  return (
+    <div className="min-h-screen">
+      <Hero />
+      <About />
+      <Menu />
+      <CustomMeals />
+      <Location />
+      <Footer />
+    </div>
+  );
+};
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
