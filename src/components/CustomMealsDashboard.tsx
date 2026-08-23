@@ -137,7 +137,7 @@ const SortableRow: React.FC<SortableRowProps> = ({ item, startEdit, handleDelete
               : 'bg-olive/10 text-olive hover:bg-olive/20'
           }`}
         >
-          <Bike size={14} />
+          <Bike size={14} className={item.availableForDelivery === false ? 'text-red-500' : 'text-green-500'} />
           {item.availableForDelivery === false ? 'Off' : 'On'}
         </button>
       </td>
@@ -710,7 +710,7 @@ export default function CustomMealsDashboard() {
                     <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
                       <div>
                         <h4 className="font-bold text-sm text-ink flex items-center gap-2">
-                          <Bike size={16} className={formData.availableForDelivery === false ? 'text-gray-400' : 'text-olive'} />
+                          <Bike size={16} className={formData.availableForDelivery === false ? 'text-red-500' : 'text-green-500'} />
                           LINE Delivery Ordering
                         </h4>
                         <p className="text-xs text-gray-500 mt-1">
