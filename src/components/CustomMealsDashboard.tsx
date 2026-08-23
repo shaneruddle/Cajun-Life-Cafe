@@ -39,7 +39,10 @@ import {
   Search,
   Trash,
   Filter,
-  Bike
+  Bike,
+  Leaf,
+  Candy,
+  Droplet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
@@ -117,6 +120,13 @@ const SortableRow: React.FC<SortableRowProps> = ({ item, startEdit, handleDelete
                 <span title="Protein" className="flex items-center"><Zap size={10} className="mr-0.5 text-blue-500" />{opt.protein}g</span>
                 <span title="Carbs" className="flex items-center"><Wheat size={10} className="mr-0.5 text-amber-500" />{opt.carbs}g</span>
                 <span title="Fat" className="flex items-center"><Droplets size={10} className="mr-0.5 text-yellow-600" />{opt.fat}g</span>
+                {(opt.fiber !== undefined || opt.sugar !== undefined || opt.sodium !== undefined) && (
+                  <>
+                    <span title="Fiber" className="flex items-center"><Leaf size={10} className="mr-0.5 text-green-600" />{opt.fiber ?? 0}g</span>
+                    <span title="Sugar" className="flex items-center"><Candy size={10} className="mr-0.5 text-pink-500" />{opt.sugar ?? 0}g</span>
+                    <span title="Sodium" className="flex items-center"><Droplet size={10} className="mr-0.5 text-cyan-600" />{opt.sodium ?? 0}mg</span>
+                  </>
+                )}
               </div>
             </div>
           ))}
@@ -193,7 +203,10 @@ export default function CustomMealsDashboard() {
     calories: 0,
     protein: 0,
     carbs: 0,
-    fat: 0
+    fat: 0,
+    fiber: 0,
+    sugar: 0,
+    sodium: 0
   });
 
   const sensors = useSensors(
@@ -453,7 +466,10 @@ export default function CustomMealsDashboard() {
       calories: 0,
       protein: 0,
       carbs: 0,
-      fat: 0
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      sodium: 0
     });
   };
 
@@ -792,7 +808,7 @@ export default function CustomMealsDashboard() {
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1"><Droplets size={10}/> Fat</label>
-                          <input 
+                          <input
                             type="number"
                             value={newOption.fat}
                             onChange={e => setNewOption({...newOption, fat: Number(e.target.value)})}
@@ -801,7 +817,37 @@ export default function CustomMealsDashboard() {
                         </div>
                       </div>
 
-                      <button 
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1"><Leaf size={10}/> Fiber</label>
+                          <input
+                            type="number"
+                            value={newOption.fiber ?? 0}
+                            onChange={e => setNewOption({...newOption, fiber: Number(e.target.value)})}
+                            className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1"><Candy size={10}/> Sugar</label>
+                          <input
+                            type="number"
+                            value={newOption.sugar ?? 0}
+                            onChange={e => setNewOption({...newOption, sugar: Number(e.target.value)})}
+                            className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1"><Droplet size={10}/> Sodium (mg)</label>
+                          <input
+                            type="number"
+                            value={newOption.sodium ?? 0}
+                            onChange={e => setNewOption({...newOption, sodium: Number(e.target.value)})}
+                            className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <button
                         type="button"
                         onClick={addOption}
                         className="w-full py-2 bg-olive text-white rounded-xl text-sm font-bold hover:bg-opacity-90 transition-all"
@@ -817,6 +863,8 @@ export default function CustomMealsDashboard() {
                             <span className="font-bold text-sm">{opt.weight} - {opt.price}฿</span>
                             <span className="text-[10px] text-gray-400">
                               C:{opt.calories} P:{opt.protein} C:{opt.carbs} F:{opt.fat}
+                              {(opt.fiber !== undefined || opt.sugar !== undefined || opt.sodium !== undefined) &&
+                                ` · Fib:${opt.fiber ?? 0} Sug:${opt.sugar ?? 0} Na:${opt.sodium ?? 0}mg`}
                             </span>
                           </div>
                           <button 

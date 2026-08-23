@@ -49,6 +49,13 @@ import {
   ChevronDown,
   ChevronUp,
   Calculator,
+  Flame,
+  Zap,
+  Wheat,
+  Droplets,
+  Leaf,
+  Candy,
+  Droplet,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
@@ -1283,6 +1290,84 @@ export default function Dashboard() {
                           </motion.div>
                         )}
                       </AnimatePresence>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Nutrition Information */}
+                <div className="md:col-span-2 space-y-4 bg-gray-50 p-6 rounded-3xl">
+                  <div>
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                      <Flame size={20} className="text-terracotta" /> Nutrition Information
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Optional, per serving. Leave a field blank for anything not yet measured.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1"><Flame size={10} className="text-orange-500" /> Calories</label>
+                      <input
+                        type="number"
+                        value={formData.calories ?? ''}
+                        onChange={e => setFormData({...formData, calories: e.target.value === '' ? undefined : Number(e.target.value)})}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1"><Zap size={10} className="text-blue-500" /> Protein (g)</label>
+                      <input
+                        type="number"
+                        value={formData.protein ?? ''}
+                        onChange={e => setFormData({...formData, protein: e.target.value === '' ? undefined : Number(e.target.value)})}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1"><Wheat size={10} className="text-amber-500" /> Carbs (g)</label>
+                      <input
+                        type="number"
+                        value={formData.carbs ?? ''}
+                        onChange={e => setFormData({...formData, carbs: e.target.value === '' ? undefined : Number(e.target.value)})}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1"><Droplets size={10} className="text-yellow-600" /> Fat (g)</label>
+                      <input
+                        type="number"
+                        value={formData.fat ?? ''}
+                        onChange={e => setFormData({...formData, fat: e.target.value === '' ? undefined : Number(e.target.value)})}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1"><Leaf size={10} className="text-green-600" /> Fiber (g)</label>
+                      <input
+                        type="number"
+                        value={formData.fiber ?? ''}
+                        onChange={e => setFormData({...formData, fiber: e.target.value === '' ? undefined : Number(e.target.value)})}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1"><Candy size={10} className="text-pink-500" /> Sugar (g)</label>
+                      <input
+                        type="number"
+                        value={formData.sugar ?? ''}
+                        onChange={e => setFormData({...formData, sugar: e.target.value === '' ? undefined : Number(e.target.value)})}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1"><Droplet size={10} className="text-cyan-600" /> Sodium (mg)</label>
+                      <input
+                        type="number"
+                        value={formData.sodium ?? ''}
+                        onChange={e => setFormData({...formData, sodium: e.target.value === '' ? undefined : Number(e.target.value)})}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                      />
                     </div>
                   </div>
                 </div>

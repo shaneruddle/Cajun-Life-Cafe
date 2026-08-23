@@ -30,6 +30,16 @@ export interface MenuItem {
   // false = hidden from LINE ordering while still shown on the in-house/QR
   // digital menu. Added 2026-08-23.
   availableForDelivery?: boolean;
+  // Nutrition — manual entry per item, all optional (undefined = not yet
+  // measured). Per serving. Added 2026-08-23; data-entry only for now —
+  // not yet surfaced on the digital menu or LINE ordering page.
+  calories?: number;
+  protein?: number; // g
+  carbs?: number; // g
+  fat?: number; // g
+  fiber?: number; // g
+  sugar?: number; // g
+  sodium?: number; // mg
   order: number;
   uid?: string;
 }
@@ -41,6 +51,11 @@ export interface CustomMealOption {
   protein: number;
   carbs: number;
   fat: number;
+  // Extended nutrition — optional, added 2026-08-23 alongside MenuItem's
+  // fields; undefined on options entered before this date until re-edited.
+  fiber?: number; // g
+  sugar?: number; // g
+  sodium?: number; // mg
 }
 
 export interface CustomMealItem {
