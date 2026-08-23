@@ -134,7 +134,12 @@ const LineOrderApp = () => {
     const q = query(collection(db, "menu"), where("published", "==", true));
     const unsub = onSnapshot(q, (snap) => {
       const menuItems = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as MenuItem[];
-      setItems(menuItems.sort((a, b) => (a.order || 0) - (b.order || 0)));
+      // availableForDelivery is a separate, delivery-only visibility flag from
+      // `published` (see Dashboard.tsx) - undefined/true means available,
+      // only an explicit `false` hides an item from LINE ordering while it
+      // stays visible on the in-house/QR digital menu. Added 2026-08-23.
+      const deliverable = menuItems.filter((i) => i.availableForDelivery !== false);
+      setItems(deliverable.sort((a, b) => (a.order || 0) - (b.order || 0)));
     }, (err) => {
       try { handleFirestoreError(err, "list", "menu"); }
       catch (e) { setMenuDebug(`menu: ${e instanceof Error ? e.message : String(e)}`); }
@@ -147,7 +152,9 @@ const LineOrderApp = () => {
   useEffect(() => {
     const q = query(collection(db, "custom_meals"), orderBy("order", "asc"));
     const unsub = onSnapshot(q, (snap) => {
-      setCustomMeals(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as CustomMealItem[]);
+      const meals = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as CustomMealItem[];
+      // Same delivery-only visibility flag as menu items - see above.
+      setCustomMeals(meals.filter((m) => m.availableForDelivery !== false));
     }, (err) => {
       try { handleFirestoreError(err, "list", "custom_meals"); }
       catch (e) { setMenuDebug(`custom_meals: ${e instanceof Error ? e.message : String(e)}`); }

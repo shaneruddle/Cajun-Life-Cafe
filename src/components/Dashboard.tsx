@@ -37,6 +37,7 @@ import {
   Tag,
   Eye,
   EyeOff,
+  Bike,
   Upload,
   Download,
   FileText,
@@ -76,10 +77,11 @@ interface SortableRowProps {
   onCosting: (item: MenuItem) => void;
   handleDelete: (id: string) => Promise<void>;
   togglePublished: (item: MenuItem) => Promise<void>;
+  toggleDelivery: (item: MenuItem) => Promise<void>;
   costingComplete?: boolean;
 }
 
-const SortableRow: React.FC<SortableRowProps> = ({ item, startEdit, handleDelete, togglePublished, onCosting, costingComplete }) => {
+const SortableRow: React.FC<SortableRowProps> = ({ item, startEdit, handleDelete, togglePublished, toggleDelivery, onCosting, costingComplete }) => {
   const {
     attributes,
     listeners,
@@ -151,6 +153,20 @@ const SortableRow: React.FC<SortableRowProps> = ({ item, startEdit, handleDelete
         >
           {item.published ? <Eye size={14} /> : <EyeOff size={14} />}
           {item.published ? 'Active' : 'Hidden'}
+        </button>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <button
+          onClick={() => toggleDelivery(item)}
+          title={item.availableForDelivery === false ? 'Hidden from LINE delivery ordering — click to show' : 'Visible on LINE delivery ordering — click to hide'}
+          className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold transition-all ${
+            item.availableForDelivery === false
+              ? 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              : 'bg-olive/10 text-olive hover:bg-olive/20'
+          }`}
+        >
+          <Bike size={14} />
+          {item.availableForDelivery === false ? 'Off' : 'On'}
         </button>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -347,6 +363,7 @@ export default function Dashboard() {
     secondaryImage: '',
     promoImages: [],
     published: true,
+    availableForDelivery: true,
     order: 0
   });
 
@@ -626,6 +643,18 @@ export default function Dashboard() {
         published: !item.published
       });
       await logActivity('Menu Item Visibility Toggled', `${item.published ? 'Unpublished' : 'Published'} menu item: ${item.name}`, 'menu');
+    } catch (err) {
+      handleFirestoreError(err, 'update', `menu/${item.id}`);
+    }
+  };
+
+  const toggleDelivery = async (item: MenuItem) => {
+    const nowAvailable = item.availableForDelivery === false; // was off, turning on
+    try {
+      await updateDoc(doc(db, 'menu', item.id!), {
+        availableForDelivery: nowAvailable
+      });
+      await logActivity('Menu Item Delivery Visibility Toggled', `${nowAvailable ? 'Enabled' : 'Disabled'} LINE delivery ordering for menu item: ${item.name}`, 'menu');
     } catch (err) {
       handleFirestoreError(err, 'update', `menu/${item.id}`);
     }
@@ -1148,6 +1177,33 @@ export default function Dashboard() {
                       />
                     </button>
                   </div>
+
+                  <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-ink flex items-center gap-2">
+                        <Bike size={18} className={formData.availableForDelivery === false ? 'text-gray-400' : 'text-olive'} />
+                        LINE Delivery Ordering
+                      </h4>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formData.availableForDelivery === false
+                          ? "Hidden from the LINE delivery ordering page — still shown on the in-house/QR digital menu."
+                          : "Available to order through the LINE delivery ordering page."}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({...formData, availableForDelivery: formData.availableForDelivery === false})}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                        formData.availableForDelivery === false ? 'bg-gray-200' : 'bg-olive'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          formData.availableForDelivery === false ? 'translate-x-1' : 'translate-x-6'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Translations */}
@@ -1457,6 +1513,7 @@ export default function Dashboard() {
                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-400">Category</th>
                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-400">Price</th>
                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-400">Status</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-400">Delivery</th>
                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-400 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1473,6 +1530,7 @@ export default function Dashboard() {
                     onCosting={setCostingItem}
                         handleDelete={handleDelete}
                         togglePublished={togglePublished}
+                        toggleDelivery={toggleDelivery}
                         costingComplete={costingCompleteIds.has(item.id!)}
                       />
                     ))}

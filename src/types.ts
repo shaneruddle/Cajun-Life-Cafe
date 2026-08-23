@@ -25,6 +25,11 @@ export interface MenuItem {
   socialImage?: string;
   promoImages?: string[];
   published: boolean;
+  // Independent of `published` — controls visibility on the LINE delivery
+  // ordering page (/order) only. Undefined/true = available for delivery;
+  // false = hidden from LINE ordering while still shown on the in-house/QR
+  // digital menu. Added 2026-08-23.
+  availableForDelivery?: boolean;
   order: number;
   uid?: string;
 }
@@ -43,6 +48,11 @@ export interface CustomMealItem {
   name: string;
   type: string;
   description?: string;
+  // Controls visibility on the LINE delivery ordering page's Build Your Own
+  // section only. Undefined/true = available for delivery; false = hidden
+  // from LINE ordering while still shown in the in-house Build Your Own
+  // configurator. Added 2026-08-23.
+  availableForDelivery?: boolean;
   order: number;
   options: CustomMealOption[];
   uid?: string;
