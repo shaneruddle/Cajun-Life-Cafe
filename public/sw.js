@@ -51,3 +51,39 @@ if (workbox) {
 } else {
   console.log('Workbox failed to load');
 }
+
+// ── Web Push (Daily Balances alerts) ──────────────────────────────────────
+// Kept outside the Workbox block so notifications still work if the
+// Workbox CDN script fails to load.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { body: event.data ? event.data.text() : '' };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Cajun Life Cafe', {
+      body: data.body || '',
+      icon: '/icons/icon-192.png',
+      tag: data.tag,
+      renotify: !!data.tag,
+      data: { url: data.url || '/dashboard/finance?tab=daily-balances' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of windows) {
+      if ('focus' in client) {
+        if ('navigate' in client) await client.navigate(url).catch(() => {});
+        return client.focus();
+      }
+    }
+    return self.clients.openWindow(url);
+  })());
+});

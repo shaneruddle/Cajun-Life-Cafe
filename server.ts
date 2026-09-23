@@ -8,6 +8,8 @@ import multer from "multer";
 const require = createRequire(import.meta.url);
 import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
+import { createHash } from "crypto";
 
 dotenv.config();
 
@@ -902,6 +904,126 @@ Rules:
     }).catch(() => {});
 
     return res.json({ success: true });
+  });
+
+  // ── Web Push: Daily Balances alerts ───────────────────────────────
+  // Owner/admin devices subscribe from the installed admin app; every time a
+  // Daily Balances figure is saved the client pings /api/push/daily-balance
+  // and we fan out a notification. The message is built from the Firestore
+  // doc, not the request body, so a caller can't push arbitrary text.
+  const webpush = require("web-push");
+  const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "";
+  const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
+  const pushConfigured = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
+  if (pushConfigured) {
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT || "mailto:info@cajunlifecafe.com",
+      VAPID_PUBLIC_KEY,
+      VAPID_PRIVATE_KEY
+    );
+  }
+
+  const BALANCE_FIELDS: Record<string, string> = { cash: "Cash", kbank: "KBank", krungsri: "Krungsri" };
+  const subIdFor = (endpoint: string) => createHash("sha256").update(endpoint).digest("hex");
+
+  const getStaffFromRequest = async (req: express.Request) => {
+    const header = req.headers.authorization || "";
+    const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+    if (!token) return null;
+    try {
+      const decoded = await getAuth().verifyIdToken(token);
+      const userDoc = await adminDb.collection("users").doc(decoded.uid).get();
+      const role: string = (userDoc.exists ? userDoc.data()?.role : undefined) || (decoded as any).role || "none";
+      const email = (decoded.email || "").toLowerCase();
+      const isAdmin = email === "info@cajunlifecafe.com" || role === "admin";
+      return { uid: decoded.uid, email, role, isAdmin };
+    } catch {
+      return null;
+    }
+  };
+
+  app.get("/api/push/public-key", (_req, res) => {
+    res.json({ publicKey: VAPID_PUBLIC_KEY });
+  });
+
+  app.post("/api/push/subscribe", async (req, res) => {
+    const staff = await getStaffFromRequest(req);
+    if (!staff?.isAdmin) return res.status(403).json({ error: "Only the owner/admin can turn on balance alerts" });
+    const sub = req.body?.subscription;
+    if (!sub?.endpoint || !sub?.keys?.p256dh || !sub?.keys?.auth) {
+      return res.status(400).json({ error: "Invalid push subscription" });
+    }
+    await adminDb.collection("push_subscriptions").doc(subIdFor(sub.endpoint)).set({
+      uid: staff.uid,
+      email: staff.email,
+      endpoint: sub.endpoint,
+      subscription: { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } },
+      topics: ["daily_balances"],
+      userAgent: String(req.headers["user-agent"] || "").slice(0, 300),
+      createdAt: new Date().toISOString(),
+    });
+    res.json({ success: true });
+  });
+
+  app.post("/api/push/unsubscribe", async (req, res) => {
+    const staff = await getStaffFromRequest(req);
+    if (!staff) return res.status(401).json({ error: "Not signed in" });
+    const endpoint = req.body?.endpoint;
+    if (!endpoint) return res.status(400).json({ error: "endpoint required" });
+    const ref = adminDb.collection("push_subscriptions").doc(subIdFor(endpoint));
+    const snap = await ref.get();
+    if (snap.exists && (snap.data()?.uid === staff.uid || staff.isAdmin)) await ref.delete();
+    res.json({ success: true });
+  });
+
+  app.post("/api/push/daily-balance", async (req, res) => {
+    if (!pushConfigured) return res.json({ sent: 0, skipped: "push not configured" });
+    const staff = await getStaffFromRequest(req);
+    if (!staff || !(staff.isAdmin || ["manager", "cashier"].includes(staff.role))) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+    const { date, field } = req.body || {};
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "") || !BALANCE_FIELDS[field]) {
+      return res.status(400).json({ error: "Invalid date or field" });
+    }
+    try {
+      const doc = await adminDb.collection("daily_balances").doc(date).get();
+      const fig = doc.exists ? doc.data()?.[field] : null;
+      if (!fig || typeof fig.value !== "number") return res.status(404).json({ error: "Figure not found" });
+      // Only notify for fresh saves — stops the endpoint being replayed.
+      if (Date.now() - new Date(fig.updatedAt).getTime() > 10 * 60 * 1000) {
+        return res.json({ sent: 0, skipped: "stale" });
+      }
+
+      const dayLabel = new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", {
+        weekday: "short", day: "numeric", month: "short", timeZone: "UTC",
+      });
+      const payload = JSON.stringify({
+        title: `Daily Balances · ${dayLabel}`,
+        body: `${BALANCE_FIELDS[field]}: ฿${fig.value.toLocaleString("en-US", { maximumFractionDigits: 2 })} — entered by ${fig.updatedByName || fig.updatedBy || "staff"}`,
+        tag: `daily-balance-${date}-${field}`,
+        url: "/dashboard/finance?tab=daily-balances",
+      });
+
+      const subs = await adminDb.collection("push_subscriptions")
+        .where("topics", "array-contains", "daily_balances").get();
+      let sent = 0, failed = 0;
+      await Promise.all(subs.docs.map(async (s) => {
+        if (s.data().uid === staff.uid) return; // don't notify whoever entered it
+        try {
+          await webpush.sendNotification(s.data().subscription, payload, { TTL: 60 * 60 * 24 });
+          sent++;
+        } catch (err: any) {
+          failed++;
+          if (err?.statusCode === 404 || err?.statusCode === 410) await s.ref.delete().catch(() => {});
+          else console.error("Push send failed:", err?.statusCode, err?.body || err?.message);
+        }
+      }));
+      res.json({ sent, failed });
+    } catch (err: any) {
+      console.error("Daily balance push error:", err);
+      res.status(500).json({ error: "Push failed" });
+    }
   });
 
   // ── LINE Push Message ─────────────────────────────────────────────

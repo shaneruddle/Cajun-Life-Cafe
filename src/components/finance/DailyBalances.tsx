@@ -5,6 +5,9 @@ import { logActivity } from '../../utils/logger';
 import { DailyBalance, DailyBalanceFigure, DailyBalanceHistoryEntry } from './types';
 import { Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import { notifyDailyBalance } from '../../utils/push';
+import PushToggle from '../PushToggle';
+import { getFinanceRole } from './FinanceDashboard';
 
 type FigureField = 'cash' | 'kbank' | 'krungsri';
 
@@ -122,6 +125,7 @@ export default function DailyBalances({ user }: { user: any }) {
         [field]: entry,
       }, { merge: true });
       await addDoc(collection(db, 'daily_balances', date, 'history'), { field, ...entry });
+      notifyDailyBalance(date, field);
       await logActivity(
         'Daily Balance Updated',
         `${FIELDS.find(f => f.key === field)?.label} · ${date} · ฿${num.toLocaleString()}`,
@@ -140,12 +144,15 @@ export default function DailyBalances({ user }: { user: any }) {
 
   return (
     <div className="p-6 space-y-4 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-ink">Daily Balances</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Click any figure to enter or update it. Every change is timestamped and attributed to whoever made it.
-          A day stays open through the following day, then locks automatically.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-ink">Daily Balances</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Click any figure to enter or update it. Every change is timestamped and attributed to whoever made it.
+            A day stays open through the following day, then locks automatically.
+          </p>
+        </div>
+        {getFinanceRole(user) === 'owner' && <PushToggle className="self-start shrink-0" />}
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
