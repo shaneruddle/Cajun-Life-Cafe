@@ -34,8 +34,23 @@ function withMeta(html: string, title: string, description: string, url: string)
 
 let count = 0;
 for (const [route, meta] of Object.entries(PAGE_META)) {
-  const html = withMeta(shell, meta.title, meta.description, `${SITE_URL}${route}`);
+  let html = withMeta(shell, meta.title, meta.description, `${SITE_URL}${route}`);
+  if (meta.lang === 'th') {
+    html = html
+      .replace(/<html lang="en">/, '<html lang="th">')
+      .replace(/<meta property="og:locale" content="en_US"\s*\/?>/, '<meta property="og:locale" content="th_TH" />');
+  }
+  if (meta.alternates) {
+    const { en, th } = meta.alternates;
+    const links = [
+      `<link rel="alternate" hreflang="en" href="${SITE_URL}${en}" />`,
+      `<link rel="alternate" hreflang="th" href="${SITE_URL}${th}" />`,
+      `<link rel="alternate" hreflang="x-default" href="${SITE_URL}${en}" />`,
+    ].join('\n    ');
+    html = html.replace('</head>', `    ${links}\n  </head>`);
+  }
   const file = route === '/' ? 'index.html' : `${route.slice(1)}.html`;
+  fs.mkdirSync(path.dirname(path.join(dist, file)), { recursive: true });
   fs.writeFileSync(path.join(dist, file), html);
   count++;
 }

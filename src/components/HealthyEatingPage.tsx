@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { useLanguage } from '../i18n';
 import { motion } from 'motion/react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -16,7 +18,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 
-const PILLARS = [
+const PILLARS_EN = [
   {
     icon: <Zap size={26} />,
     title: 'High protein, always',
@@ -39,7 +41,7 @@ const PILLARS = [
   },
 ];
 
-const FAQS = [
+const FAQS_EN = [
   {
     q: 'Where can I find high-protein food in Pattaya?',
     a: 'Cajun Life Cafe, on Pratumnak Hill, publishes protein counts for every Build Your Own ingredient — grilled chicken, salmon, grass-fed beef, and more — so you can build a meal around your protein target rather than guessing at it.',
@@ -58,6 +60,102 @@ const FAQS = [
   },
 ];
 
+const PILLARS_TH = [
+  {
+    icon: <Zap size={26} />,
+    title: 'โปรตีนสูงทุกจาน',
+    desc: 'วัตถุดิบทุกตัวในเมนู Build Your Own แสดงปริมาณโปรตีนชัดเจน ทั้งเนื้อย่าง อาหารทะเล และโปรตีนจากพืช ให้คุณกินได้ตรงเป้าหมายโดยไม่ต้องเดา',
+  },
+  {
+    icon: <Salad size={26} />,
+    title: 'ไม่ใช้น้ำตาลขัดขาว',
+    desc: 'เมนูของเราไม่ได้ปรุงด้วยน้ำตาลขัดขาว ความหวานมาจากผลไม้จริง ไม่ใช่น้ำเชื่อม',
+  },
+  {
+    icon: <GlutenFree size={26} />,
+    title: 'มีตัวเลือกปลอดกลูเตน',
+    desc: 'มีเมนูปลอดกลูเตนให้เลือกหลากหลาย ทั้งชาม Build Your Own และเมนูจานหลัก ไม่ใช่แค่จานเดียว',
+  },
+  {
+    icon: <Leaf size={26} />,
+    title: 'วัตถุดิบสด สะอาด',
+    desc: 'ปรุงสดใหม่ทุกออเดอร์ ไม่ใช่อาหารสำเร็จรูปอุ่นร้อน อาหารเคจันและอาหารไทยแบบโฮมเมดที่ทำอย่างตั้งใจ',
+  },
+];
+
+const FAQS_TH = [
+  {
+    q: 'ร้านอาหารคลีนในพัทยาอยู่ที่ไหน?',
+    a: 'Cajun Life Cafe อยู่บนเขาพระตำหนัก ซอย 5 พัทยา เสิร์ฟอาหารคลีนโปรตีนสูง ไม่ใช้น้ำตาลขัดขาว พร้อมแสดงค่าโภชนาการของวัตถุดิบทุกตัว เปิดทุกวัน 8:00–22:00 น.',
+  },
+  {
+    q: 'มีอาหารโปรตีนสูงในพัทยาไหม?',
+    a: 'มี ที่ Cajun Life Cafe คุณจัดชามเองได้จากอกไก่ย่าง แซลมอน เนื้อวัว และอีกหลายตัวเลือก ทุกตัวเลือกแสดงปริมาณโปรตีนชัดเจน',
+  },
+  {
+    q: 'มีอาหารปลอดกลูเตนแถวพระตำหนักไหม?',
+    a: 'มี เรามีเมนูปลอดกลูเตนหลายรายการ รวมถึงตัวเลือกในเมนู Build Your Own',
+  },
+  {
+    q: 'สั่งอาหารคลีนแบบ Meal Prep ส่งถึงที่พักได้ไหม?',
+    a: 'ได้ แอดไลน์ @cajunlifecafe เพื่อสั่ง Meal Prep เราปรุงสดใหม่และจัดส่งถึงที่พักของคุณในพัทยา',
+  },
+];
+
+const COPY = {
+  en: {
+    pillars: PILLARS_EN,
+    faqs: FAQS_EN,
+    badge: 'Healthy Eating in Pattaya',
+    h1a: 'High protein. No refined sugar.',
+    h1b: 'Gluten-free options.',
+    intro:
+      'Cajun Life Cafe, on Pratumnak Hill in Pattaya, cooks home-style Cajun and Thai food from fresh, clean ingredients — with real nutrition data published for every Build Your Own bowl ingredient, not just marketing copy.',
+    ctaMenu: 'See the full menu',
+    ctaMealPrep: 'Explore meal prep',
+    byNumbers: 'On the menu, by the numbers',
+    ingredientsTitle: 'Every Build Your Own ingredient, macro-labeled',
+    ingredientsSub:
+      'Pick your protein, carbs, and veggies for a bowl or meal-prep plan — every option below lists its real calories, protein, carbs, and fat.',
+    all: 'All',
+    loading: 'Loading nutrition data…',
+    stats: ['Cals', 'Prot', 'Carb', 'Fat'],
+    faqTitle: 'Questions people ask',
+    ctaTitle: 'Ready to build your bowl?',
+    ctaText:
+      'Browse the full menu, build a custom bowl, or set up weekly meal prep — all from the same ingredient list you just saw.',
+    ctaOrder: 'Order on the Digital Menu',
+    ctaLine: 'Message us on LINE',
+    switchLabel: 'อ่านหน้านี้เป็นภาษาไทย',
+    switchTo: '/th/healthy-eating',
+  },
+  th: {
+    pillars: PILLARS_TH,
+    faqs: FAQS_TH,
+    badge: 'อาหารคลีน พัทยา',
+    h1a: 'โปรตีนสูง ไม่ใช้น้ำตาลขัดขาว',
+    h1b: 'มีตัวเลือกปลอดกลูเตน',
+    intro:
+      'Cajun Life Cafe ร้านอาหารสุขภาพบนเขาพระตำหนัก พัทยา ปรุงอาหารเคจันและอาหารไทยสไตล์โฮมเมดจากวัตถุดิบสดสะอาด พร้อมข้อมูลโภชนาการจริงของวัตถุดิบทุกตัวในเมนู Build Your Own',
+    ctaMenu: 'ดูเมนูทั้งหมด',
+    ctaMealPrep: 'สั่งอาหารคลีนแบบ Meal Prep',
+    byNumbers: 'เมนูพร้อมข้อมูลโภชนาการ',
+    ingredientsTitle: 'วัตถุดิบ Build Your Own ทุกตัว พร้อมค่าโภชนาการ',
+    ingredientsSub:
+      'เลือกโปรตีน คาร์บ และผัก เพื่อจัดชามหรือ Meal Prep ของคุณ ทุกตัวเลือกด้านล่างแสดงแคลอรี่ โปรตีน คาร์บ และไขมันจริง',
+    all: 'ทั้งหมด',
+    loading: 'กำลังโหลดข้อมูลโภชนาการ…',
+    stats: ['แคล', 'โปรตีน', 'คาร์บ', 'ไขมัน'],
+    faqTitle: 'คำถามที่พบบ่อย',
+    ctaTitle: 'พร้อมจัดชามของคุณหรือยัง?',
+    ctaText: 'ดูเมนูทั้งหมด จัดชามเอง หรือสั่ง Meal Prep รายสัปดาห์ ด้วยวัตถุดิบชุดเดียวกับที่คุณเห็นด้านบน',
+    ctaOrder: 'ดูเมนูดิจิทัล',
+    ctaLine: 'แชทกับเราทาง LINE',
+    switchLabel: 'Read this page in English',
+    switchTo: '/healthy-eating',
+  },
+};
+
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
@@ -75,7 +173,15 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-export default function HealthyEatingPage() {
+// Rendered in English at /healthy-eating and in Thai at /th/healthy-eating
+// (separate URLs so Google can index each language — see src/seo/pageMeta.ts).
+export default function HealthyEatingPage({ lang = 'en' }: { lang?: 'en' | 'th' }) {
+  const c = COPY[lang];
+  const { setLanguage } = useLanguage();
+  useEffect(() => {
+    if (lang === 'th') setLanguage('th');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
   const [ingredients, setIngredients] = useState<CustomMealItem[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [activeType, setActiveType] = useState<string>('');
@@ -143,30 +249,31 @@ export default function HealthyEatingPage() {
         <div className="max-w-3xl mx-auto text-center relative z-10">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
             <span className="inline-block bg-olive/20 text-olive font-bold text-xs uppercase tracking-widest px-4 py-2 rounded-full mb-6">
-              Healthy Eating in Pattaya
+              {c.badge}
             </span>
             <h1 className="text-4xl md:text-6xl font-display font-bold mb-6 leading-tight">
-              High protein. No refined sugar.<br />Gluten-free options.
+              {c.h1a}<br />{c.h1b}
             </h1>
             <p className="text-xl text-white/70 max-w-2xl mx-auto leading-relaxed">
-              Cajun Life Cafe, on Pratumnak Hill in Pattaya, cooks home-style Cajun and Thai food from fresh, clean
-              ingredients — with real nutrition data published for every Build Your Own bowl ingredient, not just
-              marketing copy.
+              {c.intro}
             </p>
             <div className="mt-10 flex flex-wrap justify-center gap-4">
               <a
                 href="/digital-menu"
                 className="inline-flex items-center gap-2 px-8 py-4 bg-terracotta text-white rounded-full font-bold text-lg hover:bg-terracotta/90 transition-all shadow-xl"
               >
-                See the full menu
+                {c.ctaMenu}
               </a>
               <a
                 href="/meal-prep"
                 className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 text-white rounded-full font-bold text-lg hover:bg-white/20 transition-all backdrop-blur-sm"
               >
-                Explore meal prep
+                {c.ctaMealPrep}
               </a>
             </div>
+            <Link to={c.switchTo} className="inline-block mt-8 text-sm text-white/60 hover:text-white underline underline-offset-4">
+              {c.switchLabel}
+            </Link>
           </motion.div>
         </div>
       </section>
@@ -175,7 +282,7 @@ export default function HealthyEatingPage() {
       <section className="py-20 px-6 bg-white">
         <div className="max-w-5xl mx-auto">
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {PILLARS.map(({ icon, title, desc }, idx) => (
+            {c.pillars.map(({ icon, title, desc }, idx) => (
               <motion.div
                 key={title}
                 initial={{ opacity: 0, y: 20 }}
@@ -199,7 +306,7 @@ export default function HealthyEatingPage() {
       {publishedNutritionMenuItems.length > 0 && (
         <section className="py-16 px-6 bg-cream">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl font-display font-bold text-ink mb-8 text-center">On the menu, by the numbers</h2>
+            <h2 className="text-2xl font-display font-bold text-ink mb-8 text-center">{c.byNumbers}</h2>
             <div className="grid sm:grid-cols-2 gap-6">
               {publishedNutritionMenuItems.map((item) => (
                 <div key={item.id} className="bg-white rounded-[28px] p-6 border border-gray-100 shadow-sm">
@@ -207,10 +314,10 @@ export default function HealthyEatingPage() {
                   {item.price && <p className="text-terracotta font-bold mb-4">฿{item.price.replace('฿', '').trim()}</p>}
                   <div className="grid grid-cols-4 gap-2">
                     {[
-                      { label: 'Cals', value: item.calories, icon: <Flame size={12} className="text-orange-500" /> },
-                      { label: 'Prot', value: item.protein != null ? `${item.protein}g` : undefined, icon: <Zap size={12} className="text-blue-500" /> },
-                      { label: 'Carb', value: item.carbs != null ? `${item.carbs}g` : undefined, icon: <Wheat size={12} className="text-amber-500" /> },
-                      { label: 'Fat', value: item.fat != null ? `${item.fat}g` : undefined, icon: <Droplets size={12} className="text-yellow-600" /> },
+                      { label: c.stats[0], value: item.calories, icon: <Flame size={12} className="text-orange-500" /> },
+                      { label: c.stats[1], value: item.protein != null ? `${item.protein}g` : undefined, icon: <Zap size={12} className="text-blue-500" /> },
+                      { label: c.stats[2], value: item.carbs != null ? `${item.carbs}g` : undefined, icon: <Wheat size={12} className="text-amber-500" /> },
+                      { label: c.stats[3], value: item.fat != null ? `${item.fat}g` : undefined, icon: <Droplets size={12} className="text-yellow-600" /> },
                     ].map((stat, i) => (
                       <div key={i} className={`text-center ${i > 0 ? 'border-l border-gray-100' : ''}`}>
                         <div className="text-[9px] text-gray-400 uppercase font-bold mb-1">{stat.label}</div>
@@ -231,10 +338,9 @@ export default function HealthyEatingPage() {
       <section id="ingredients" className="py-24 px-6 bg-white">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">Every Build Your Own ingredient, macro-labeled</h2>
+            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">{c.ingredientsTitle}</h2>
             <p className="text-lg text-gray-600 italic max-w-2xl mx-auto">
-              Pick your protein, carbs, and veggies for a bowl or meal-prep plan — every option below lists its real
-              calories, protein, carbs, and fat.
+              {c.ingredientsSub}
             </p>
             <div className="h-1 w-24 bg-terracotta mx-auto mt-6 rounded-full" />
           </div>
@@ -249,7 +355,7 @@ export default function HealthyEatingPage() {
                     : 'bg-white border-gray-100 text-gray-400 hover:border-olive hover:text-olive'
                 }`}
               >
-                All
+                {c.all}
               </button>
               {types.map((type) => (
                 <button
@@ -282,10 +388,10 @@ export default function HealthyEatingPage() {
                   </div>
                   <div className="grid grid-cols-4 gap-1">
                     {[
-                      { label: 'Cals', value: opt.calories, icon: <Flame size={10} className="text-orange-500" /> },
-                      { label: 'Prot', value: `${opt.protein}g`, icon: <Zap size={10} className="text-blue-500" /> },
-                      { label: 'Carb', value: `${opt.carbs}g`, icon: <Wheat size={10} className="text-amber-500" /> },
-                      { label: 'Fat', value: `${opt.fat}g`, icon: <Droplets size={10} className="text-yellow-600" /> },
+                      { label: c.stats[0], value: opt.calories, icon: <Flame size={10} className="text-orange-500" /> },
+                      { label: c.stats[1], value: `${opt.protein}g`, icon: <Zap size={10} className="text-blue-500" /> },
+                      { label: c.stats[2], value: `${opt.carbs}g`, icon: <Wheat size={10} className="text-amber-500" /> },
+                      { label: c.stats[3], value: `${opt.fat}g`, icon: <Droplets size={10} className="text-yellow-600" /> },
                     ].map((stat, i) => (
                       <div key={i} className="text-center">
                         <div className="text-[9px] text-gray-400 uppercase font-bold mb-0.5">{stat.label}</div>
@@ -300,7 +406,7 @@ export default function HealthyEatingPage() {
             </div>
           ) : (
             <div className="text-center py-24 bg-cream rounded-[32px] border-2 border-dashed border-gray-100">
-              <p className="text-gray-400 italic">Loading nutrition data…</p>
+              <p className="text-gray-400 italic">{c.loading}</p>
             </div>
           )}
         </div>
@@ -309,9 +415,9 @@ export default function HealthyEatingPage() {
       {/* FAQ */}
       <section className="py-20 px-6 bg-cream">
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-2xl font-display font-bold text-ink mb-10 text-center">Questions people ask</h2>
+          <h2 className="text-2xl font-display font-bold text-ink mb-10 text-center">{c.faqTitle}</h2>
           <div className="space-y-3">
-            {FAQS.map((f) => (
+            {c.faqs.map((f) => (
               <FaqItem key={f.q} q={f.q} a={f.a} />
             ))}
           </div>
@@ -320,17 +426,16 @@ export default function HealthyEatingPage() {
 
       {/* CTA */}
       <section className="py-16 px-6 bg-ink text-white text-center">
-        <h2 className="text-2xl md:text-3xl font-display font-bold mb-4">Ready to build your bowl?</h2>
+        <h2 className="text-2xl md:text-3xl font-display font-bold mb-4">{c.ctaTitle}</h2>
         <p className="text-white/70 mb-8 max-w-xl mx-auto">
-          Browse the full menu, build a custom bowl, or set up weekly meal prep — all from the same ingredient list
-          you just saw.
+          {c.ctaText}
         </p>
         <div className="flex flex-wrap justify-center gap-4">
           <a
             href="/digital-menu"
             className="inline-flex items-center gap-2 px-8 py-4 bg-terracotta text-white rounded-full font-bold hover:bg-terracotta/90 transition-all shadow-xl"
           >
-            Order on the Digital Menu
+            {c.ctaOrder}
           </a>
           <a
             href="https://line.me/R/ti/p/@cajunlifecafe"
@@ -338,7 +443,7 @@ export default function HealthyEatingPage() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 text-white rounded-full font-bold hover:bg-white/20 transition-all backdrop-blur-sm"
           >
-            Message us on LINE
+            {c.ctaLine}
           </a>
         </div>
       </section>

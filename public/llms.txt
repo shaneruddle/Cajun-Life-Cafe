@@ -25,7 +25,10 @@ Cajun Life Cafe is a healthy-eating restaurant on Pratumnak Hill in Pattaya, Tha
 - Homepage: https://cajunlifecafe.com/
 - Full menu: https://cajunlifecafe.com/digital-menu
 - Healthy eating guide (nutrition data): https://cajunlifecafe.com/healthy-eating
+- Breakfast (served all day): https://cajunlifecafe.com/breakfast
 - Meal prep: https://cajunlifecafe.com/meal-prep
+- Thai homepage (ภาษาไทย): https://cajunlifecafe.com/th
+- Thai healthy eating guide: https://cajunlifecafe.com/th/healthy-eating
 - Loyalty program: https://cajunlifecafe.com/loyalty
 - Influencer program: https://cajunlifecafe.com/influencers
 - Feedback: https://cajunlifecafe.com/feedback

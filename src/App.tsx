@@ -74,6 +74,8 @@ import LoyaltyPage from "./components/LoyaltyPage";
 import InfluencerPage from "./components/InfluencerPage";
 import FeedbackPage from "./components/FeedbackPage";
 import HealthyEatingPage from "./components/HealthyEatingPage";
+import BreakfastPage from "./components/BreakfastPage";
+import ThaiHomePage from "./components/ThaiHomePage";
 import RouteMeta from './seo/RouteMeta';
 
 const BUSINESS = {
@@ -98,7 +100,8 @@ const NAV_GROUPS: NavGroup[] = [
     title: "Order",
     links: [
       { label: "Menu", href: "#menu" },
-      { label: "Digital Menu", to: "/menu" },
+      { label: "Digital Menu", to: "/digital-menu" },
+      { label: "Breakfast", to: "/breakfast" },
       { label: "Meal Prep", to: "/meal-prep" },
       { label: "Healthy Eating Guide", to: "/healthy-eating" },
     ],
@@ -118,6 +121,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Location", href: "#location" },
       { label: "Blog", to: "/blog" },
       { label: "Careers", to: "/careers" },
+      { label: "ภาษาไทย", to: "/th" },
     ],
   },
 ];
@@ -345,6 +349,11 @@ const Hero = () => {
               <div className="mt-12 flex gap-6">
                 <a href="#menu" className="terracotta-button px-10 py-4 text-lg">View Menu</a>
                 <a href="#location" className="bg-white text-ink hover:bg-cream px-10 py-4 rounded-full font-bold text-lg transition-all shadow-xl">Visit Us</a>
+              </div>
+              <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-semibold text-white/90 drop-shadow">
+                <Link to="/breakfast" className="underline underline-offset-4 hover:text-white">Breakfast served all day</Link>
+                <Link to="/healthy-eating" className="underline underline-offset-4 hover:text-white">Healthy eating guide</Link>
+                <Link to="/th" lang="th" className="underline underline-offset-4 hover:text-white">ภาษาไทย</Link>
               </div>
             </motion.div>
           </div>
@@ -730,6 +739,9 @@ function AppContent({ user, setUser }: any) {
         <Route path="/influencers" element={<><InfluencerPage /><Footer /></>} />
         <Route path="/feedback" element={<><FeedbackPage /><Footer /></>} />
         <Route path="/healthy-eating" element={<><HealthyEatingPage /><Footer /></>} />
+        <Route path="/th/healthy-eating" element={<><HealthyEatingPage lang="th" /><Footer /></>} />
+        <Route path="/th" element={<><ThaiHomePage /><Footer /></>} />
+        <Route path="/breakfast" element={<><BreakfastPage /><Footer /></>} />
         <Route path="/blog" element={<><BlogPage /><Footer /></>} />
         <Route path="/blog/:slug" element={<><BlogPostPage /><Footer /></>} />
         <Route path="/dashboard" element={isAdmin || isMarketing || isStaff || isManager ? <DashboardLayout user={user} /> : <div className="pt-32 text-center h-screen bg-cream flex flex-col items-center justify-center gap-4">Access Denied. <Auth onUserChange={setUser} /></div>}>

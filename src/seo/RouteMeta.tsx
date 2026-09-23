@@ -33,6 +33,17 @@ export function applyPageMeta(meta: PageMeta, path: string) {
   setMeta('meta[property="og:url"]', 'content', url, metaTag('property', 'og:url'));
   setMeta('meta[name="twitter:title"]', 'content', meta.title, metaTag('name', 'twitter:title'));
   setMeta('meta[name="twitter:description"]', 'content', meta.description, metaTag('name', 'twitter:description'));
+  document.head.querySelectorAll('link[rel="alternate"][hreflang]').forEach((el) => el.remove());
+  if (meta.alternates) {
+    const { en, th } = meta.alternates;
+    for (const [lang, p] of [['en', en], ['th', th], ['x-default', en]]) {
+      const el = document.createElement('link');
+      el.setAttribute('rel', 'alternate');
+      el.setAttribute('hreflang', lang);
+      el.setAttribute('href', `${SITE_URL}${p}`);
+      document.head.appendChild(el);
+    }
+  }
 }
 
 const isInternal = (path: string) =>

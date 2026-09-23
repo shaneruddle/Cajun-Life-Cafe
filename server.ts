@@ -1239,7 +1239,7 @@ Rules:
   // handled at request time. Keep STATIC_PAGES in sync with src/seo/pageMeta.ts.
   const SITE_URL = "https://cajunlifecafe.com";
   const HOSTING_ORIGIN = "https://cajun-life-cafe.web.app";
-  const STATIC_PAGES = ["/", "/digital-menu", "/meal-prep", "/healthy-eating", "/loyalty", "/influencers", "/feedback", "/careers", "/blog"];
+  const STATIC_PAGES = ["/", "/digital-menu", "/meal-prep", "/healthy-eating", "/breakfast", "/th", "/th/healthy-eating", "/loyalty", "/influencers", "/feedback", "/careers", "/blog"];
   const escHtml = (s: string) =>
     String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -1281,6 +1281,8 @@ Rules:
   const injectHead = (html: string, title: string, description: string, url: string, image?: string, jsonLd?: object) => {
     const t = escHtml(title), d = escHtml(description), u = escHtml(url);
     let out = html
+      // The shell is the homepage, which carries its en/th hreflang pair — not valid for a post.
+      .replace(/\s*<link rel="alternate" hreflang="[^"]*" href="[^"]*"\s*\/?>/g, "")
       .replace(/<title>[\s\S]*?<\/title>/, `<title>${t}</title>`)
       .replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${d}" />`)
       .replace(/<link rel="canonical" href="[^"]*"\s*\/?>/, `<link rel="canonical" href="${u}" />`)

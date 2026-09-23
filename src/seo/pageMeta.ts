@@ -15,6 +15,10 @@ export const SITE_URL = 'https://cajunlifecafe.com';
 export interface PageMeta {
   title: string;
   description: string;
+  /** Page language when not English (sets <html lang> and og:locale). */
+  lang?: 'th';
+  /** hreflang pair: the English and Thai versions of the same page. */
+  alternates?: { en: string; th: string };
 }
 
 export const PAGE_META: Record<string, PageMeta> = {
@@ -22,6 +26,19 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Cajun Life Cafe | Healthy Cajun & Thai Food, Pratumnak Hill, Pattaya',
     description:
       'Cajun Life Cafe is a healthy-eating restaurant on Pratumnak Hill, Pattaya — home-cooked Cajun and Thai dishes made with fresh ingredients, high protein, no refined sugar, and gluten-free options. Dine in, order meal prep, or get delivery via LINE.',
+    alternates: { en: '/', th: '/th' },
+  },
+  '/th': {
+    title: 'อาหารคลีน พัทยา | Cajun Life Cafe ร้านอาหารสุขภาพ เขาพระตำหนัก',
+    description:
+      'ร้านอาหารคลีนบนเขาพระตำหนัก พัทยา อาหารเคจันและอาหารไทยโฮมเมด โปรตีนสูง ไม่ใช้น้ำตาลขัดขาว มีตัวเลือกปลอดกลูเตน อาหารเช้าทั้งวัน เปิดทุกวัน 8:00–22:00 น. สั่ง Meal Prep ทาง LINE',
+    lang: 'th',
+    alternates: { en: '/', th: '/th' },
+  },
+  '/breakfast': {
+    title: 'Breakfast in Pattaya, Served All Day | Cajun Life Cafe, Pratumnak Hill',
+    description:
+      'English, American and healthy high-protein breakfasts on Pratumnak Hill, Pattaya — served all day, 8am to 10pm, every day. From ฿150.',
   },
   '/digital-menu': {
     title: 'Menu & Prices | Cajun Life Cafe, Pratumnak Hill, Pattaya',
@@ -37,6 +54,14 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Healthy Food in Pattaya | High Protein, No Refined Sugar — Cajun Life Cafe',
     description:
       'Looking for healthy food in Pattaya? High-protein meals, no refined sugar, gluten-free options and full macros for every build-your-own ingredient at Cajun Life Cafe, Pratumnak Hill.',
+    alternates: { en: '/healthy-eating', th: '/th/healthy-eating' },
+  },
+  '/th/healthy-eating': {
+    title: 'อาหารคลีน โปรตีนสูง พัทยา | ไม่ใช้น้ำตาลขัดขาว — Cajun Life Cafe',
+    description:
+      'อาหารคลีนในพัทยา โปรตีนสูง ไม่ใช้น้ำตาลขัดขาว มีตัวเลือกปลอดกลูเตน พร้อมค่าโภชนาการของวัตถุดิบทุกตัวในเมนู Build Your Own ที่ Cajun Life Cafe เขาพระตำหนัก',
+    lang: 'th',
+    alternates: { en: '/healthy-eating', th: '/th/healthy-eating' },
   },
   '/loyalty': {
     title: 'Loyalty Wallet — Get 10% Extra on Every Top-Up | Cajun Life Cafe',
