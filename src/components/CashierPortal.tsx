@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth';
 import {
   collection, addDoc, query, where, orderBy, onSnapshot,
-  doc, getDoc, setDoc, updateDoc, deleteDoc, limit, Timestamp
+  doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, limit, Timestamp
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '../firebase';
@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CRMCustomer, LoyaltyTransaction } from '../types';
+import { ExpenseItem } from './finance/types';
 const DeliveryMap = React.lazy(() => import('./DeliveryMap'));
 
 // ── LINE push helper ───────────────────────────────────────────────────────────
@@ -1600,6 +1601,7 @@ function ExpenseTab({ user }: { user: any }) {
     notes: '',
     employeeId: '',
     employeeName: '',
+    items: [] as ExpenseItem[],
   });
   const staffOptions = useStaffOptions();
 
@@ -1611,7 +1613,7 @@ function ExpenseTab({ user }: { user: any }) {
 
   const reset = () => {
     setStep('capture'); setImageFiles([]); setImagePreviews([]); setScanningCount(0);
-    setFormData({ date: todayLocal(), supplier: '', category_id: 'food', category_name: 'Food & Ingredients', total: '', notes: '', employeeId: '', employeeName: '' });
+    setFormData({ date: todayLocal(), supplier: '', category_id: 'food', category_name: 'Food & Ingredients', total: '', notes: '', employeeId: '', employeeName: '', items: [] });
   };
 
   const scanReceipt = async (file: File) => {
@@ -1622,11 +1624,19 @@ function ExpenseTab({ user }: { user: any }) {
       const result = await response.json();
       if (result.success && result.data) {
         const d = result.data;
+        const scannedItems: ExpenseItem[] = (d.items || []).map((item: any) => ({
+          description: item.description || '',
+          quantity: item.quantity,
+          unit: item.unit || '',
+          unit_price: item.unit_price,
+          total_price: item.total_price,
+        }));
         setFormData(prev => ({
           ...prev,
           supplier: d.supplier || prev.supplier,
           date: d.date || prev.date,
           total: d.total ? String((parseFloat(prev.total) || 0) + parseFloat(d.total)) : prev.total,
+          items: [...prev.items, ...scannedItems],
         }));
         toast.success('Receipt scanned ✓');
       } else { toast.error('Could not read one of the receipts — check the total'); }
@@ -1667,10 +1677,45 @@ function ExpenseTab({ user }: { user: any }) {
       await addDoc(collection(db, 'finance_expenses'), {
         date: formData.date, supplier: formData.supplier, category_id: formData.category_id,
         category_name: formData.category_name, total: parseFloat(formData.total), currency: 'THB',
-        receipt_url: receipt_urls[0] || '', receipt_urls,
+        receipt_url: receipt_urls[0] || '', receipt_urls, items: formData.items,
         notes: formData.notes, logged_by: user?.email || 'unknown', created_at: new Date().toISOString(),
         ...(isSalaryCategory && formData.employeeId ? { employeeId: formData.employeeId, employeeName: formData.employeeName } : {}),
       });
+
+      // Auto-update ingredient costs from scanned line items (same matching
+      // logic as the desktop Log Expense form, so cashier-logged Food &
+      // Ingredients receipts also feed the Ingredients page).
+      if (formData.items && formData.items.length > 0) {
+        try {
+          const ingSnap = await getDocs(query(collection(db, 'finance_ingredients')));
+          const ingList = ingSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+          for (const item of formData.items) {
+            if (!item.description || !item.unit_price) continue;
+            const itemName = item.description.toLowerCase().replace(/[^a-z0-9 ]/g, '');
+            const match = ingList.find(ing => {
+              const ingName = ing.name.toLowerCase().replace(/[^a-z0-9 ]/g, '');
+              return itemName.includes(ingName) || ingName.includes(itemName);
+            });
+            if (match) {
+              await updateDoc(doc(db, 'finance_ingredients', match.id), {
+                current_cost_per_unit: item.unit_price,
+              });
+              await addDoc(collection(db, 'ingredient_purchases'), {
+                ingredient_id: match.id,
+                ingredient_name: match.name,
+                quantity: item.quantity || 1,
+                unit: item.unit || match.unit,
+                unit_cost: item.unit_price,
+                total_cost: item.total_price || item.unit_price,
+                date: formData.date,
+                supplier: formData.supplier,
+                created_at: new Date().toISOString(),
+              });
+            }
+          }
+        } catch (e) { console.warn('Ingredient cost update failed', e); }
+      }
+
       await logActivity('Expense Logged', `฿${parseFloat(formData.total).toLocaleString()} · ${formData.category_name}${isSalaryCategory && formData.employeeName ? ` · ${formData.employeeName}` : ''} · ${formData.supplier || 'no supplier'} · ${formData.date}${receipt_urls.length > 1 ? ` · ${receipt_urls.length} receipts` : ''}`, 'finance');
       setStep('done');
     } catch { toast.error('Failed to save'); setStep('review'); }
