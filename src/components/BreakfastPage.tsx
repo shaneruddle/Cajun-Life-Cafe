@@ -5,8 +5,6 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Clock, MapPin, ChevronDown, MessageCircle } from 'lucide-react';
 import { db } from '../firebase';
 import { MenuItem } from '../types';
-import { FirebaseImage } from './ui/FirebaseImage';
-import { normalizeImageUrl } from '../utils/images';
 
 // /breakfast — targets "breakfast pattaya", "best english breakfast in
 // pattaya", "breakfast near me" etc., where the site already sits on page one
@@ -108,23 +106,14 @@ export default function BreakfastPage() {
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-display font-bold text-ink mb-10 text-center">The breakfast menu</h2>
           {breakfast.length > 0 ? (
-            <div className="grid sm:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 gap-x-10 gap-y-2">
               {breakfast.map((item) => (
-                <div key={item.id} className="bg-cream rounded-[28px] overflow-hidden border border-gray-100 shadow-sm flex flex-col">
-                  {item.image && (
-                    <FirebaseImage
-                      src={normalizeImageUrl(item.image)}
-                      alt={`${item.name} at Cajun Life Cafe, Pattaya`}
-                      className="w-full h-56 object-cover"
-                    />
-                  )}
-                  <div className="p-6 flex-1">
-                    <div className="flex items-baseline justify-between gap-4 mb-2">
-                      <h3 className="font-bold text-ink text-lg">{item.name}</h3>
-                      <span className="text-terracotta font-bold whitespace-nowrap">{priceLabel(item.price)}</span>
-                    </div>
-                    {item.description && <p className="text-gray-500 text-sm leading-relaxed">{item.description}</p>}
+                <div key={item.id} className="py-5 border-b border-gray-100">
+                  <div className="flex items-baseline justify-between gap-4 mb-1">
+                    <h3 className="font-bold text-ink text-lg">{item.name}</h3>
+                    <span className="text-terracotta font-bold whitespace-nowrap">{priceLabel(item.price)}</span>
                   </div>
+                  {item.description && <p className="text-gray-500 text-sm leading-relaxed">{item.description}</p>}
                 </div>
               ))}
             </div>
