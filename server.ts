@@ -1315,7 +1315,8 @@ Rules:
         return res.status(404).send(shell);
       }
       const url = `${SITE_URL}/blog/${post.slug}`;
-      const title = `${post.seoTitle || post.title} — Cajun Life Cafe`;
+      const baseTitle = post.seoTitle || post.title;
+      const title = /cajun life/i.test(baseTitle) ? baseTitle : `${baseTitle} — Cajun Life Cafe`;
       const description = post.seoDescription || post.excerpt || "";
       const image = typeof post.coverImage === "string" && post.coverImage.startsWith("http") ? post.coverImage : undefined;
       const jsonLd = {

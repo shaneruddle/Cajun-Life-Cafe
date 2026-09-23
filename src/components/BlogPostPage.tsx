@@ -20,6 +20,9 @@ function useDocumentMeta(title: string, description: string | undefined, path: s
   }, [title, description, path]);
 }
 
+// Some posts' SEO titles already end in the brand name — don't add it twice.
+const withBrand = (t: string) => (/cajun life/i.test(t) ? t : `${t} — Cajun Life Cafe`);
+
 export default function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<BlogPost | null>(null);
@@ -49,7 +52,7 @@ export default function BlogPostPage() {
   }, [slug]);
 
   useDocumentMeta(
-    post ? (post.seoTitle || post.title) + ' — Cajun Life Cafe' : '',
+    post ? withBrand(post.seoTitle || post.title) : '',
     post?.seoDescription || post?.excerpt,
     `/blog/${slug}`
   );
