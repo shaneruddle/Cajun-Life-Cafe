@@ -17,6 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useT } from "../i18n";
+import { trackEvent } from "../utils/analytics";
 
 const TOP_UP_EXAMPLES = [
   { topUp: 500, bonus: 50 },
@@ -78,6 +79,7 @@ const SignupForm = () => {
       } else {
         setActivationUrl(data.activationUrl || "");
         setStatus("done");
+        trackEvent("sign_up", { method: "loyalty_form" });
       }
     } catch {
       setErrorMsg(t("contact.errConnect"));

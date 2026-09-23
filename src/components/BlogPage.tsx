@@ -14,10 +14,6 @@ export default function BlogPage() {
   const [activeCategory, setActiveCategory] = useState<string>('All');
 
   useEffect(() => {
-    document.title = 'Blog — Cajun Life Cafe';
-  }, []);
-
-  useEffect(() => {
     // Ordering by createdAt (not publishedAt) avoids needing a composite
     // index for a status == + orderBy(other field) query; publish order is
     // close enough in practice and the status filter is applied client-side

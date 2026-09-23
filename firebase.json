@@ -9,10 +9,23 @@
   "hosting": {
     "site": "cajun-life-cafe",
     "public": "dist",
+    "cleanUrls": true,
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "redirects": [
+      {
+        "source": "/find_us",
+        "destination": "/#location",
+        "type": 301
+      },
+      {
+        "source": "/menu",
+        "destination": "/digital-menu",
+        "type": 301
+      }
     ],
     "rewrites": [
       {
@@ -24,6 +37,20 @@
       },
       {
         "source": "/activate/callback",
+        "run": {
+          "serviceId": "cajun-life-cafe-server",
+          "region": "asia-east1"
+        }
+      },
+      {
+        "source": "/sitemap.xml",
+        "run": {
+          "serviceId": "cajun-life-cafe-server",
+          "region": "asia-east1"
+        }
+      },
+      {
+        "source": "/blog/**",
         "run": {
           "serviceId": "cajun-life-cafe-server",
           "region": "asia-east1"

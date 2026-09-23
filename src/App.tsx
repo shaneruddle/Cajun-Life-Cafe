@@ -74,6 +74,7 @@ import LoyaltyPage from "./components/LoyaltyPage";
 import InfluencerPage from "./components/InfluencerPage";
 import FeedbackPage from "./components/FeedbackPage";
 import HealthyEatingPage from "./components/HealthyEatingPage";
+import RouteMeta from './seo/RouteMeta';
 
 const BUSINESS = {
   name: "Cajun Life Cafe",
@@ -718,6 +719,7 @@ function AppContent({ user, setUser }: any) {
         </div>
       )}
       {!isDigitalMenu && !isDashboard && !isEmployee && !isActivate && !isOrder && <Navbar canAccessDashboard={isMarketing} canAccessStaffPortal={isCashier || isManager} setUser={setUser} />}
+      <RouteMeta />
       <Routes>
         <Route path="/" element={<MainSite isAdmin={isAdmin} />} />
         <Route path="/menu" element={<DigitalMenuDisplay />} />

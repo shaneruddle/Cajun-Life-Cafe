@@ -7,32 +7,17 @@ import { BlogPost } from '../types';
 import { FirebaseImage } from './ui/FirebaseImage';
 import { normalizeImageUrl } from '../utils/images';
 import MarkdownContent from './MarkdownContent';
+import { applyPageMeta } from '../seo/RouteMeta';
 import { ArrowLeft, Calendar, User } from 'lucide-react';
 
-// Sets <title> and the meta description tag directly — the project doesn't
-// have react-helmet or similar installed, and a couple of DOM calls in a
-// useEffect is enough for a small per-post SEO override.
-function useDocumentMeta(title: string, description?: string) {
+// Per-post title, description, canonical and Open Graph tags on client-side
+// navigation. The server (server.ts, /blog/:slug) injects the same values
+// into the initial HTML for crawlers.
+function useDocumentMeta(title: string, description: string | undefined, path: string) {
   useEffect(() => {
-    const prevTitle = document.title;
-    if (title) document.title = title;
-
-    let tag = document.querySelector('meta[name="description"]');
-    const prevContent = tag?.getAttribute('content') || '';
-    if (description) {
-      if (!tag) {
-        tag = document.createElement('meta');
-        tag.setAttribute('name', 'description');
-        document.head.appendChild(tag);
-      }
-      tag.setAttribute('content', description);
-    }
-
-    return () => {
-      document.title = prevTitle;
-      if (tag && description) tag.setAttribute('content', prevContent);
-    };
-  }, [title, description]);
+    if (!title) return;
+    applyPageMeta({ title, description: description || '' }, path);
+  }, [title, description, path]);
 }
 
 export default function BlogPostPage() {
@@ -64,8 +49,9 @@ export default function BlogPostPage() {
   }, [slug]);
 
   useDocumentMeta(
-    post ? (post.seoTitle || post.title) + ' — Cajun Life Cafe' : 'Cajun Life Cafe',
-    post?.seoDescription || post?.excerpt
+    post ? (post.seoTitle || post.title) + ' — Cajun Life Cafe' : '',
+    post?.seoDescription || post?.excerpt,
+    `/blog/${slug}`
   );
 
   if (loading) {

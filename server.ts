@@ -1232,6 +1232,112 @@ Rules:
     }
   });
 
+  // ── SEO: dynamic sitemap + per-post blog <head> ───────────────────
+  // Firebase Hosting rewrites /sitemap.xml and /blog/** here (firebase.json).
+  // Static marketing pages get their head baked in at build time
+  // (scripts/prerender-meta.ts); blog posts live in Firestore, so they're
+  // handled at request time. Keep STATIC_PAGES in sync with src/seo/pageMeta.ts.
+  const SITE_URL = "https://cajunlifecafe.com";
+  const HOSTING_ORIGIN = "https://cajun-life-cafe.web.app";
+  const STATIC_PAGES = ["/", "/digital-menu", "/meal-prep", "/healthy-eating", "/loyalty", "/influencers", "/feedback", "/careers", "/blog"];
+  const escHtml = (s: string) =>
+    String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  const getPublishedPosts = async () => {
+    const snap = await adminDb.collection("blog_posts").where("status", "==", "published").get();
+    return snap.docs.map((d) => d.data() as any).filter((p) => p.slug);
+  };
+
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const posts = await getPublishedPosts();
+      const urls = [
+        ...STATIC_PAGES.map((p) => `  <url><loc>${SITE_URL}${p}</loc></url>`),
+        ...posts.map((p) => {
+          const lastmod = String(p.updatedAt || p.publishedAt || "").slice(0, 10);
+          return `  <url><loc>${SITE_URL}/blog/${escHtml(p.slug)}</loc>${/^\d{4}-\d{2}-\d{2}$/.test(lastmod) ? `<lastmod>${lastmod}</lastmod>` : ""}</url>`;
+        }),
+      ];
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=600");
+      res.send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`);
+    } catch (err) {
+      console.error("Sitemap error:", err);
+      res.status(500).send("Sitemap unavailable");
+    }
+  });
+
+  // The SPA shell is fetched from Hosting (not this container's own dist) so
+  // the hashed JS/CSS asset URLs always match what Hosting is serving.
+  let shellCache: { html: string; at: number } | null = null;
+  const getShell = async () => {
+    if (shellCache && Date.now() - shellCache.at < 5 * 60 * 1000) return shellCache.html;
+    const r = await fetch(`${HOSTING_ORIGIN}/`);
+    if (!r.ok) throw new Error(`Shell fetch failed: ${r.status}`);
+    shellCache = { html: await r.text(), at: Date.now() };
+    return shellCache.html;
+  };
+
+  const injectHead = (html: string, title: string, description: string, url: string, image?: string, jsonLd?: object) => {
+    const t = escHtml(title), d = escHtml(description), u = escHtml(url);
+    let out = html
+      .replace(/<title>[\s\S]*?<\/title>/, `<title>${t}</title>`)
+      .replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${d}" />`)
+      .replace(/<link rel="canonical" href="[^"]*"\s*\/?>/, `<link rel="canonical" href="${u}" />`)
+      .replace(/<meta property="og:type" content="[^"]*"\s*\/?>/, `<meta property="og:type" content="article" />`)
+      .replace(/<meta property="og:title" content="[^"]*"\s*\/?>/, `<meta property="og:title" content="${t}" />`)
+      .replace(/<meta property="og:description" content="[^"]*"\s*\/?>/, `<meta property="og:description" content="${d}" />`)
+      .replace(/<meta property="og:url" content="[^"]*"\s*\/?>/, `<meta property="og:url" content="${u}" />`)
+      .replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/, `<meta name="twitter:title" content="${t}" />`)
+      .replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/, `<meta name="twitter:description" content="${d}" />`);
+    if (image) {
+      const i = escHtml(image);
+      out = out
+        .replace(/<meta property="og:image" content="[^"]*"\s*\/?>/, `<meta property="og:image" content="${i}" />`)
+        .replace(/<meta name="twitter:image" content="[^"]*"\s*\/?>/, `<meta name="twitter:image" content="${i}" />`);
+    }
+    if (jsonLd) {
+      out = out.replace("</head>", `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, "\\u003c")}</script>\n</head>`);
+    }
+    return out;
+  };
+
+  app.get("/blog/:slug", async (req, res) => {
+    try {
+      const shell = await getShell();
+      const snap = await adminDb.collection("blog_posts").where("slug", "==", req.params.slug).limit(1).get();
+      const post = snap.docs[0]?.data() as any;
+      res.set("Content-Type", "text/html; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=300");
+      if (!post || post.status !== "published") {
+        // Real 404 status (the SPA still renders its "not found" view) so
+        // Google doesn't index missing slugs as soft-404s.
+        return res.status(404).send(shell);
+      }
+      const url = `${SITE_URL}/blog/${post.slug}`;
+      const title = `${post.seoTitle || post.title} — Cajun Life Cafe`;
+      const description = post.seoDescription || post.excerpt || "";
+      const image = typeof post.coverImage === "string" && post.coverImage.startsWith("http") ? post.coverImage : undefined;
+      const jsonLd = {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        headline: post.title,
+        description,
+        ...(image ? { image } : {}),
+        datePublished: post.publishedAt || post.createdAt,
+        dateModified: post.updatedAt || post.publishedAt || post.createdAt,
+        author: { "@type": "Organization", name: post.authorName || "Cajun Life Cafe" },
+        publisher: { "@type": "Organization", name: "Cajun Life Cafe", url: SITE_URL },
+        mainEntityOfPage: url,
+      };
+      res.send(injectHead(shell, title, description, url, image, jsonLd));
+    } catch (err) {
+      console.error("Blog SSR meta error:", err);
+      // Fall back to the plain shell so the page still works.
+      try { res.send(await getShell()); } catch { res.status(502).send("Temporarily unavailable"); }
+    }
+  });
+
   // ── Serve React app ───────────────────────────────────────────────
   if (fs.existsSync(distDir)) {
     app.use(express.static(distDir));
