@@ -5,6 +5,12 @@ import { Expense, Income, Ingredient } from './types';
 import { MenuItem } from '../../types';
 import { Download, TrendingUp, TrendingDown } from 'lucide-react';
 
+// Expense categories that are owner distributions, not operating costs (e.g.
+// "Investment Returned" / dividends). They're still logged in finance_expenses
+// for the record, but excluded from P&L totals so Net Profit reflects actual
+// operating performance.
+const NON_OPERATING_CATEGORY_IDS = ['dividends'];
+
 export default function FinanceReports() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [income, setIncome] = useState<Income[]>([]);
@@ -34,16 +40,17 @@ export default function FinanceReports() {
     return () => { unsubExp(); unsubInc(); };
   }, [selectedMonth]);
 
+  const operatingExpenses = useMemo(() => expenses.filter(e => !NON_OPERATING_CATEGORY_IDS.includes(e.category_id)), [expenses]);
   const totalIncome = useMemo(() => income.reduce((s, i) => s + i.amount, 0), [income]);
-  const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + e.total, 0), [expenses]);
+  const totalExpenses = useMemo(() => operatingExpenses.reduce((s, e) => s + e.total, 0), [operatingExpenses]);
   const net = totalIncome - totalExpenses;
   const foodCostPct = totalIncome > 0 ? (totalExpenses / totalIncome) * 100 : 0;
 
   const expensesByCategory = useMemo(() => {
     const map: Record<string, number> = {};
-    expenses.forEach(e => { map[e.category_name] = (map[e.category_name] || 0) + e.total; });
+    operatingExpenses.forEach(e => { map[e.category_name] = (map[e.category_name] || 0) + e.total; });
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
-  }, [expenses]);
+  }, [operatingExpenses]);
 
   const incomeByCategory = useMemo(() => {
     const map: Record<string, number> = {};

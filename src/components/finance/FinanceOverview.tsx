@@ -7,6 +7,12 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 
 const CATEGORY_COLORS = ['#C84B31', '#4A5240', '#E8DCC8', '#8B7355', '#6B8F71', '#D4A853'];
 
+// Expense categories that are owner distributions, not operating costs (e.g.
+// "Investment Returned" / dividends). They're still logged in finance_expenses
+// for the record, but excluded from P&L totals so Net Profit reflects actual
+// operating performance.
+const NON_OPERATING_CATEGORY_IDS = ['dividends'];
+
 // Sum of a category breakdown's values - used to show each bar's share of
 // the total in the tooltip alongside the raw amount.
 const totalCategoryValue = (arr: { name: string; value: number }[]) =>
@@ -34,16 +40,17 @@ export default function FinanceOverview({ financeRole = 'owner' }: { financeRole
     return () => { unsubExp(); unsubInc(); };
   }, [selectedMonth]);
 
-  const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + e.total, 0), [expenses]);
+  const operatingExpenses = useMemo(() => expenses.filter(e => !NON_OPERATING_CATEGORY_IDS.includes(e.category_id)), [expenses]);
+  const totalExpenses = useMemo(() => operatingExpenses.reduce((s, e) => s + e.total, 0), [operatingExpenses]);
   const totalIncome = useMemo(() => income.reduce((s, i) => s + i.amount, 0), [income]);
   const net = totalIncome - totalExpenses;
   const showProfit = financeRole === 'owner';
 
   const expensesByCategory = useMemo(() => {
     const map: Record<string, number> = {};
-    expenses.forEach(e => { map[e.category_name] = (map[e.category_name] || 0) + e.total; });
+    operatingExpenses.forEach(e => { map[e.category_name] = (map[e.category_name] || 0) + e.total; });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [expenses]);
+  }, [operatingExpenses]);
 
   const incomeByCategory = useMemo(() => {
     const map: Record<string, number> = {};
@@ -62,9 +69,9 @@ export default function FinanceOverview({ financeRole = 'owner' }: { financeRole
     return months.map(m => ({
       month: m.slice(5), // MM
       income: income.filter(i => i.date.startsWith(m)).reduce((s, i) => s + i.amount, 0),
-      expenses: expenses.filter(e => e.date.startsWith(m)).reduce((s, e) => s + e.total, 0),
+      expenses: operatingExpenses.filter(e => e.date.startsWith(m)).reduce((s, e) => s + e.total, 0),
     }));
-  }, [income, expenses]);
+  }, [income, operatingExpenses]);
 
   const fmt = (n: number) => `฿${n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 

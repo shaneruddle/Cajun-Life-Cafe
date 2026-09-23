@@ -45,7 +45,7 @@ const EXPENSE_CATEGORIES = [
   { id: 'vouchers', name: 'Vouchers' },
   { id: 'taxi', name: 'Taxi' },
   { id: 'fuel_petrol', name: 'Fuel & Petrol' },
-  { id: 'dividends', name: 'Dividends' },
+  { id: 'dividends', name: 'Investment Returned' },
   { id: 'miscellaneous', name: 'Miscellaneous' },
   { id: 'uncategorized_expense', name: 'Uncategorized Expense' },
 ];
